@@ -25,6 +25,7 @@ import {
   ClickerUpgradeId,
   EnemyTypeId,
   FloatingMapPopup,
+  PixelParticle,
   PlacedChicken,
   TargetMode,
   TdUpgradeId,
@@ -86,6 +87,7 @@ export class ChickenTdEngine {
   public enemies: ActiveEnemy[] = [];
   public projectiles: ActiveProjectile[] = [];
   public rings: VisualRingEffect[] = [];
+  public particles: PixelParticle[] = [];
   public popups: FloatingMapPopup[] = [];
 
   private pendingSpawns: PendingSpawn[] = [];
@@ -127,6 +129,7 @@ export class ChickenTdEngine {
     this.enemies = [];
     this.projectiles = [];
     this.rings = [];
+    this.particles = [];
     this.popups = [];
     this.pendingSpawns = [];
     this.notifyUi();
@@ -288,7 +291,7 @@ export class ChickenTdEngine {
       x,
       y,
       tier: 0,
-      targetMode: typeId === 'ranger' ? 'strong' : 'first',
+      targetMode: typeId === 'ranger' || typeId === 'pirate' || typeId === 'mecha' ? 'strong' : 'first',
       angle: 0,
       cooldown: 0,
       recoil: 0,
@@ -296,7 +299,8 @@ export class ChickenTdEngine {
       totalSpent: def.baseCost,
     };
     this.towers.push(placed);
-    this.spawnRing(x, y, 36, '#FACC15');
+    this.spawnRing(x, y, 34, '#FACC15');
+    this.spawnPixelBurst(x, y, 8, '#FACC15');
     this.audio.playPlaceChicken();
     this.notifyUi();
     return placed;
@@ -312,8 +316,9 @@ export class ChickenTdEngine {
     this.corn -= nextStats.upgradeCost;
     tower.tier = nextTierIdx;
     tower.totalSpent += nextStats.upgradeCost;
-    this.spawnRing(tower.x, tower.y, 48, '#4ADE80');
-    this.spawnMapPopup(`Tier ${nextTierIdx + 1}!`, tower.x, tower.y - 24, '#FDE047', 1.05);
+    this.spawnRing(tower.x, tower.y, 46, '#4ADE80');
+    this.spawnPixelBurst(tower.x, tower.y, 12, '#4ADE80');
+    this.spawnMapPopup(`TIER ${nextTierIdx + 1}!`, tower.x, tower.y - 24, '#FDE047', 1.0);
     this.audio.playUpgrade();
     this.notifyUi();
     return true;
@@ -325,7 +330,8 @@ export class ChickenTdEngine {
     const [removed] = this.towers.splice(idx, 1);
     const refund = Math.round(removed.totalSpent * 0.7);
     this.corn += refund;
-    this.spawnMapPopup(`+${refund} 🌽`, removed.x, removed.y - 16, '#FACC15', 1.0);
+    this.spawnPixelBurst(removed.x, removed.y, 8, '#FACC15');
+    this.spawnMapPopup(`+${refund} CORN`, removed.x, removed.y - 16, '#FACC15', 1.0);
     this.audio.playUpgrade();
     this.notifyUi();
     return refund;
@@ -457,15 +463,16 @@ export class ChickenTdEngine {
       }
 
       const effectiveSlow = def.isFoxBoss ? e.slowFactor * 0.55 : e.slowFactor;
-      const moveSpeed = def.speed * (1 - Math.min(0.7, effectiveSlow));
+      const moveSpeed = def.speed * (1 - Math.min(0.72, effectiveSlow));
       e.distance += moveSpeed * dt;
 
       if (e.distance >= TOTAL_PATH_LENGTH) {
         this.enemies.splice(i, 1);
         this.eggs = Math.max(0, this.eggs - def.eggDamage);
         const nestPt = getPointAlongPath(TOTAL_PATH_LENGTH);
-        this.spawnMapPopup(`-${def.eggDamage} 🥚`, nestPt.x, nestPt.y - 26, '#EF4444', 1.15);
+        this.spawnMapPopup(`-${def.eggDamage} EGG`, nestPt.x, nestPt.y - 26, '#EF4444', 1.15);
         this.spawnRing(nestPt.x, nestPt.y, 44, '#EF4444');
+        this.spawnPixelBurst(nestPt.x, nestPt.y, 12, '#EF4444');
         this.audio.playEggLeak();
         this.notifyUi();
 
@@ -479,7 +486,7 @@ export class ChickenTdEngine {
       }
     }
 
-    // 3. Tower targeting & projectile firing
+    // 3. Tower targeting & projectile / pulse firing
     for (const tower of this.towers) {
       tower.recoil = Math.max(0, tower.recoil - dt * 5);
       tower.cooldown = Math.max(0, tower.cooldown - dt);
@@ -496,25 +503,81 @@ export class ChickenTdEngine {
       tower.recoil = 1.0;
 
       const def = CHICKEN_DEFS[tower.typeId];
-      const count = stats.projectiles;
-      const spreadStep = 0.14;
       const armorPiercing =
         tower.typeId === 'ranger' ||
         tower.typeId === 'lobber' ||
+        tower.typeId === 'alchemist' ||
+        tower.typeId === 'wizard' ||
+        tower.typeId === 'pirate' ||
+        tower.typeId === 'bard' ||
         tower.typeId === 'phoenix' ||
+        tower.typeId === 'mecha' ||
         tower.tier >= 2;
+
+      // Special 360-degree AoE Sonic Pulse for Mariachi Rooster ('bard')!
+      if (def.projectileStyle === 'sonic') {
+        this.spawnRing(tower.x, tower.y, stats.effectiveRange, '#FB7185');
+        this.spawnPixelBurst(tower.x, tower.y, 8, '#FDE047');
+        const pulseCarrier: ActiveProjectile = {
+          id: this.nextEntityId++,
+          ownerTowerId: tower.id,
+          style: 'sonic',
+          x: tower.x,
+          y: tower.y,
+          vx: 0,
+          vy: 0,
+          curveRate: 0,
+          rotation: 0,
+          damage: stats.damage,
+          pierceLeft: stats.effectivePierce,
+          splashRadius: stats.effectiveRange,
+          slowFactor: stats.slowFactor,
+          slowDuration: stats.slowDuration,
+          burnDps: stats.burnDps,
+          foxDamageMult: stats.effectiveFoxMult,
+          armorPiercing: true,
+          hitEnemyIds: new Set<number>(),
+          age: 0,
+          maxLifetime: 0.05,
+          color: def.accentColor,
+        };
+        let hits = 0;
+        const sonicTargets = [...this.enemies];
+        for (const e of sonicTargets) {
+          if (hits >= stats.effectivePierce) break;
+          if (!this.enemies.includes(e)) continue;
+          const eDef = ENEMY_DEFS[e.typeId];
+          if (eDef.isCamo && !stats.effectiveCamo) continue;
+          const pos = getPointAlongPath(e.distance, e.lateralOffset);
+          if (Math.hypot(pos.x - tower.x, pos.y - tower.y) <= stats.effectiveRange + eDef.radius) {
+            this.damageEnemy(e, stats.damage, pulseCarrier);
+            hits++;
+          }
+        }
+        continue;
+      }
+
+      const count = stats.projectiles;
+      const spreadStep = def.projectileStyle === 'feather_slash' ? 0.24 : 0.14;
+      const isBoomerang = def.projectileStyle === 'boomerang';
 
       for (let m = 0; m < count; m++) {
         const angOffset = count === 1 ? 0 : (m - (count - 1) / 2) * spreadStep;
-        const ang = baseAngle + angOffset;
+        const ang = baseAngle + angOffset - (isBoomerang ? 0.34 : 0);
+        const speed = stats.projectileSpeed;
+        const maxLife = isBoomerang
+          ? ((stats.effectiveRange * 2.05) / speed)
+          : (stats.effectiveRange + 70) / speed;
+
         this.projectiles.push({
           id: this.nextEntityId++,
           ownerTowerId: tower.id,
           style: def.projectileStyle,
-          x: tower.x + Math.cos(ang) * 16,
-          y: tower.y + Math.sin(ang) * 16,
-          vx: Math.cos(ang) * stats.projectileSpeed,
-          vy: Math.sin(ang) * stats.projectileSpeed,
+          x: tower.x + Math.cos(ang) * 14,
+          y: tower.y + Math.sin(ang) * 14,
+          vx: Math.cos(ang) * speed,
+          vy: Math.sin(ang) * speed,
+          curveRate: isBoomerang ? 2.15 : 0,
           rotation: ang,
           damage: stats.damage,
           pierceLeft: stats.effectivePierce,
@@ -526,7 +589,7 @@ export class ChickenTdEngine {
           armorPiercing,
           hitEnemyIds: new Set<number>(),
           age: 0,
-          maxLifetime: (stats.effectiveRange + 70) / stats.projectileSpeed,
+          maxLifetime: maxLife,
           color: def.accentColor,
         });
       }
@@ -536,10 +599,20 @@ export class ChickenTdEngine {
     for (let pIdx = this.projectiles.length - 1; pIdx >= 0; pIdx--) {
       const p = this.projectiles[pIdx];
       p.age += dt;
+
+      if (p.curveRate !== 0) {
+        const curAng = Math.atan2(p.vy, p.vx) + p.curveRate * dt;
+        const spd = Math.hypot(p.vx, p.vy);
+        p.vx = Math.cos(curAng) * spd;
+        p.vy = Math.sin(curAng) * spd;
+      }
+
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.style === 'shuriken') {
-        p.rotation += dt * 16;
+      if (p.style === 'shuriken' || p.style === 'boomerang') {
+        p.rotation += dt * 18;
+      } else {
+        p.rotation = Math.atan2(p.vy, p.vx);
       }
 
       if (p.age >= p.maxLifetime) {
@@ -548,22 +621,34 @@ export class ChickenTdEngine {
       }
 
       let hitSomething = false;
-      for (let eIdx = this.enemies.length - 1; eIdx >= 0; eIdx--) {
-        const e = this.enemies[eIdx];
-        if (p.hitEnemyIds.has(e.id)) continue;
+      const candidates = [...this.enemies];
+      for (const e of candidates) {
+        if (p.hitEnemyIds.has(e.id) || !this.enemies.includes(e)) continue;
         const eDef = ENEMY_DEFS[e.typeId];
         const ePos = getPointAlongPath(e.distance, e.lateralOffset);
-        const hitDist = eDef.radius + (p.style === 'egg_bomb' || p.style === 'snow' ? 10 : 7);
+        const extraRadius =
+          p.style === 'egg_bomb' ||
+          p.style === 'snow' ||
+          p.style === 'acid' ||
+          p.style === 'honey' ||
+          p.style === 'cannonball' ||
+          p.style === 'feather_slash'
+            ? 11
+            : 8;
+        const hitDist = eDef.radius + extraRadius;
 
         if (Math.hypot(p.x - ePos.x, p.y - ePos.y) <= hitDist) {
           p.hitEnemyIds.add(e.id);
           hitSomething = true;
 
-          if (p.splashRadius > 0) {
+          if (p.splashRadius > 0 && p.pierceLeft <= 1) {
             this.applySplashHit(p, ePos.x, ePos.y);
             p.pierceLeft = 0;
+          } else if (p.splashRadius > 0) {
+            this.applySplashHit(p, ePos.x, ePos.y);
+            p.pierceLeft--;
           } else {
-            this.damageEnemy(eIdx, p.damage, p);
+            this.damageEnemy(e, p.damage, p);
             p.pierceLeft--;
           }
 
@@ -578,9 +663,16 @@ export class ChickenTdEngine {
       }
     }
 
-    // 5. Update visual rings & floating popups
+    // 5. Update pixel rings, particles & floating popups
     for (const r of this.rings) r.age += dt;
     this.rings = this.rings.filter((r) => r.age < r.lifetime);
+
+    for (const pt of this.particles) {
+      pt.age += dt;
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+    }
+    this.particles = this.particles.filter((pt) => pt.age < pt.lifetime);
 
     for (const pop of this.popups) {
       pop.age += dt;
@@ -634,26 +726,34 @@ export class ChickenTdEngine {
     const ringCol =
       proj.style === 'snow'
         ? '#38BDF8'
-        : proj.style === 'solar'
-        ? '#FACC15'
+        : proj.style === 'acid'
+        ? '#34D399'
+        : proj.style === 'honey'
+        ? '#FBBF24'
+        : proj.style === 'plasma'
+        ? '#22D3EE'
+        : proj.style === 'lightning'
+        ? '#C084FC'
         : proj.burnDps > 0
         ? '#F97316'
         : '#FDE047';
     this.spawnRing(cx, cy, proj.splashRadius, ringCol);
+    this.spawnPixelBurst(cx, cy, 6, ringCol);
 
-    for (let i = this.enemies.length - 1; i >= 0; i--) {
-      const e = this.enemies[i];
+    const splashTargets = [...this.enemies];
+    for (const e of splashTargets) {
+      if (!this.enemies.includes(e)) continue;
       const def = ENEMY_DEFS[e.typeId];
       const pos = getPointAlongPath(e.distance, e.lateralOffset);
       if (Math.hypot(pos.x - cx, pos.y - cy) <= proj.splashRadius + def.radius) {
-        this.damageEnemy(i, proj.damage, proj);
+        this.damageEnemy(e, proj.damage, proj);
       }
     }
   }
 
-  private damageEnemy(enemyIndex: number, rawDamage: number, proj: ActiveProjectile): void {
-    const e = this.enemies[enemyIndex];
-    if (!e) return;
+  private damageEnemy(e: ActiveEnemy, rawDamage: number, proj: ActiveProjectile): void {
+    const liveIdx = this.enemies.indexOf(e);
+    if (liveIdx === -1) return;
     const def = ENEMY_DEFS[e.typeId];
 
     let dmg = rawDamage;
@@ -683,7 +783,8 @@ export class ChickenTdEngine {
     }
 
     if (e.hp <= 0) {
-      this.popEnemyAtIndex(enemyIndex);
+      const idxNow = this.enemies.indexOf(e);
+      if (idxNow !== -1) this.popEnemyAtIndex(idxNow);
     }
   }
 
@@ -697,10 +798,11 @@ export class ChickenTdEngine {
     this.audio.playBugPop(def.isFoxBoss);
 
     if (def.isFoxBoss) {
-      this.spawnRing(pos.x, pos.y, def.radius * 2.2, '#F97316');
+      this.spawnRing(pos.x, pos.y, def.radius * 2.1, '#F97316');
+      this.spawnPixelBurst(pos.x, pos.y, 18, def.bodyColor);
       this.spawnMapPopup('FOX POPPED!', pos.x, pos.y - 18, '#FDE047', 1.05);
     } else {
-      this.spawnRing(pos.x, pos.y, def.radius * 1.4, def.bodyColor);
+      this.spawnPixelBurst(pos.x, pos.y, 6, def.bodyColor);
     }
 
     // Spawn inner Bloons-style child bugs/foxes at popped enemy's path position! (Zero money!)
@@ -715,8 +817,26 @@ export class ChickenTdEngine {
   }
 
   private spawnRing(x: number, y: number, maxRadius: number, color: string): void {
-    if (this.rings.length > 40) this.rings.shift();
-    this.rings.push({ x, y, maxRadius, color, age: 0, lifetime: 0.26 });
+    if (this.rings.length > 36) this.rings.shift();
+    this.rings.push({ x, y, maxRadius, color, age: 0, lifetime: 0.24 });
+  }
+
+  private spawnPixelBurst(x: number, y: number, count: number, color: string): void {
+    for (let i = 0; i < count; i++) {
+      if (this.particles.length > 140) this.particles.shift();
+      const ang = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const spd = 35 + Math.random() * 75;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        color,
+        size: Math.random() < 0.35 ? 2 : 1,
+        age: 0,
+        lifetime: 0.22 + Math.random() * 0.16,
+      });
+    }
   }
 
   public spawnMapPopup(
@@ -731,7 +851,7 @@ export class ChickenTdEngine {
       text,
       x,
       y,
-      vy: -38,
+      vy: -36,
       color,
       scale,
       age: 0,

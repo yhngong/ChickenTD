@@ -12,7 +12,8 @@ import {
 } from './data';
 import { ChickenTdEngine } from './engine';
 import { MAP_HEIGHT, MAP_WIDTH } from './map';
-import { GhostPlacementState, MeadowRenderer } from './renderer';
+import { GhostPlacementState, MeadowRenderer, PIXEL_CANVAS_H, PIXEL_CANVAS_W } from './renderer';
+import { PIXEL_ATLAS } from './sprites';
 import { ChickenTypeId } from './types';
 
 const canvas = document.getElementById('td-canvas') as HTMLCanvasElement;
@@ -22,7 +23,9 @@ const hudWave = document.getElementById('hud-wave') as HTMLElement;
 const hudPops = document.getElementById('hud-pops') as HTMLElement;
 
 const btnSpeed = document.getElementById('btn-speed') as HTMLButtonElement;
+const lblSpeed = document.getElementById('lbl-speed') as HTMLElement;
 const btnMute = document.getElementById('btn-mute') as HTMLButtonElement;
+const iconBtnSound = document.getElementById('icon-btn-sound') as HTMLImageElement;
 const btnRules = document.getElementById('btn-rules') as HTMLButtonElement;
 
 const bannerTitle = document.getElementById('banner-title') as HTMLElement;
@@ -33,6 +36,7 @@ const btnCancelPlace = document.getElementById('btn-cancel-place') as HTMLButton
 
 // Inspector Elements
 const inspectorCard = document.getElementById('inspector-card') as HTMLDivElement;
+const inspPortrait = document.getElementById('insp-portrait') as HTMLImageElement;
 const inspName = document.getElementById('insp-name') as HTMLElement;
 const inspTierBadge = document.getElementById('insp-tier-badge') as HTMLElement;
 const inspStats = document.getElementById('insp-stats') as HTMLElement;
@@ -46,6 +50,7 @@ const btnInspClose = document.getElementById('btn-insp-close') as HTMLButtonElem
 const clickerCard = document.getElementById('clicker-card') as HTMLDivElement;
 const cpsBadge = document.getElementById('cps-badge') as HTMLElement;
 const btnHenClick = document.getElementById('btn-hen-click') as HTMLButtonElement;
+const henSceneImg = document.getElementById('hen-scene-img') as HTMLImageElement;
 const clickFloatLayer = document.getElementById('click-float-layer') as HTMLDivElement;
 const clickMainLabel = document.getElementById('click-main-label') as HTMLElement;
 const clickStatusNote = document.getElementById('click-status-note') as HTMLElement;
@@ -72,27 +77,46 @@ const gameoverModal = document.getElementById('gameover-modal') as HTMLDivElemen
 const gameoverSummary = document.getElementById('gameover-summary') as HTMLElement;
 const btnRestartGameover = document.getElementById('btn-restart-gameover') as HTMLButtonElement;
 
+// Wire all Pixel-Art UI Icons into the DOM (zero emojis!)
+function initStaticPixelIcons(): void {
+  const setImg = (id: string, url: string) => {
+    const el = document.getElementById(id) as HTMLImageElement | null;
+    if (el) el.src = url;
+  };
+  setImg('icon-brand', PIXEL_ATLAS.getIconUrl('chicken'));
+  setImg('icon-hud-corn', PIXEL_ATLAS.getIconUrl('corn'));
+  setImg('icon-hud-egg', PIXEL_ATLAS.getIconUrl('egg'));
+  setImg('icon-hud-fox', PIXEL_ATLAS.getIconUrl('fox'));
+  setImg('icon-hud-bug', PIXEL_ATLAS.getIconUrl('bug'));
+  setImg('icon-btn-speed', PIXEL_ATLAS.getIconUrl('speed'));
+  setImg('icon-btn-sound', PIXEL_ATLAS.getIconUrl('sound_on'));
+  setImg('icon-btn-rules', PIXEL_ATLAS.getIconUrl('rules'));
+  setImg('icon-clicker-corn', PIXEL_ATLAS.getIconUrl('corn'));
+  setImg('icon-tab-troops', PIXEL_ATLAS.getIconUrl('chicken'));
+  setImg('icon-tab-clicker', PIXEL_ATLAS.getIconUrl('corn'));
+  setImg('icon-tab-td', PIXEL_ATLAS.getIconUrl('shield'));
+  setImg('icon-rules-chicken', PIXEL_ATLAS.getIconUrl('chicken'));
+  setImg('icon-victory-trophy', PIXEL_ATLAS.getIconUrl('trophy'));
+  setImg('icon-gameover-egg', PIXEL_ATLAS.getIconUrl('cracked_egg'));
+  henSceneImg.src = PIXEL_ATLAS.henhouseIdleUrl;
+}
+
+initStaticPixelIcons();
+
 const engine = new ChickenTdEngine();
+canvas.width = PIXEL_CANVAS_W;
+canvas.height = PIXEL_CANVAS_H;
 const renderer = new MeadowRenderer(canvas);
 
 let selectedTowerId: number | null = null;
+let peckAnimTimeout: number | null = null;
+
 const ghost: GhostPlacementState = {
   typeId: null,
   mouseX: MAP_WIDTH / 2,
   mouseY: MAP_HEIGHT / 2,
   insideCanvas: false,
 };
-
-function syncCanvasResolution(): void {
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const rect = canvas.getBoundingClientRect();
-  if (rect.width > 0 && rect.height > 0) {
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-  }
-}
-window.addEventListener('resize', syncCanvasResolution);
-syncCanvasResolution();
 
 function clientToLogicalCoords(clientX: number, clientY: number): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
@@ -108,7 +132,7 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
   if (typeId) {
     selectedTowerId = null;
     const def = CHICKEN_DEFS[typeId];
-    placementText.textContent = `Placing ${def.name} (🌽 ${def.baseCost}) — Click grass to deploy`;
+    placementText.textContent = `DEPLOYING ${def.name.toUpperCase()} (${def.baseCost} CORN) — CLICK GRASS`;
     placementBanner.classList.remove('hidden');
   } else {
     placementBanner.classList.add('hidden');
@@ -116,24 +140,31 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
   refreshFullUi();
 }
 
-// ==================== SHOP RENDERING ====================
+// ==================== 14-UNIT PIXEL SHOP RENDERING ====================
+const cornIconUrl = PIXEL_ATLAS.getIconUrl('corn');
+
 function renderTroopCards(): void {
   troopGrid.innerHTML = '';
   for (const id of CHICKEN_ORDER) {
     const def = CHICKEN_DEFS[id];
     const canAfford = engine.corn >= def.baseCost;
     const isSelected = ghost.typeId === id;
+    const spr = PIXEL_ATLAS.getChickenSprite(id);
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
+    btn.title = `${def.name} (${def.role}) — Hotkey [${def.hotkey}]`;
     btn.innerHTML = `
-      <div class="troop-top">
-        <span class="troop-swatch" style="background:${def.featherColor};border-color:${def.accentColor}"></span>
-        <span class="troop-cost">🌽 ${def.baseCost}</span>
+      <img class="troop-portrait" src="${spr?.portraitUrl ?? ''}" alt="" />
+      <div class="troop-meta">
+        <div class="troop-top">
+          <span class="troop-key">[${def.hotkey}]</span>
+          <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${def.baseCost}</span>
+        </div>
+        <span class="troop-name">${def.name}</span>
+        <span class="troop-role">${def.role}</span>
       </div>
-      <span class="troop-name">[${def.hotkey}] ${def.name}</span>
-      <span class="troop-role">${def.role}</span>
     `;
     btn.addEventListener('click', () => {
       if (ghost.typeId === id) {
@@ -153,19 +184,27 @@ function renderUpgradeLists(): void {
     const maxed = lvl >= def.maxLevel;
     const cost = maxed ? 0 : getUpgradeCost(def, lvl);
     const canBuy = !maxed && engine.corn >= cost;
+    const iconUrl = PIXEL_ATLAS.getIconUrl(def.iconId);
 
     const row = document.createElement('div');
     row.className = 'upg-row';
     row.innerHTML = `
+      <div class="upg-icon-box">
+        <img class="px-icon px-icon-md" src="${iconUrl}" alt="" />
+      </div>
       <div class="upg-info">
-        <div class="upg-title">${def.icon} ${def.name} (Lv ${lvl}/${def.maxLevel})</div>
+        <div class="upg-title">${def.name} (LV ${lvl}/${def.maxLevel})</div>
         <div class="upg-effect">${def.getEffectLabel(lvl)}${
-      maxed ? ' • MAX' : ` → ${def.getEffectLabel(lvl + 1)}`
+      maxed ? ' [MAX]' : ` -> ${def.getEffectLabel(lvl + 1)}`
     }</div>
         <div class="upg-desc">${def.description}</div>
       </div>
       <button type="button" class="upg-buy-btn" ${canBuy ? '' : 'disabled'}>
-        ${maxed ? 'MAX' : `🌽 ${cost}`}
+        ${
+          maxed
+            ? 'MAX'
+            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost}`
+        }
       </button>
     `;
     row.querySelector('button')!.addEventListener('click', () => {
@@ -180,19 +219,27 @@ function renderUpgradeLists(): void {
     const maxed = lvl >= def.maxLevel;
     const cost = maxed ? 0 : getUpgradeCost(def, lvl);
     const canBuy = !maxed && engine.corn >= cost;
+    const iconUrl = PIXEL_ATLAS.getIconUrl(def.iconId);
 
     const row = document.createElement('div');
     row.className = 'upg-row';
     row.innerHTML = `
+      <div class="upg-icon-box">
+        <img class="px-icon px-icon-md" src="${iconUrl}" alt="" />
+      </div>
       <div class="upg-info">
-        <div class="upg-title">${def.icon} ${def.name} (Lv ${lvl}/${def.maxLevel})</div>
+        <div class="upg-title">${def.name} (LV ${lvl}/${def.maxLevel})</div>
         <div class="upg-effect">${def.getEffectLabel(lvl)}${
-      maxed ? ' • MAX' : ` → ${def.getEffectLabel(lvl + 1)}`
+      maxed ? ' [MAX]' : ` -> ${def.getEffectLabel(lvl + 1)}`
     }</div>
         <div class="upg-desc">${def.description}</div>
       </div>
       <button type="button" class="upg-buy-btn" ${canBuy ? '' : 'disabled'}>
-        ${maxed ? 'MAX' : `🌽 ${cost}`}
+        ${
+          maxed
+            ? 'MAX'
+            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost}`
+        }
       </button>
     `;
     row.querySelector('button')!.addEventListener('click', () => {
@@ -200,6 +247,16 @@ function renderUpgradeLists(): void {
     });
     tdUpgList.appendChild(row);
   }
+}
+
+function formatInspectorStats(towerId: number): string {
+  const tower = engine.towers.find((t) => t.id === towerId);
+  if (!tower) return '';
+  const eff = engine.getEffectiveChickenStats(tower);
+  const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
+  return `DMG ${eff.damage} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
+    eff.effectiveRange
+  } | DEALT ${Math.round(tower.totalPopDamage).toLocaleString()}${camoTag}`;
 }
 
 function renderInspector(): void {
@@ -216,32 +273,28 @@ function renderInspector(): void {
   const def = CHICKEN_DEFS[tower.typeId];
   const eff = engine.getEffectiveChickenStats(tower);
   const tierNum = tower.tier + 1;
+  const spr = PIXEL_ATLAS.getChickenSprite(tower.typeId);
 
+  inspPortrait.src = spr?.portraitUrl ?? '';
   inspName.textContent = `${def.name} — ${eff.tierName}`;
-  inspTierBadge.textContent = tower.tier === 3 ? '👑 Tier 4 MAX' : `Tier ${tierNum} / 4`;
+  inspTierBadge.textContent = tower.tier === 3 ? 'TIER 4 MAX' : `TIER ${tierNum}/4`;
+  inspStats.textContent = formatInspectorStats(tower.id);
 
-  const camoTag = eff.effectiveCamo ? ' • 👁️ Camo' : '';
-  inspStats.textContent = `DMG ${eff.damage} • ${eff.effectiveFireRate.toFixed(
-    2
-  )}/s • RNG ${eff.effectiveRange} • 💥 ${Math.round(tower.totalPopDamage).toLocaleString()}${camoTag}`;
-
-  btnInspTarget.textContent = `🎯 Target: ${
-    tower.targetMode.charAt(0).toUpperCase() + tower.targetMode.slice(1)
-  }`;
+  btnInspTarget.textContent = `AIM: ${tower.targetMode.toUpperCase()}`;
 
   if (tower.tier < 3) {
     const nextTier = def.tiers[(tower.tier + 1) as 1 | 2 | 3];
-    inspNextDesc.textContent = `Next (${nextTier.tierName}): ${nextTier.description}`;
-    btnInspUpgrade.textContent = `⬆ Tier ${tierNum + 1} (🌽 ${nextTier.upgradeCost})`;
+    inspNextDesc.textContent = `NEXT (${nextTier.tierName}): ${nextTier.description}`;
+    btnInspUpgrade.textContent = `TIER ${tierNum + 1} (${nextTier.upgradeCost} CORN)`;
     btnInspUpgrade.disabled = engine.corn < nextTier.upgradeCost;
   } else {
-    inspNextDesc.textContent = 'Maximum Chicken Evolution achieved!';
-    btnInspUpgrade.textContent = '👑 MAX TIER';
+    inspNextDesc.textContent = 'MAXIMUM CHICKEN EVOLUTION ACHIEVED!';
+    btnInspUpgrade.textContent = 'MAX TIER';
     btnInspUpgrade.disabled = true;
   }
 
   const refund = Math.round(tower.totalSpent * 0.7);
-  btnInspSell.textContent = `💰 Sell (+${refund})`;
+  btnInspSell.textContent = `SELL (+${refund})`;
   inspectorCard.classList.remove('hidden');
 }
 
@@ -249,30 +302,28 @@ function refreshFullUi(): void {
   hudCorn.textContent = engine.corn.toLocaleString();
   hudEggs.textContent = `${engine.eggs} / ${engine.maxEggs}`;
   hudWave.textContent = engine.freeplayUnlocked
-    ? `${engine.waveNumber} (Freeplay)`
+    ? `${engine.waveNumber} (FREE)`
     : `${Math.min(engine.waveNumber, CAMPAIGN_WAVES)} / ${CAMPAIGN_WAVES}`;
   hudPops.textContent = engine.totalBugsPopped.toLocaleString();
 
-  const previewWaveNum = engine.waveActive ? engine.waveNumber : engine.waveNumber;
-  const waveDef = getWaveDefinition(previewWaveNum);
-  bannerTitle.textContent = `Wave ${waveDef.waveNumber}: ${waveDef.title}`;
+  const waveDef = getWaveDefinition(engine.waveNumber);
+  bannerTitle.textContent = `WAVE ${waveDef.waveNumber}: ${waveDef.title.toUpperCase()}`;
   bannerDesc.textContent = waveDef.callout;
 
-  // Clicker card lock vs active state
   const baseClick = getBaseCornPerClick(engine.clickerLevels.beakPower);
-  clickMainLabel.textContent = `+${baseClick} Base Corn / Click`;
+  clickMainLabel.textContent = `+${baseClick} BASE CORN / CLICK`;
 
   if (engine.waveActive) {
     clickerCard.classList.remove('locked');
-    clickStatusNote.textContent = '⚡ WAVE ACTIVE — Click up to 12 CPS for Corn!';
+    clickStatusNote.textContent = 'WAVE ACTIVE — CLICK UP TO 12 CPS FOR CORN!';
     const rem = engine.getPendingWaveEnemyTotal();
-    btnStartWave.textContent = `⚔️ Wave ${waveDef.waveNumber} Active (${rem} Bugs/Foxes Left)`;
+    btnStartWave.textContent = `WAVE ${waveDef.waveNumber} ACTIVE (${rem} LEFT)`;
     btnStartWave.classList.add('wave-running');
     btnStartWave.disabled = true;
   } else {
     clickerCard.classList.add('locked');
-    clickStatusNote.textContent = '😴 Locked Between Waves — Start Wave to Click!';
-    btnStartWave.textContent = `▶ Start Wave ${waveDef.waveNumber} (Unlock Clicker!)`;
+    clickStatusNote.textContent = 'LOCKED BETWEEN WAVES — START WAVE TO CLICK!';
+    btnStartWave.textContent = `>> START WAVE ${waveDef.waveNumber} (UNLOCK CLICKER!)`;
     btnStartWave.classList.remove('wave-running');
     btnStartWave.disabled = false;
   }
@@ -281,7 +332,6 @@ function refreshFullUi(): void {
   renderUpgradeLists();
   renderInspector();
 
-  // Modals
   if (engine.status === 'victory_prompt') {
     victorySummary.textContent = `You crushed Mega Alpha Reynard on Wave 25! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
     victoryModal.classList.remove('hidden');
@@ -290,7 +340,7 @@ function refreshFullUi(): void {
   }
 
   if (engine.status === 'gameover') {
-    gameoverSummary.textContent = `The Bugs & Foxes raided the Nest on Wave ${engine.waveNumber}. Total Popped: ${engine.totalBugsPopped.toLocaleString()} • Total Corn Clicked: ${engine.totalCornClicked.toLocaleString()}.`;
+    gameoverSummary.textContent = `The Bugs & Foxes raided the Nest on Wave ${engine.waveNumber}. Total Popped: ${engine.totalBugsPopped.toLocaleString()} | Total Corn Clicked: ${engine.totalCornClicked.toLocaleString()}.`;
     gameoverModal.classList.remove('hidden');
   } else {
     gameoverModal.classList.add('hidden');
@@ -299,7 +349,7 @@ function refreshFullUi(): void {
 
 engine.onUiChange = refreshFullUi;
 
-// ==================== REAL-TIME CLICKER METER HUD ====================
+// ==================== REAL-TIME PIXEL METER HUD ====================
 function updateLiveClickerMeters(): void {
   const cps = engine.getCurrentCps();
   const isAtCap = cps >= MAX_CPS_CAP || engine.capHitFlash > 0.15;
@@ -310,31 +360,35 @@ function updateLiveClickerMeters(): void {
   meterCpsFill.style.width = `${Math.min(100, (cps / MAX_CPS_CAP) * 100)}%`;
 
   const fMult = engine.getCurrentFrenzyMultiplier();
-  frenzyLabel.textContent = `Frenzy Streak (${fMult.toFixed(2)}x)`;
+  frenzyLabel.textContent = `FRENZY (${fMult.toFixed(2)}X)`;
   meterFrenzyFill.style.width = `${Math.round(engine.frenzyMeter * 100)}%`;
 
   if (engine.clickerLevels.harvestBasket > 0) {
     const step = engine.waveClickCounter % 12;
-    basketLabel.textContent = `Mega Cob: ${step} / 12`;
+    basketLabel.textContent = `MEGA COB: ${step} / 12`;
   } else {
-    basketLabel.textContent = 'Mega Cob: Locked';
+    basketLabel.textContent = 'MEGA COB: LOCKED';
   }
 
   hudPops.textContent = engine.totalBugsPopped.toLocaleString();
   if (engine.waveActive) {
     const rem = engine.getPendingWaveEnemyTotal();
-    btnStartWave.textContent = `⚔️ Wave ${engine.waveNumber} Active (${rem} Bugs/Foxes Left)`;
+    btnStartWave.textContent = `WAVE ${engine.waveNumber} ACTIVE (${rem} LEFT)`;
     if (selectedTowerId !== null) {
-      const t = engine.towers.find((tw) => tw.id === selectedTowerId);
-      if (t) {
-        const eff = engine.getEffectiveChickenStats(t);
-        const camoTag = eff.effectiveCamo ? ' • 👁️ Camo' : '';
-        inspStats.textContent = `DMG ${eff.damage} • ${eff.effectiveFireRate.toFixed(
-          2
-        )}/s • RNG ${eff.effectiveRange} • 💥 ${Math.round(t.totalPopDamage).toLocaleString()}${camoTag}`;
-      }
+      inspStats.textContent = formatInspectorStats(selectedTowerId);
     }
   }
+}
+
+function triggerPixelHenPeckFrame(): void {
+  henSceneImg.src = PIXEL_ATLAS.henhousePeckUrl;
+  if (peckAnimTimeout !== null) {
+    window.clearTimeout(peckAnimTimeout);
+  }
+  peckAnimTimeout = window.setTimeout(() => {
+    henSceneImg.src = PIXEL_ATLAS.henhouseIdleUrl;
+    peckAnimTimeout = null;
+  }, 95);
 }
 
 function spawnClickFloat(text: string, color: string, clientX?: number, clientY?: number): void {
@@ -353,7 +407,7 @@ function spawnClickFloat(text: string, color: string, clientX?: number, clientY?
   el.style.top = `${relY}px`;
   el.style.color = color;
   clickFloatLayer.appendChild(el);
-  setTimeout(() => el.remove(), 660);
+  setTimeout(() => el.remove(), 630);
 }
 
 // ==================== INPUT LISTENERS ====================
@@ -362,24 +416,25 @@ btnHenClick.addEventListener('pointerdown', (e) => {
   const res = engine.handleHenClick(performance.now());
   if (!res.accepted) {
     if (res.reason === 'between_waves') {
-      spawnClickFloat('Start Wave First!', '#94A3B8', e.clientX, e.clientY);
+      spawnClickFloat('START WAVE FIRST!', '#94A3B8', e.clientX, e.clientY);
     }
-    // Note: when res.reason === 'cps_cap' (>12 CPS), extra clicks do nothing!
+    // When res.reason === 'cps_cap' (>12 CPS), excess clicks strictly do nothing!
     updateLiveClickerMeters();
     return;
   }
 
+  triggerPixelHenPeckFrame();
+
   if (res.isMegaCob) {
-    spawnClickFloat(`🧺 +${res.amountEarned} MEGA!`, '#4ADE80', e.clientX, e.clientY);
+    spawnClickFloat(`+${res.amountEarned} MEGA COB!`, '#4ADE80', e.clientX, e.clientY);
   } else if (res.isCrit) {
-    spawnClickFloat(`✨ +${res.amountEarned} CRIT!`, '#FEF08A', e.clientX, e.clientY);
+    spawnClickFloat(`+${res.amountEarned} CRIT!`, '#FEF08A', e.clientX, e.clientY);
   } else {
-    spawnClickFloat(`+${res.amountEarned} 🌽`, '#FFFFFF', e.clientX, e.clientY);
+    spawnClickFloat(`+${res.amountEarned} CORN`, '#FFFFFF', e.clientX, e.clientY);
   }
   updateLiveClickerMeters();
 });
 
-// Prevent Space/Enter from synthesizing button clicks on the Hen Clicker!
 btnHenClick.addEventListener('keydown', (e) => {
   if (e.key === ' ' || e.key === 'Enter') {
     e.preventDefault();
@@ -425,7 +480,6 @@ canvas.addEventListener('click', (e) => {
   if (ghost.typeId) {
     const placed = engine.placeChicken(ghost.typeId, pt.x, pt.y);
     if (placed) {
-      // If player still has enough Corn and holds Shift, keep placing; otherwise select newly placed Chicken!
       if (!e.shiftKey || engine.corn < CHICKEN_DEFS[ghost.typeId].baseCost) {
         ghost.typeId = null;
         placementBanner.classList.add('hidden');
@@ -436,7 +490,6 @@ canvas.addEventListener('click', (e) => {
     return;
   }
 
-  // Otherwise check if user clicked an existing placed Chicken Troop!
   let clickedTowerId: number | null = null;
   for (let i = engine.towers.length - 1; i >= 0; i--) {
     const t = engine.towers[i];
@@ -480,14 +533,14 @@ btnStartWave.addEventListener('click', () => {
 btnSpeed.addEventListener('click', () => {
   btnSpeed.blur();
   engine.speedMultiplier = engine.speedMultiplier === 1 ? 2 : 1;
-  btnSpeed.textContent = `⏩ ${engine.speedMultiplier}x`;
+  lblSpeed.textContent = `${engine.speedMultiplier}X`;
   btnSpeed.classList.toggle('active-speed', engine.speedMultiplier === 2);
 });
 
 btnMute.addEventListener('click', () => {
   btnMute.blur();
   const muted = engine.audio.toggleMute();
-  btnMute.textContent = muted ? '🔇' : '🔊';
+  iconBtnSound.src = PIXEL_ATLAS.getIconUrl(muted ? 'sound_off' : 'sound_on');
 });
 
 btnRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
@@ -514,6 +567,12 @@ btnRestartGameover.addEventListener('click', () => {
   engine.resetGame();
 });
 
+// Hotkey map for all 14 Chicken Units!
+const HOTKEY_TO_CHICKEN = new Map<string, ChickenTypeId>();
+for (const id of CHICKEN_ORDER) {
+  HOTKEY_TO_CHICKEN.set(CHICKEN_DEFS[id].hotkey.toUpperCase(), id);
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (e.key === 'Escape') {
@@ -528,10 +587,9 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  const num = Number(e.key);
-  if (num >= 1 && num <= 6) {
-    const pick = CHICKEN_ORDER[num - 1];
-    if (pick) setPlacementType(ghost.typeId === pick ? null : pick);
+  const mappedUnit = HOTKEY_TO_CHICKEN.get(e.key.toUpperCase());
+  if (mappedUnit) {
+    setPlacementType(ghost.typeId === mappedUnit ? null : mappedUnit);
     return;
   }
 

@@ -5,14 +5,14 @@ import {
   DECOR_TREES,
   ENTRANCE_POSITION,
   getPointAlongPath,
-  MAP_HEIGHT,
-  MAP_WIDTH,
   NEST_POSITION,
   PATH_HALF_WIDTH,
   PATH_WAYPOINTS,
   POND_OBSTACLE,
+  TOTAL_PATH_LENGTH,
 } from './map';
-import { ActiveEnemy, ChickenTypeId, PlacedChicken } from './types';
+import { PIXEL_ATLAS } from './sprites';
+import { ActiveEnemy, ActiveProjectile, ChickenTypeId, PlacedChicken } from './types';
 
 export interface GhostPlacementState {
   typeId: ChickenTypeId | null;
@@ -21,27 +21,323 @@ export interface GhostPlacementState {
   insideCanvas: boolean;
 }
 
-const FLOWER_SPOTS: readonly { x: number; y: number; col: string }[] = [
-  { x: 132, y: 245, col: '#FDE047' },
-  { x: 158, y: 365, col: '#FB7185' },
-  { x: 335, y: 220, col: '#FFFFFF' },
-  { x: 358, y: 340, col: '#38BDF8' },
-  { x: 565, y: 205, col: '#FDE047' },
-  { x: 585, y: 460, col: '#FB7185' },
-  { x: 785, y: 195, col: '#FFFFFF' },
-  { x: 775, y: 345, col: '#C084FC' },
-  { x: 120, y: 490, col: '#FDE047' },
-];
+// Low-resolution integer pixel-art canvas dimensions (exact 1:2 of 920x600 logical map!)
+export const PIXEL_CANVAS_W = 460;
+export const PIXEL_CANVAS_H = 300;
+const S = 0.5; // logical -> pixel scale
+
+const OUTLINE = '#181425';
+
+const PIXEL_FONT_3X5: Record<string, readonly string[]> = {
+  A: ['.1.', '1.1', '111', '1.1', '1.1'],
+  B: ['11.', '1.1', '11.', '1.1', '11.'],
+  C: ['.11', '1..', '1..', '1..', '.11'],
+  D: ['11.', '1.1', '1.1', '1.1', '11.'],
+  E: ['111', '1..', '11.', '1..', '111'],
+  F: ['111', '1..', '11.', '1..', '1..'],
+  G: ['.11', '1..', '1.1', '1.1', '.11'],
+  H: ['1.1', '1.1', '111', '1.1', '1.1'],
+  I: ['111', '.1.', '.1.', '.1.', '111'],
+  J: ['..1', '..1', '..1', '1.1', '.1.'],
+  K: ['1.1', '1.1', '11.', '1.1', '1.1'],
+  L: ['1..', '1..', '1..', '1..', '111'],
+  M: ['1.1', '111', '111', '1.1', '1.1'],
+  N: ['1.1', '111', '111', '111', '1.1'],
+  O: ['.1.', '1.1', '1.1', '1.1', '.1.'],
+  P: ['11.', '1.1', '11.', '1..', '1..'],
+  Q: ['.1.', '1.1', '1.1', '11.', '..1'],
+  R: ['11.', '1.1', '11.', '1.1', '1.1'],
+  S: ['.11', '1..', '.1.', '..1', '11.'],
+  T: ['111', '.1.', '.1.', '.1.', '.1.'],
+  U: ['1.1', '1.1', '1.1', '1.1', '111'],
+  V: ['1.1', '1.1', '1.1', '.1.', '.1.'],
+  W: ['1.1', '1.1', '111', '111', '1.1'],
+  X: ['1.1', '1.1', '.1.', '1.1', '1.1'],
+  Y: ['1.1', '1.1', '.1.', '.1.', '.1.'],
+  Z: ['111', '..1', '.1.', '1..', '111'],
+  '0': ['111', '1.1', '1.1', '1.1', '111'],
+  '1': ['.1.', '11.', '.1.', '.1.', '111'],
+  '2': ['111', '..1', '111', '1..', '111'],
+  '3': ['111', '..1', '.11', '..1', '111'],
+  '4': ['1.1', '1.1', '111', '..1', '..1'],
+  '5': ['111', '1..', '111', '..1', '111'],
+  '6': ['111', '1..', '111', '1.1', '111'],
+  '7': ['111', '..1', '.1.', '.1.', '.1.'],
+  '8': ['111', '1.1', '111', '1.1', '111'],
+  '9': ['111', '1.1', '111', '..1', '111'],
+  '+': ['...', '.1.', '111', '.1.', '...'],
+  '-': ['...', '...', '111', '...', '...'],
+  '!': ['.1.', '.1.', '.1.', '...', '.1.'],
+  ' ': ['...', '...', '...', '...', '...'],
+};
+
+function drawCrispPixelText(
+  ctx: CanvasRenderingContext2D,
+  rawText: string,
+  cx: number,
+  cy: number,
+  color: string
+): void {
+  const text = rawText.toUpperCase();
+  const totalW = text.length * 4 - 1;
+  const startX = Math.round(cx - totalW / 2);
+  const startY = Math.round(cy - 2);
+
+  // Dark pixel backing plate / shadow for instant readability
+  ctx.fillStyle = OUTLINE;
+  for (let i = 0; i < text.length; i++) {
+    const glyph = PIXEL_FONT_3X5[text[i]] ?? PIXEL_FONT_3X5[' '];
+    const gx = startX + i * 4;
+    for (let ry = 0; ry < 5; ry++) {
+      for (let rx = 0; rx < 3; rx++) {
+        if (glyph[ry][rx] === '1') {
+          ctx.fillRect(gx + rx - 1, startY + ry, 3, 1);
+          ctx.fillRect(gx + rx, startY + ry - 1, 1, 3);
+          ctx.fillRect(gx + rx + 1, startY + ry + 1, 1, 1);
+        }
+      }
+    }
+  }
+
+  ctx.fillStyle = color;
+  for (let i = 0; i < text.length; i++) {
+    const glyph = PIXEL_FONT_3X5[text[i]] ?? PIXEL_FONT_3X5[' '];
+    const gx = startX + i * 4;
+    for (let ry = 0; ry < 5; ry++) {
+      for (let rx = 0; rx < 3; rx++) {
+        if (glyph[ry][rx] === '1') {
+          ctx.fillRect(gx + rx, startY + ry, 1, 1);
+        }
+      }
+    }
+  }
+}
+
+function toPx(logicalVal: number): number {
+  return Math.round(logicalVal * S);
+}
+
+/**
+ * Midpoint integer pixel circle (dashed optional) — zero anti-aliased vector arcs!
+ */
+function drawPixelCircle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  color: string,
+  dashed = false
+): void {
+  const rad = Math.max(1, Math.round(r));
+  ctx.fillStyle = color;
+  let x = rad;
+  let y = 0;
+  let err = 1 - x;
+  let step = 0;
+
+  while (x >= y) {
+    if (!dashed || (step >> 1) % 2 === 0) {
+      ctx.fillRect(cx + x, cy + y, 1, 1);
+      ctx.fillRect(cx + y, cy + x, 1, 1);
+      ctx.fillRect(cx - y, cy + x, 1, 1);
+      ctx.fillRect(cx - x, cy + y, 1, 1);
+      ctx.fillRect(cx - x, cy - y, 1, 1);
+      ctx.fillRect(cx - y, cy - x, 1, 1);
+      ctx.fillRect(cx + y, cy - x, 1, 1);
+      ctx.fillRect(cx + x, cy - y, 1, 1);
+    }
+    step++;
+    y++;
+    if (err < 0) {
+      err += 2 * y + 1;
+    } else {
+      x--;
+      err += 2 * (y - x) + 1;
+    }
+  }
+}
+
+function drawFilledPixelDisk(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  color: string
+): void {
+  ctx.fillStyle = color;
+  const irx = Math.max(1, Math.round(rx));
+  const iry = Math.max(1, Math.round(ry));
+  for (let dy = -iry; dy <= iry; dy++) {
+    const normY = dy / iry;
+    const span = Math.floor(irx * Math.sqrt(Math.max(0, 1 - normY * normY)));
+    ctx.fillRect(cx - span, cy + dy, span * 2 + 1, 1);
+  }
+}
 
 export class MeadowRenderer {
-  private ctx: CanvasRenderingContext2D;
+  private staticBg: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('Failed to get 2D canvas context');
+    canvas.width = PIXEL_CANVAS_W;
+    canvas.height = PIXEL_CANVAS_H;
+    const mainCtx = canvas.getContext('2d')!;
+    mainCtx.imageSmoothingEnabled = false;
+
+    this.staticBg = document.createElement('canvas');
+    this.staticBg.width = PIXEL_CANVAS_W;
+    this.staticBg.height = PIXEL_CANVAS_H;
+    this.bakeStaticPixelMeadow();
+  }
+
+  private bakeStaticPixelMeadow(): void {
+    const ctx = this.staticBg.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Pixel-art checkerboard meadow tiles (20x20 px tiles)
+    const tile = 20;
+    for (let py = 0; py < PIXEL_CANVAS_H; py += tile) {
+      for (let px = 0; px < PIXEL_CANVAS_W; px += tile) {
+        const odd = ((px / tile + py / tile) & 1) === 1;
+        ctx.fillStyle = odd ? '#49A835' : '#54B83C';
+        ctx.fillRect(px, py, tile, tile);
+
+        // Deterministic pixel grass tufts inside each tile
+        const hash = ((px * 73856093) ^ (py * 19349663)) >>> 0;
+        ctx.fillStyle = odd ? '#3B8D29' : '#68CC4E';
+        ctx.fillRect(px + (hash % 14) + 2, py + ((hash >> 4) % 14) + 2, 1, 2);
+        ctx.fillRect(px + ((hash >> 8) % 14) + 3, py + ((hash >> 12) % 14) + 2, 2, 1);
+      }
     }
-    this.ctx = context;
+
+    // 2. Pixel wildflowers scattered on grass
+    const flowers = [
+      { x: 115, y: 235, c: '#FEF08A' },
+      { x: 145, y: 380, c: '#FB7185' },
+      { x: 335, y: 340, c: '#93C5FD' },
+      { x: 405, y: 225, c: '#FDE047' },
+      { x: 575, y: 205, c: '#FFFFFF' },
+      { x: 565, y: 455, c: '#F472B6' },
+      { x: 775, y: 355, c: '#C4B5FD' },
+      { x: 785, y: 185, c: '#FEF08A' },
+      { x: 130, y: 495, c: '#FDE047' },
+      { x: 350, y: 165, c: '#FFFFFF' },
+    ];
+    for (const f of flowers) {
+      const fx = toPx(f.x);
+      const fy = toPx(f.y);
+      ctx.fillStyle = '#2E6F21';
+      ctx.fillRect(fx, fy + 2, 1, 2);
+      ctx.fillStyle = f.c;
+      ctx.fillRect(fx - 1, fy, 3, 1);
+      ctx.fillRect(fx, fy - 1, 1, 3);
+      ctx.fillStyle = '#F59E0B';
+      ctx.fillRect(fx, fy, 1, 1);
+    }
+
+    // 3. Chunky Stepped Pixel Dirt Path
+    const halfPx = toPx(PATH_HALF_WIDTH); // 13px half-width
+    // Pass A: Dark pixel border
+    for (let i = 0; i < PATH_WAYPOINTS.length - 1; i++) {
+      const a = PATH_WAYPOINTS[i];
+      const b = PATH_WAYPOINTS[i + 1];
+      const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx + 2);
+      const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx + 2);
+      const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx + 2);
+      const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx + 2);
+      ctx.fillStyle = '#5C3A1E';
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+    }
+    // Pass B: Mid-brown curb lip
+    for (let i = 0; i < PATH_WAYPOINTS.length - 1; i++) {
+      const a = PATH_WAYPOINTS[i];
+      const b = PATH_WAYPOINTS[i + 1];
+      const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx + 1);
+      const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx + 1);
+      const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx + 1);
+      const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx + 1);
+      ctx.fillStyle = '#9C6B3B';
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+    }
+    // Pass C: Warm pixel sand interior + pixel pebbles
+    for (let i = 0; i < PATH_WAYPOINTS.length - 1; i++) {
+      const a = PATH_WAYPOINTS[i];
+      const b = PATH_WAYPOINTS[i + 1];
+      const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx - 1);
+      const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx - 1);
+      const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx - 1);
+      const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx - 1);
+      ctx.fillStyle = '#DFBA84';
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    // Center pixel cobble trail markers
+    for (let d = 18; d < TOTAL_PATH_LENGTH - 20; d += 26) {
+      const pt = getPointAlongPath(d);
+      const px = toPx(pt.x);
+      const py = toPx(pt.y);
+      ctx.fillStyle = '#C69B61';
+      ctx.fillRect(px - 2, py - 1, 4, 2);
+      ctx.fillStyle = '#EED3A7';
+      ctx.fillRect(px - 1, py - 1, 2, 1);
+    }
+
+    // 4. Pixel Pond Obstacle
+    const pondX = toPx(POND_OBSTACLE.x);
+    const pondY = toPx(POND_OBSTACLE.y);
+    const pondRx = toPx(POND_OBSTACLE.rx);
+    const pondRy = toPx(POND_OBSTACLE.ry);
+    drawFilledPixelDisk(ctx, pondX, pondY, pondRx + 3, pondRy + 3, '#6B4F35');
+    drawFilledPixelDisk(ctx, pondX, pondY, pondRx + 1, pondRy + 1, '#93704D');
+    drawFilledPixelDisk(ctx, pondX, pondY, pondRx, pondRy, '#0284C7');
+    drawFilledPixelDisk(ctx, pondX - 2, pondY - 2, pondRx - 4, pondRy - 4, '#38BDF8');
+    // Pixel lilypad + pink pixel blossom
+    drawFilledPixelDisk(ctx, pondX + 8, pondY + 5, 5, 4, '#16A34A');
+    ctx.fillStyle = '#38BDF8';
+    ctx.fillRect(pondX + 10, pondY + 4, 3, 2);
+    ctx.fillStyle = '#F472B6';
+    ctx.fillRect(pondX + 7, pondY + 3, 2, 2);
+    // Pixel water sparkle lines
+    ctx.fillStyle = '#E0F2FE';
+    ctx.fillRect(pondX - 11, pondY - 6, 6, 1);
+    ctx.fillRect(pondX - 8, pondY - 4, 4, 1);
+
+    // 5. Pixel Decorative Oak Trees
+    for (const tree of DECOR_TREES) {
+      const tx = toPx(tree.x);
+      const ty = toPx(tree.y);
+      const tr = toPx(tree.r);
+      // Ground shadow
+      drawFilledPixelDisk(ctx, tx + 2, ty + 6, tr, Math.max(4, tr - 4), 'rgba(15,23,42,0.28)');
+      // Trunk
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(tx - 3, ty + 2, 6, 7);
+      ctx.fillStyle = '#78350F';
+      ctx.fillRect(tx - 2, ty + 2, 4, 6);
+      // Layered pixel foliage
+      drawFilledPixelDisk(ctx, tx, ty, tr + 1, tr, OUTLINE);
+      drawFilledPixelDisk(ctx, tx, ty, tr, tr - 1, '#15803D');
+      drawFilledPixelDisk(ctx, tx - 2, ty - 2, Math.max(3, tr - 3), Math.max(3, tr - 3), '#22C55E');
+      drawFilledPixelDisk(ctx, tx - 3, ty - 4, Math.max(2, tr - 7), Math.max(2, tr - 7), '#86EFAC');
+    }
+
+    // 6. Pixel Hollow Log Bug Den Entrance
+    const ex = toPx(ENTRANCE_POSITION.x);
+    const ey = toPx(ENTRANCE_POSITION.y);
+    ctx.fillStyle = OUTLINE;
+    ctx.fillRect(ex - 9, ey - 13, 18, 26);
+    ctx.fillStyle = '#78350F';
+    ctx.fillRect(ex - 8, ey - 12, 16, 24);
+    ctx.fillStyle = '#92400E';
+    ctx.fillRect(ex - 7, ey - 10, 13, 5);
+    ctx.fillRect(ex - 7, ey + 5, 13, 5);
+    // Dark cave opening
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(ex + 2, ey - 10, 6, 20);
+    // Glowing bug eyes inside den!
+    ctx.fillStyle = '#EF4444';
+    ctx.fillRect(ex + 4, ey - 3, 1, 1);
+    ctx.fillRect(ex + 4, ey + 2, 1, 1);
   }
 
   public render(
@@ -49,794 +345,414 @@ export class MeadowRenderer {
     engine: ChickenTdEngine,
     selectedTowerId: number | null,
     ghost: GhostPlacementState,
-    timeSec: number
+    nowSec: number
   ): void {
-    const w = canvas.width;
-    const h = canvas.height;
-    if (w <= 0 || h <= 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
 
-    const ctx = this.ctx;
-    ctx.save();
-    try {
-      const scaleX = w / MAP_WIDTH;
-      const scaleY = h / MAP_HEIGHT;
-      ctx.scale(scaleX, scaleY);
+    // 1. Static pixel meadow background
+    ctx.drawImage(this.staticBg, 0, 0);
 
-      this.drawMeadowBackdrop(timeSec);
-      this.drawWindingPath(timeSec);
-      this.drawPondAndTrees(timeSec);
-      this.drawEntranceLog();
-      this.drawGoldenNest(engine.eggs, engine.maxEggs, timeSec);
+    // 2. Pixel Golden Egg Nest
+    this.drawPixelGoldenNest(ctx, engine.eggs, nowSec);
 
-      // Selected chicken range circle
-      const selectedTower =
-        selectedTowerId !== null
-          ? engine.towers.find((t) => t.id === selectedTowerId) ?? null
-          : null;
-      if (selectedTower) {
-        const eff = engine.getEffectiveChickenStats(selectedTower);
-        this.drawRangeCircle(selectedTower.x, selectedTower.y, eff.effectiveRange, true);
+    // 3. Selected Chicken Pixel Range Circle
+    if (selectedTowerId !== null) {
+      const sel = engine.towers.find((t) => t.id === selectedTowerId);
+      if (sel) {
+        const eff = engine.getEffectiveChickenStats(sel);
+        const cx = toPx(sel.x);
+        const cy = toPx(sel.y);
+        const r = toPx(eff.effectiveRange);
+        drawFilledPixelDisk(ctx, cx, cy, r, r, 'rgba(250, 204, 21, 0.10)');
+        drawPixelCircle(ctx, cx, cy, r, '#FEF08A', true);
       }
+    }
 
-      // Ghost placement preview
-      if (ghost.typeId && ghost.insideCanvas) {
-        const def = CHICKEN_DEFS[ghost.typeId];
-        const baseRange = Math.round(def.tiers[0].range * (1 + engine.tdLevels.eagleRoost * 0.08));
-        const valid =
-          canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) &&
-          engine.corn >= def.baseCost;
-        this.drawRangeCircle(ghost.mouseX, ghost.mouseY, baseRange, valid);
+    // 4. Ghost Placement Preview (Pixel Sprite + Pixel Range Ring)
+    if (ghost.typeId && ghost.insideCanvas) {
+      const def = CHICKEN_DEFS[ghost.typeId];
+      const valid =
+        canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) &&
+        engine.corn >= def.baseCost;
+      const range = Math.round(def.tiers[0].range * (1 + engine.tdLevels.eagleRoost * 0.08));
+      const gx = toPx(ghost.mouseX);
+      const gy = toPx(ghost.mouseY);
+      const gr = toPx(range);
+
+      drawFilledPixelDisk(
+        ctx,
+        gx,
+        gy,
+        gr,
+        gr,
+        valid ? 'rgba(74, 222, 128, 0.13)' : 'rgba(239, 68, 68, 0.16)'
+      );
+      drawPixelCircle(ctx, gx, gy, gr, valid ? '#4ADE80' : '#EF4444', true);
+
+      const spr = PIXEL_ATLAS.getChickenSprite(ghost.typeId);
+      if (spr) {
         ctx.save();
-        ctx.globalAlpha = 0.78;
-        this.drawChickenSprite(
-          {
-            id: -1,
-            typeId: ghost.typeId,
-            x: ghost.mouseX,
-            y: ghost.mouseY,
-            tier: 0,
-            targetMode: 'first',
-            angle: 0,
-            cooldown: 0,
-            recoil: 0,
-            totalPopDamage: 0,
-            totalSpent: 0,
-          },
-          false,
-          timeSec
-        );
+        ctx.globalAlpha = 0.8;
+        ctx.drawImage(spr.idle, gx - 10, gy - 11);
         ctx.restore();
       }
-
-      // Placed Chicken Troops
-      for (const tower of engine.towers) {
-        this.drawChickenSprite(tower, tower.id === selectedTowerId, timeSec);
-      }
-
-      // Bugs & MOAB-Class Foxes (draw regular bugs first, then Giant Fox bosses on top!)
-      for (const enemy of engine.enemies) {
-        if (!ENEMY_DEFS[enemy.typeId].isFoxBoss) {
-          this.drawEnemy(enemy, timeSec);
-        }
-      }
-      for (const enemy of engine.enemies) {
-        if (ENEMY_DEFS[enemy.typeId].isFoxBoss) {
-          this.drawEnemy(enemy, timeSec);
-        }
-      }
-
-      // Projectiles
-      for (const proj of engine.projectiles) {
-        this.drawProjectile(proj.x, proj.y, proj.rotation, proj.style, proj.color);
-      }
-
-      // Splash & Pop Rings
-      for (const ring of engine.rings) {
-        const p = Math.min(1, ring.age / ring.lifetime);
-        const r = Math.max(2, ring.maxRadius * (0.25 + 0.75 * p));
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, 1 - p);
-        ctx.strokeStyle = ring.color;
-        ctx.fillStyle = ring.color;
-        ctx.lineWidth = 4 * (1 - p * 0.5);
-        ctx.beginPath();
-        ctx.arc(ring.x, ring.y, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = Math.max(0, (1 - p) * 0.22);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Floating Map Popups
-      for (const pop of engine.popups) {
-        const p = Math.min(1, pop.age / pop.lifetime);
-        ctx.save();
-        ctx.globalAlpha = p < 0.7 ? 1 : Math.max(0, 1 - (p - 0.7) / 0.3);
-        ctx.font = `800 ${Math.round(16 * pop.scale)}px 'Fredoka', 'Nunito', sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = '#1E293B';
-        ctx.strokeText(pop.text, pop.x, pop.y);
-        ctx.fillStyle = pop.color;
-        ctx.fillText(pop.text, pop.x, pop.y);
-        ctx.restore();
-      }
-    } finally {
-      ctx.restore();
     }
-  }
 
-  private drawMeadowBackdrop(timeSec: number): void {
-    const ctx = this.ctx;
-    const grad = ctx.createLinearGradient(0, 0, 0, MAP_HEIGHT);
-    grad.addColorStop(0, '#7AD957');
-    grad.addColorStop(0.55, '#68C747');
-    grad.addColorStop(1, '#55B336');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+    // 5. Placed Chicken Troops (depth-sorted by Y for authentic 2D pixel overlap!)
+    const sortedTowers = [...engine.towers].sort((a, b) => a.y - b.y);
+    for (const tower of sortedTowers) {
+      this.drawPixelPlacedChicken(ctx, tower, tower.id === selectedTowerId, nowSec);
+    }
 
-    // Subtle sunny pasture checkerboard patches
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-    const tile = 64;
-    for (let gx = 0; gx < MAP_WIDTH; gx += tile) {
-      for (let gy = 0; gy < MAP_HEIGHT; gy += tile) {
-        if (((gx / tile + gy / tile) | 0) % 2 === 0) {
-          ctx.fillRect(gx, gy, tile, tile);
-        }
+    // 6. Bugs & Giant Fox Bosses (regular bugs first, Giant Foxes on top)
+    for (const e of engine.enemies) {
+      if (!ENEMY_DEFS[e.typeId].isFoxBoss) {
+        this.drawPixelEnemy(ctx, e);
+      }
+    }
+    for (const e of engine.enemies) {
+      if (ENEMY_DEFS[e.typeId].isFoxBoss) {
+        this.drawPixelEnemy(ctx, e);
       }
     }
 
-    // Swaying wildflowers
-    for (let i = 0; i < FLOWER_SPOTS.length; i++) {
-      const f = FLOWER_SPOTS[i];
-      const sway = Math.sin(timeSec * 2 + i) * 2;
-      ctx.save();
-      ctx.translate(f.x + sway, f.y);
-      ctx.fillStyle = f.col;
-      for (let p = 0; p < 5; p++) {
-        const a = (p / 5) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.arc(Math.cos(a) * 4.2, Math.sin(a) * 4.2, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = '#F59E0B';
-      ctx.beginPath();
-      ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+    // 7. Pixel Projectiles
+    for (const p of engine.projectiles) {
+      this.drawPixelProjectile(ctx, p);
     }
-  }
 
-  private drawWindingPath(timeSec: number): void {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    const traceWaypoints = () => {
-      ctx.beginPath();
-      ctx.moveTo(PATH_WAYPOINTS[0].x, PATH_WAYPOINTS[0].y);
-      for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
-        ctx.lineTo(PATH_WAYPOINTS[i].x, PATH_WAYPOINTS[i].y);
-      }
-    };
-
-    // Dark grassy verge shadow
-    ctx.strokeStyle = '#3E8E26';
-    ctx.lineWidth = PATH_HALF_WIDTH * 2 + 12;
-    traceWaypoints();
-    ctx.stroke();
-
-    // Warm pebble outer rim
-    ctx.strokeStyle = '#B88954';
-    ctx.lineWidth = PATH_HALF_WIDTH * 2 + 5;
-    traceWaypoints();
-    ctx.stroke();
-
-    // Sandy farm dirt road
-    ctx.strokeStyle = '#E6C28B';
-    ctx.lineWidth = PATH_HALF_WIDTH * 2 - 4;
-    traceWaypoints();
-    ctx.stroke();
-
-    // Subtle animated path direction dashes
-    ctx.strokeStyle = 'rgba(138, 92, 42, 0.25)';
-    ctx.lineWidth = 4;
-    ctx.setLineDash([12, 18]);
-    ctx.lineDashOffset = -(timeSec * 28) % 30;
-    traceWaypoints();
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  private drawPondAndTrees(timeSec: number): void {
-    const ctx = this.ctx;
-
-    // Scenic Duck Pond
-    ctx.save();
-    ctx.translate(POND_OBSTACLE.x, POND_OBSTACLE.y);
-    ctx.fillStyle = '#A37B4C';
-    ctx.beginPath();
-    ctx.ellipse(0, 3, POND_OBSTACLE.rx + 6, POND_OBSTACLE.ry + 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    const waterGrad = ctx.createLinearGradient(0, -POND_OBSTACLE.ry, 0, POND_OBSTACLE.ry);
-    waterGrad.addColorStop(0, '#38BDF8');
-    waterGrad.addColorStop(1, '#0284C7');
-    ctx.fillStyle = waterGrad;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, POND_OBSTACLE.rx, POND_OBSTACLE.ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Water shimmer + lilypad
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.ellipse(
-      -12 + Math.sin(timeSec * 1.8) * 3,
-      -8,
-      16,
-      7,
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.stroke();
-
-    ctx.fillStyle = '#22C55E';
-    ctx.beginPath();
-    ctx.arc(18, 10, 9, 0.3, Math.PI * 1.9);
-    ctx.lineTo(18, 10);
-    ctx.fill();
-    ctx.restore();
-
-    // Fluffy Farmyard Trees
-    for (const tree of DECOR_TREES) {
-      ctx.save();
-      ctx.translate(tree.x, tree.y);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-      ctx.beginPath();
-      ctx.ellipse(3, 8, tree.r, tree.r * 0.82, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#15803D';
-      ctx.beginPath();
-      ctx.arc(0, 0, tree.r, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#22C55E';
-      ctx.beginPath();
-      ctx.arc(-tree.r * 0.22, -tree.r * 0.22, tree.r * 0.72, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+    // 8. Expanding Pixel Shockwave Rings & Pixel Burst Particles
+    for (const r of engine.rings) {
+      const t = r.age / r.lifetime;
+      const curRad = toPx(r.maxRadius * (0.25 + 0.75 * t));
+      drawPixelCircle(ctx, toPx(r.x), toPx(r.y), curRad, r.color, t > 0.55);
     }
+
+    for (const pt of engine.particles) {
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(toPx(pt.x), toPx(pt.y), pt.size, pt.size);
+    }
+
+    // 9. Crisp Pixel Bitmap Labels & Floating Popups
+    this.drawPixelLabelsAndPopups(ctx, engine);
   }
 
-  private drawEntranceLog(): void {
-    const ctx = this.ctx;
-    const { x, y } = ENTRANCE_POSITION;
-    ctx.save();
-    ctx.translate(x + 8, y);
+  private drawPixelGoldenNest(
+    ctx: CanvasRenderingContext2D,
+    eggs: number,
+    nowSec: number
+  ): void {
+    const nx = toPx(NEST_POSITION.x);
+    const ny = toPx(NEST_POSITION.y);
 
-    // Hollow dark woodland log tunnel where bugs & foxes emerge
-    ctx.fillStyle = '#78350F';
-    ctx.strokeStyle = '#451A03';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(-22, -26, 38, 52, 12);
-    ctx.fill();
-    ctx.stroke();
+    // Subtle pulsing pixel halo
+    const pulseR = 16 + Math.round(Math.sin(nowSec * 3.2));
+    drawPixelCircle(ctx, nx, ny, pulseR, 'rgba(250, 204, 21, 0.55)', true);
 
-    ctx.fillStyle = '#1C1917';
-    ctx.beginPath();
-    ctx.ellipse(12, 0, 8, 19, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Woven Straw Pixel Nest
+    drawFilledPixelDisk(ctx, nx, ny + 1, 14, 11, OUTLINE);
+    drawFilledPixelDisk(ctx, nx, ny, 13, 10, '#92400E');
+    drawFilledPixelDisk(ctx, nx, ny, 11, 8, '#D97706');
+    drawFilledPixelDisk(ctx, nx, ny + 1, 8, 6, '#78350F');
 
-    ctx.font = "800 10px 'Fredoka', sans-serif";
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#FEF08A';
-    ctx.strokeStyle = '#451A03';
-    ctx.lineWidth = 3;
-    ctx.strokeText('BUG DEN', 0, -34);
-    ctx.fillText('BUG DEN', 0, -34);
-    ctx.restore();
-  }
+    // Straw weave pixel highlights
+    ctx.fillStyle = '#FACC15';
+    ctx.fillRect(nx - 9, ny - 5, 3, 1);
+    ctx.fillRect(nx + 6, ny - 4, 3, 1);
+    ctx.fillRect(nx - 7, ny + 6, 4, 1);
+    ctx.fillRect(nx + 4, ny + 5, 4, 1);
 
-  private drawGoldenNest(eggs: number, maxEggs: number, timeSec: number): void {
-    const ctx = this.ctx;
-    const { x, y } = NEST_POSITION;
-    ctx.save();
-    ctx.translate(x + 12, y);
-
-    // Warm golden glow under the Nest
-    const pulse = 1 + Math.sin(timeSec * 3) * 0.05;
-    ctx.fillStyle = 'rgba(250, 204, 21, 0.26)';
-    ctx.beginPath();
-    ctx.arc(0, 0, 40 * pulse, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Woven straw outer ring
-    ctx.fillStyle = '#D97706';
-    ctx.strokeStyle = '#78350F';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 32, 25, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Cozy inner straw bowl
-    ctx.fillStyle = '#92400E';
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 23, 16, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw visible Eggs inside the Nest proportional to remaining Eggs!
-    const visibleEggs = eggs <= 0 ? 0 : Math.max(1, Math.min(7, Math.ceil((eggs / Math.max(1, maxEggs)) * 7)));
-    const eggOffsets: readonly [number, number][] = [
-      [-10, 2],
-      [10, 2],
-      [0, 5],
-      [-6, -4],
-      [6, -4],
-      [0, -2],
-      [0, 1],
+    // Individual Pixel Eggs inside the Nest!
+    const visibleEggs = Math.min(7, Math.max(0, Math.ceil(eggs / 4)));
+    const offsets = [
+      [-4, -2],
+      [0, -3],
+      [4, -2],
+      [-5, 1],
+      [-1, 1],
+      [3, 1],
+      [0, -1],
     ];
     for (let i = 0; i < visibleEggs; i++) {
-      const [ex, ey] = eggOffsets[i];
-      ctx.fillStyle = i === visibleEggs - 1 ? '#FDE047' : '#FFFBEB';
-      ctx.strokeStyle = '#B45309';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.ellipse(ex, ey, 6.2, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      const [ox, oy] = offsets[i];
+      const isGoldCenter = i === visibleEggs - 1;
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(nx + ox - 2, ny + oy - 3, 4, 5);
+      ctx.fillStyle = isGoldCenter ? '#FACC15' : '#FFFBEB';
+      ctx.fillRect(nx + ox - 1, ny + oy - 2, 2, 3);
+      if (isGoldCenter) {
+        ctx.fillStyle = '#FEF9C3';
+        ctx.fillRect(nx + ox - 1, ny + oy - 2, 1, 1);
+      }
     }
-
-    ctx.font = "800 11px 'Fredoka', sans-serif";
-    ctx.textAlign = 'center';
-    ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 3.5;
-    const label = `🥚 ${eggs}`;
-    ctx.strokeText(label, 0, -31);
-    ctx.fillStyle = '#FEF08A';
-    ctx.fillText(label, 0, -31);
-
-    ctx.restore();
   }
 
-  private drawRangeCircle(x: number, y: number, radius: number, valid: boolean): void {
-    if (radius <= 0) return;
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.fillStyle = valid ? 'rgba(255, 255, 255, 0.18)' : 'rgba(239, 68, 68, 0.25)';
-    ctx.strokeStyle = valid ? 'rgba(255, 255, 255, 0.82)' : 'rgba(239, 68, 68, 0.9)';
-    ctx.lineWidth = 2.2;
-    ctx.setLineDash([7, 6]);
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
+  private drawPixelPlacedChicken(
+    ctx: CanvasRenderingContext2D,
+    tower: PlacedChicken,
+    isSelected: boolean,
+    nowSec: number
+  ): void {
+    const spr = PIXEL_ATLAS.getChickenSprite(tower.typeId);
+    if (!spr) return;
 
-  private drawChickenSprite(tower: PlacedChicken, isSelected: boolean, timeSec: number): void {
-    const ctx = this.ctx;
-    const def = CHICKEN_DEFS[tower.typeId];
-    const kickBack = tower.recoil * 4.5;
+    const px = toPx(tower.x);
+    const py = toPx(tower.y);
 
-    ctx.save();
-    ctx.translate(tower.x, tower.y);
-
-    // Selection halo
     if (isSelected) {
-      ctx.strokeStyle = '#FDE047';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, 24, 0, Math.PI * 2);
-      ctx.stroke();
+      drawPixelCircle(ctx, px, py + 2, 10, '#FACC15', false);
+    } else if (tower.tier === 3) {
+      // Tier 4 MAX golden pixel aura!
+      const auraR = 9 + (Math.floor(nowSec * 4) % 2);
+      drawPixelCircle(ctx, px, py + 2, auraR, '#FDE047', true);
     }
 
-    // Ground shadow + wooden roost pad for high-tier chickens
-    ctx.fillStyle = tower.tier >= 2 ? '#B45309' : 'rgba(0, 0, 0, 0.22)';
-    ctx.beginPath();
-    ctx.ellipse(0, 7, 18, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Solar aura for Sun Chantecler
-    if (tower.typeId === 'phoenix') {
-      ctx.fillStyle = `rgba(250, 204, 21, ${0.24 + Math.sin(timeSec * 6) * 0.08})`;
-      ctx.beginPath();
-      ctx.arc(0, 0, 23 + tower.tier * 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const frame = tower.recoil > 0.35 ? spr.attack : spr.idle;
+    const faceLeft = Math.cos(tower.angle) < -0.15;
 
     ctx.save();
-    ctx.rotate(tower.angle);
-    ctx.translate(-kickBack, 0);
-
-    // Plump round chicken body
-    ctx.fillStyle = def.featherColor;
-    ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Side wings
-    ctx.fillStyle = def.bellyColor;
-    ctx.beginPath();
-    ctx.ellipse(-2, -13, 8, 4.5, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(-2, 13, 8, 4.5, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Sharp orange beak pointing toward +X target!
-    ctx.fillStyle = '#F97316';
-    ctx.beginPath();
-    ctx.moveTo(14, -5);
-    ctx.lineTo(24, 0);
-    ctx.lineTo(14, 5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Cute eyes
-    ctx.fillStyle = '#0F172A';
-    ctx.beginPath();
-    ctx.arc(9, -6, 2.3, 0, Math.PI * 2);
-    ctx.arc(9, 6, 2.3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Red雞冠 (comb) or Class Headgear!
-    if (tower.typeId === 'ranger') {
-      // Safari sniper hat + scope barrel!
-      ctx.fillStyle = '#65A30D';
-      ctx.beginPath();
-      ctx.arc(-2, 0, 11, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(8, 8, 17, 4);
-    } else if (tower.typeId === 'ninja') {
-      // Red Shinobi headband + trailing tails!
-      ctx.strokeStyle = '#DC2626';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(0, 0, 14, -1.1, 1.1);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(-12, -4);
-      ctx.lineTo(-22, -9);
-      ctx.moveTo(-12, 2);
-      ctx.lineTo(-21, 7);
-      ctx.stroke();
-    } else if (tower.typeId === 'chilly') {
-      // Fluffy frost crest
-      ctx.fillStyle = '#38BDF8';
-      ctx.beginPath();
-      ctx.arc(-2, 0, 7.5, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (tower.typeId === 'lobber') {
-      // Cozy Mortar Chef Cap
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(-3, 0, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      // Classic rooster comb
-      ctx.fillStyle = def.accentColor;
-      ctx.beginPath();
-      ctx.ellipse(-1, 0, 7, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.translate(px, py);
+    if (faceLeft) {
+      ctx.scale(-1, 1);
     }
-
+    ctx.drawImage(frame, -10, -11);
     ctx.restore();
 
-    // Tier Stars badge below chicken (Tier 2 = ★, Tier 3 = ★★, Tier 4 = 👑)
-    if (tower.tier > 0) {
-      ctx.font = "800 10px 'Fredoka', sans-serif";
-      ctx.textAlign = 'center';
-      const badge = tower.tier === 3 ? '👑 MAX' : '★'.repeat(tower.tier);
-      ctx.strokeStyle = '#0F172A';
-      ctx.lineWidth = 3;
-      ctx.strokeText(badge, 0, 23);
-      ctx.fillStyle = '#FDE047';
-      ctx.fillText(badge, 0, 23);
+    // Crisp Pixel Tier Pips underneath the Chicken (1..4 golden stars/pips!)
+    const pipCount = tower.tier + 1;
+    const totalW = pipCount * 3 - 1;
+    const startX = px - Math.floor(totalW / 2);
+    const pipY = py + 8;
+    ctx.fillStyle = OUTLINE;
+    ctx.fillRect(startX - 1, pipY - 1, totalW + 2, 4);
+    for (let p = 0; p < pipCount; p++) {
+      ctx.fillStyle = tower.tier === 3 ? '#38BDF8' : '#FACC15';
+      ctx.fillRect(startX + p * 3, pipY, 2, 2);
     }
-
-    ctx.restore();
   }
 
-  private drawEnemy(enemy: ActiveEnemy, timeSec: number): void {
-    const ctx = this.ctx;
-    const def = ENEMY_DEFS[enemy.typeId];
-    const pos = getPointAlongPath(enemy.distance, enemy.lateralOffset);
+  private drawPixelEnemy(ctx: CanvasRenderingContext2D, e: ActiveEnemy): void {
+    const def = ENEMY_DEFS[e.typeId];
+    const sprSet = PIXEL_ATLAS.getEnemySprite(e.typeId);
+    if (!sprSet) return;
+
+    const pos = getPointAlongPath(e.distance, e.lateralOffset);
+    const px = toPx(pos.x);
+    const py = toPx(pos.y);
+
+    const fIdx = (Math.floor(e.walkPhase) & 1) as 0 | 1;
+    const img = e.hitFlash > 0.45 ? sprSet.flashFrames[fIdx] : sprSet.frames[fIdx];
+    const faceLeft = Math.cos(pos.angle) < -0.15;
 
     ctx.save();
-    ctx.translate(pos.x, pos.y);
-
+    ctx.translate(px, py);
     if (def.isCamo) {
-      ctx.globalAlpha = 0.68 + Math.sin(timeSec * 7) * 0.14;
+      ctx.globalAlpha = 0.78;
+    }
+    if (faceLeft) {
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(img, -Math.floor(img.width / 2), -Math.floor(img.height / 2));
+    ctx.restore();
+
+    // Pixel Status Pips (Slow / Burn / Acid)
+    if (e.slowTimer > 0) {
+      ctx.fillStyle = '#38BDF8';
+      ctx.fillRect(px - 2, py - Math.floor(img.height / 2) - 2, 2, 2);
+    }
+    if (e.burnTimer > 0) {
+      ctx.fillStyle = '#F97316';
+      ctx.fillRect(px + 1, py - Math.floor(img.height / 2) - 2, 2, 2);
     }
 
-    ctx.save();
-    ctx.rotate(pos.angle);
-
+    // Pixel HP Bar
     if (def.isFoxBoss) {
-      this.drawFoxBossBody(enemy, def.radius, def.bodyColor, def.secondaryColor);
-    } else {
-      this.drawBugBody(enemy, def.radius, def.bodyColor, def.secondaryColor, def.isArmored, def.isCamo);
+      const barW = 24;
+      const bx = px - 12;
+      const by = py - Math.floor(img.height / 2) - 6;
+      const ratio = Math.max(0, Math.min(1, e.hp / e.maxHp));
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(bx - 1, by - 1, barW + 2, 5);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(bx, by, barW, 3);
+      ctx.fillStyle = ratio > 0.5 ? '#EF4444' : '#FACC15';
+      ctx.fillRect(bx, by, Math.max(1, Math.round(barW * ratio)), 3);
+    } else if (e.hp < e.maxHp) {
+      const barW = 10;
+      const bx = px - 5;
+      const by = py - Math.floor(img.height / 2) - 4;
+      const ratio = Math.max(0, Math.min(1, e.hp / e.maxHp));
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(bx - 1, by - 1, barW + 2, 3);
+      ctx.fillStyle = '#4ADE80';
+      ctx.fillRect(bx, by, Math.max(1, Math.round(barW * ratio)), 1);
     }
+  }
 
-    // Frost / Burn overlays
-    if (enemy.slowTimer > 0) {
-      ctx.strokeStyle = '#38BDF8';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, def.radius + 3, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    if (enemy.burnTimer > 0) {
-      ctx.fillStyle = 'rgba(249, 115, 22, 0.38)';
-      ctx.beginPath();
-      ctx.arc(0, 0, def.radius + 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+  private drawPixelProjectile(ctx: CanvasRenderingContext2D, p: ActiveProjectile): void {
+    const px = toPx(p.x);
+    const py = toPx(p.y);
 
-    ctx.restore();
-
-    // Overhead Health Bar for Giant Fox Bosses & Armored/Damaged Elite Bugs!
-    if (def.isFoxBoss || enemy.hp < enemy.maxHp) {
-      const barW = def.isFoxBoss ? 52 : 26;
-      const barH = def.isFoxBoss ? 7 : 4.5;
-      const by = -def.radius - (def.isFoxBoss ? 14 : 9);
-      const pct = Math.max(0, Math.min(1, enemy.hp / Math.max(1, enemy.maxHp)));
-
-      ctx.fillStyle = '#0F172A';
-      ctx.fillRect(-barW / 2 - 1, by - 1, barW + 2, barH + 2);
-      ctx.fillStyle = def.isFoxBoss ? '#EF4444' : '#22C55E';
-      ctx.fillRect(-barW / 2, by, barW * pct, barH);
-
-      if (def.isFoxBoss) {
-        ctx.font = "800 10px 'Fredoka', sans-serif";
-        ctx.textAlign = 'center';
-        ctx.strokeStyle = '#0F172A';
-        ctx.lineWidth = 3;
-        const hpLabel = `🦊 ${Math.ceil(enemy.hp)}`;
-        ctx.strokeText(hpLabel, 0, by - 7);
+    switch (p.style) {
+      case 'feather_slash': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#FCA5A5';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 2, 2, 2);
+        break;
+      }
+      case 'seed': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'honey': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 2, 5, 5);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(px - 2, py - 1, 3, 3);
         ctx.fillStyle = '#FEF08A';
-        ctx.fillText(hpLabel, 0, by - 7);
+        ctx.fillRect(px - 2, py - 1, 1, 1);
+        break;
       }
-    }
-
-    ctx.restore();
-  }
-
-  private drawBugBody(
-    enemy: ActiveEnemy,
-    r: number,
-    mainCol: string,
-    secCol: string,
-    isArmored: boolean,
-    isCamo: boolean
-  ): void {
-    const ctx = this.ctx;
-    const wiggle = Math.sin(enemy.walkPhase) * 2.5;
-
-    // 6 skittering bug legs
-    ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 2;
-    for (const lx of [-5, 0, 5]) {
-      ctx.beginPath();
-      ctx.moveTo(lx, -r * 0.6);
-      ctx.lineTo(lx + wiggle * (lx === 0 ? -1 : 1), -r * 1.25);
-      ctx.moveTo(lx, r * 0.6);
-      ctx.lineTo(lx - wiggle * (lx === 0 ? -1 : 1), r * 1.25);
-      ctx.stroke();
-    }
-
-    // Oval carapace
-    ctx.fillStyle = enemy.hitFlash > 0.2 ? '#FFFFFF' : mainCol;
-    ctx.strokeStyle = isArmored ? '#E2E8F0' : '#0F172A';
-    ctx.lineWidth = isArmored ? 3.2 : 2.2;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 1.15, r * 0.88, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Markings / Spots / Wings
-    ctx.fillStyle = secCol;
-    ctx.beginPath();
-    ctx.arc(-3, -3, r * 0.24, 0, Math.PI * 2);
-    ctx.arc(-3, 3, r * 0.24, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (isCamo || enemy.typeId === 'hornet') {
-      // Translucent fluttering wings
-      ctx.fillStyle = isCamo ? 'rgba(199, 210, 254, 0.7)' : 'rgba(255, 255, 255, 0.72)';
-      const flap = Math.abs(Math.sin(enemy.walkPhase * 1.8)) * 4;
-      ctx.beginPath();
-      ctx.ellipse(-2, -r * 0.75 - flap * 0.4, r * 0.7, r * 0.4, -0.35, 0, Math.PI * 2);
-      ctx.ellipse(-2, r * 0.75 + flap * 0.4, r * 0.7, r * 0.4, 0.35, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Antennae
-    ctx.strokeStyle = '#0F172A';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(r * 0.9, -3);
-    ctx.lineTo(r * 1.4, -7);
-    ctx.moveTo(r * 0.9, 3);
-    ctx.lineTo(r * 1.4, 7);
-    ctx.stroke();
-  }
-
-  private drawFoxBossBody(
-    enemy: ActiveEnemy,
-    r: number,
-    furCol: string,
-    tipCol: string
-  ): void {
-    const ctx = this.ctx;
-    const sway = Math.sin(enemy.walkPhase) * 0.14;
-    const isKitsune = enemy.typeId === 'fox_kitsune';
-    const isAlpha = enemy.typeId === 'fox_alpha';
-
-    // Bushy Fox Tail(s) trailing behind (-X)!
-    const tailAngles = isKitsune ? [-0.45, 0, 0.45] : [0];
-    for (const ta of tailAngles) {
-      ctx.save();
-      ctx.translate(-r * 0.85, 0);
-      ctx.rotate(sway + ta);
-      ctx.fillStyle = furCol;
-      ctx.strokeStyle = '#1E293B';
-      ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      ctx.ellipse(-r * 0.55, 0, r * 0.7, r * 0.34, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // White/glowing tail tip
-      ctx.fillStyle = tipCol;
-      ctx.beginPath();
-      ctx.arc(-r * 0.98, 0, r * 0.24, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // Torso
-    ctx.fillStyle = enemy.hitFlash > 0.2 ? '#FFFFFF' : furCol;
-    ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 1.05, r * 0.68, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Fox Head + Pointed Snout (+X) + Pointed Ears!
-    ctx.fillStyle = enemy.hitFlash > 0.2 ? '#FFFFFF' : furCol;
-    ctx.beginPath();
-    ctx.moveTo(r * 0.45, -r * 0.58);
-    ctx.lineTo(r * 1.38, 0);
-    ctx.lineTo(r * 0.45, r * 0.58);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Ears
-    ctx.fillStyle = '#1E293B';
-    ctx.beginPath();
-    ctx.moveTo(r * 0.3, -r * 0.45);
-    ctx.lineTo(r * 0.65, -r * 0.88);
-    ctx.lineTo(r * 0.78, -r * 0.32);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(r * 0.3, r * 0.45);
-    ctx.lineTo(r * 0.65, r * 0.88);
-    ctx.lineTo(r * 0.78, r * 0.32);
-    ctx.closePath();
-    ctx.fill();
-
-    // Black nose & fierce eyes
-    ctx.fillStyle = '#0F172A';
-    ctx.beginPath();
-    ctx.arc(r * 1.35, 0, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#FEF08A';
-    ctx.beginPath();
-    ctx.arc(r * 0.75, -r * 0.22, 3, 0, Math.PI * 2);
-    ctx.arc(r * 0.75, r * 0.22, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Golden Crown on Mega Alpha Fox!
-    if (isAlpha) {
-      ctx.fillStyle = '#FACC15';
-      ctx.strokeStyle = '#78350F';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.rect(r * 0.15, -7, 10, 14);
-      ctx.fill();
-      ctx.stroke();
-    }
-  }
-
-  private drawProjectile(
-    x: number,
-    y: number,
-    rot: number,
-    style: string,
-    color: string
-  ): void {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(rot);
-
-    if (style === 'shuriken') {
-      ctx.fillStyle = '#E2E8F0';
-      ctx.strokeStyle = '#0F172A';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      for (let i = 0; i < 4; i++) {
-        const a = (i / 4) * Math.PI * 2;
-        ctx.lineTo(Math.cos(a) * 9, Math.sin(a) * 9);
-        ctx.lineTo(Math.cos(a + 0.4) * 3.2, Math.sin(a + 0.4) * 3.2);
+      case 'boomerang': {
+        const phase = Math.floor(p.age * 16) % 4;
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = p.burnDps > 0 ? '#F97316' : '#D97706';
+        if (phase === 0) {
+          ctx.fillRect(px - 2, py - 2, 4, 1);
+          ctx.fillRect(px + 1, py - 2, 1, 4);
+        } else if (phase === 1) {
+          ctx.fillRect(px + 1, py - 2, 1, 4);
+          ctx.fillRect(px - 2, py + 1, 4, 1);
+        } else if (phase === 2) {
+          ctx.fillRect(px - 2, py + 1, 4, 1);
+          ctx.fillRect(px - 2, py - 2, 1, 4);
+        } else {
+          ctx.fillRect(px - 2, py - 2, 1, 4);
+          ctx.fillRect(px - 2, py - 2, 4, 1);
+        }
+        break;
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else if (style === 'egg_bomb') {
-      ctx.fillStyle = '#FFFBEB';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 8, 6.2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else if (style === 'snow') {
-      ctx.fillStyle = '#E0F2FE';
-      ctx.strokeStyle = '#0284C7';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else if (style === 'sniper') {
-      ctx.strokeStyle = '#FDE047';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(-12, 0);
-      ctx.lineTo(8, 0);
-      ctx.stroke();
-    } else if (style === 'solar') {
-      ctx.fillStyle = '#FEF08A';
-      ctx.strokeStyle = '#EA580C';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      // Corn seed kernel!
-      ctx.fillStyle = '#FACC15';
-      ctx.strokeStyle = '#854D0E';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 5.5, 3.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      case 'snow': {
+        ctx.fillStyle = '#0284C7';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#E0F2FE';
+        ctx.fillRect(px - 2, py, 5, 1);
+        ctx.fillRect(px, py - 2, 1, 5);
+        break;
+      }
+      case 'acid': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 2, py - 3, 5, 6);
+        ctx.fillStyle = '#10B981';
+        ctx.fillRect(px - 1, py - 2, 3, 4);
+        ctx.fillStyle = '#A7F3D0';
+        ctx.fillRect(px, py - 2, 1, 1);
+        break;
+      }
+      case 'sniper': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - dx, py - dy, 2, 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py, 2, 2);
+        break;
+      }
+      case 'egg_bomb': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 7);
+        ctx.fillStyle = p.burnDps > 0 ? '#F97316' : '#FFF7ED';
+        ctx.fillRect(px - 2, py - 2, 4, 5);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'lightning': {
+        ctx.fillStyle = '#A855F7';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 2, py - 1, 2, 2);
+        ctx.fillRect(px, py, 3, 2);
+        break;
+      }
+      case 'shuriken': {
+        const spin = Math.floor(p.age * 20) % 2;
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#E2E8F0';
+        if (spin === 0) {
+          ctx.fillRect(px - 2, py, 5, 1);
+          ctx.fillRect(px, py - 2, 1, 5);
+        } else {
+          ctx.fillRect(px - 2, py - 2, 2, 2);
+          ctx.fillRect(px + 1, py - 2, 2, 2);
+          ctx.fillRect(px - 2, py + 1, 2, 2);
+          ctx.fillRect(px + 1, py + 1, 2, 2);
+        }
+        ctx.fillStyle = '#DC2626';
+        ctx.fillRect(px, py, 1, 1);
+        break;
+      }
+      case 'cannonball': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#94A3B8';
+        ctx.fillRect(px - 2, py - 2, 2, 1);
+        break;
+      }
+      case 'solar': {
+        ctx.fillStyle = '#EA580C';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'plasma': {
+        const dx = Math.round(Math.cos(p.rotation) * 3);
+        const dy = Math.round(Math.sin(p.rotation) * 3);
+        ctx.fillStyle = '#0891B2';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#22D3EE';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py, 2, 2);
+        break;
+      }
+      default:
+        break;
     }
+  }
 
-    ctx.restore();
+  private drawPixelLabelsAndPopups(
+    ctx: CanvasRenderingContext2D,
+    engine: ChickenTdEngine
+  ): void {
+    // BUG DEN pixel sign
+    const ex = toPx(ENTRANCE_POSITION.x) + 14;
+    const ey = toPx(ENTRANCE_POSITION.y) - 18;
+    drawCrispPixelText(ctx, 'BUG DEN', ex, ey, '#FEF08A');
+
+    // NEST EGGS pixel counter above Nest
+    const nx = toPx(NEST_POSITION.x);
+    const ny = toPx(NEST_POSITION.y) - 17;
+    drawCrispPixelText(ctx, `${engine.eggs} EGGS`, nx, ny, '#FFFBEB');
+
+    // Floating combat / upgrade pixel popups
+    for (const pop of engine.popups) {
+      drawCrispPixelText(ctx, pop.text, toPx(pop.x), toPx(pop.y), pop.color);
+    }
   }
 }

@@ -1,10 +1,34 @@
 export type ChickenTypeId =
+  | 'bantam'
   | 'pecker'
+  | 'honey'
+  | 'boomerang'
   | 'chilly'
+  | 'alchemist'
   | 'ranger'
   | 'lobber'
+  | 'wizard'
   | 'ninja'
-  | 'phoenix';
+  | 'pirate'
+  | 'bard'
+  | 'phoenix'
+  | 'mecha';
+
+export type ProjectileStyle =
+  | 'feather_slash'
+  | 'seed'
+  | 'honey'
+  | 'boomerang'
+  | 'snow'
+  | 'acid'
+  | 'sniper'
+  | 'egg_bomb'
+  | 'lightning'
+  | 'shuriken'
+  | 'cannonball'
+  | 'sonic'
+  | 'solar'
+  | 'plasma';
 
 export type EnemyTypeId =
   | 'ant'
@@ -25,20 +49,42 @@ export type ClickerUpgradeId = 'beakPower' | 'goldenLuck' | 'peckRhythm' | 'harv
 
 export type TdUpgradeId = 'eagleRoost' | 'caffeinatedFeed' | 'razorTalons' | 'fortifiedNest';
 
+export type PixelIconId =
+  | 'chicken'
+  | 'corn'
+  | 'egg'
+  | 'fox'
+  | 'bug'
+  | 'shield'
+  | 'trophy'
+  | 'cracked_egg'
+  | 'beak_upg'
+  | 'sparkle_upg'
+  | 'flame_upg'
+  | 'basket_upg'
+  | 'bolt_upg'
+  | 'scope_upg'
+  | 'talon_upg'
+  | 'nest_upg'
+  | 'speed'
+  | 'sound_on'
+  | 'sound_off'
+  | 'rules';
+
 export interface ChickenTierStats {
   tierName: string;
   upgradeCost: number; // 0 for Tier 1 (base purchase)
   damage: number;
   fireRate: number; // attacks per second
-  range: number; // logical pixels
-  pierce: number; // max enemies hit per projectile
+  range: number; // logical pixels (out of 920x600)
+  pierce: number; // max enemies hit per projectile / pulse
   projectiles: number; // multishot count
   projectileSpeed: number;
   splashRadius: number; // 0 if single-target/pierce
-  slowFactor: number; // 0..0.65 speed reduction
+  slowFactor: number; // 0..0.68 speed reduction
   slowDuration: number; // seconds
-  burnDps: number; // spicy egg burn damage per sec
-  foxDamageMult: number; // bonus multiplier vs Giant Fox blimps
+  burnDps: number; // burn / acid / sap DoT damage per sec
+  foxDamageMult: number; // bonus multiplier vs Giant Fox bosses
   camoSight: boolean;
   description: string;
 }
@@ -52,7 +98,7 @@ export interface ChickenTowerDef {
   featherColor: string;
   bellyColor: string;
   accentColor: string;
-  projectileStyle: 'seed' | 'snow' | 'sniper' | 'egg_bomb' | 'shuriken' | 'solar';
+  projectileStyle: ProjectileStyle;
   tiers: readonly [ChickenTierStats, ChickenTierStats, ChickenTierStats, ChickenTierStats];
 }
 
@@ -64,13 +110,13 @@ export interface EnemySpawnChild {
 export interface EnemyDef {
   id: EnemyTypeId;
   name: string;
-  isFoxBoss: boolean; // true = MOAB-class Fox Blimp!
-  isArmored: boolean; // resists basic sharp pecks slightly unless armor-piercing/splash/solar
+  isFoxBoss: boolean; // true = MOAB-class Fox Boss!
+  isArmored: boolean; // resists basic sharp pecks unless armor-piercing/splash/magic/energy
   isCamo: boolean; // requires Camo Sight
   maxHp: number;
   speed: number; // logical path pixels per second
   radius: number;
-  eggDamage: number; // Nest Eggs lost if this enemy + children leak (base layer damage)
+  eggDamage: number; // Nest Eggs lost if this enemy reaches the Nest
   bodyColor: string;
   secondaryColor: string;
   childrenOnPop: readonly EnemySpawnChild[];
@@ -85,7 +131,7 @@ export interface PlacedChicken {
   targetMode: TargetMode;
   angle: number;
   cooldown: number;
-  recoil: number; // 0..1 visual animation
+  recoil: number; // 0..1 pixel attack animation timer
   totalPopDamage: number;
   totalSpent: number;
 }
@@ -108,11 +154,12 @@ export interface ActiveEnemy {
 export interface ActiveProjectile {
   id: number;
   ownerTowerId: number;
-  style: ChickenTowerDef['projectileStyle'];
+  style: ProjectileStyle;
   x: number;
   y: number;
   vx: number;
   vy: number;
+  curveRate: number; // radians/sec for curving boomerangs
   rotation: number;
   damage: number;
   pierceLeft: number;
@@ -133,6 +180,17 @@ export interface VisualRingEffect {
   y: number;
   maxRadius: number;
   color: string;
+  age: number;
+  lifetime: number;
+}
+
+export interface PixelParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  size: number;
   age: number;
   lifetime: number;
 }
@@ -165,7 +223,7 @@ export interface WaveDefinition {
 export interface UpgradeDef<TId extends string> {
   id: TId;
   name: string;
-  icon: string;
+  iconId: PixelIconId;
   maxLevel: number;
   baseCost: number;
   costMult: number;

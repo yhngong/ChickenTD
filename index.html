@@ -3,37 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ChickenTD — Clicker × Tower Defense</title>
+    <title>ChickenTD — 16-Bit Pixel Clicker x Tower Defense</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
     <div id="app-root">
-      <!-- TOP HUD BAR -->
+      <!-- TOP PIXEL HUD BAR -->
       <header id="top-hud">
         <div class="brand-block">
-          <span class="brand-icon">🐔</span>
+          <img id="icon-brand" class="px-icon px-icon-lg" alt="" />
           <div>
-            <h1 class="brand-title">Chicken<span>TD</span></h1>
-            <span class="brand-sub">Defend the Nest &bull; Click for Corn</span>
+            <h1 class="brand-title">CHICKEN<span>TD</span></h1>
+            <span class="brand-sub">PIXEL NEST DEFENSE &bull; 14 UNITS</span>
           </div>
         </div>
 
         <div class="hud-stats">
-          <div class="stat-pill corn-pill" title="Bugs give $0! Click the Henhouse during waves to earn Corn.">
-            <span class="stat-emoji">🌽</span>
+          <div
+            class="stat-pill corn-pill"
+            title="Bugs give $0! Click the Henhouse during waves to earn Corn."
+          >
+            <img id="icon-hud-corn" class="px-icon px-icon-md" alt="" />
             <div>
               <span class="stat-lbl">CORN (CLICK ONLY)</span>
               <strong id="hud-corn">150</strong>
             </div>
           </div>
 
-          <div class="stat-pill egg-pill" title="Nest Eggs remaining. Don't let Bugs or Foxes reach the Nest!">
-            <span class="stat-emoji">🥚</span>
+          <div
+            class="stat-pill egg-pill"
+            title="Nest Eggs remaining. Don't let Bugs or Foxes reach the Nest!"
+          >
+            <img id="icon-hud-egg" class="px-icon px-icon-md" alt="" />
             <div>
               <span class="stat-lbl">NEST EGGS</span>
               <strong id="hud-eggs">25 / 25</strong>
@@ -41,7 +47,7 @@
           </div>
 
           <div class="stat-pill wave-pill">
-            <span class="stat-emoji">🦊</span>
+            <img id="icon-hud-fox" class="px-icon px-icon-md" alt="" />
             <div>
               <span class="stat-lbl">WAVE</span>
               <strong id="hud-wave">1 / 25</strong>
@@ -49,7 +55,7 @@
           </div>
 
           <div class="stat-pill pop-pill">
-            <span class="stat-emoji">🪲</span>
+            <img id="icon-hud-bug" class="px-icon px-icon-md" alt="" />
             <div>
               <span class="stat-lbl">POPPED</span>
               <strong id="hud-pops">0</strong>
@@ -59,86 +65,97 @@
 
         <div class="hud-actions">
           <button id="btn-speed" class="hud-btn" type="button" title="Toggle Battle Speed (1x / 2x)">
-            ⏩ 1x
+            <img id="icon-btn-speed" class="px-icon px-icon-sm" alt="" />
+            <span id="lbl-speed">1X</span>
           </button>
           <button id="btn-mute" class="hud-btn" type="button" title="Mute / Unmute Audio">
-            🔊
+            <img id="icon-btn-sound" class="px-icon px-icon-sm" alt="" />
+            <span id="lbl-mute">SFX</span>
           </button>
           <button id="btn-rules" class="hud-btn" type="button" title="How to Play">
-            ❓ Rules
+            <img id="icon-btn-rules" class="px-icon px-icon-sm" alt="" />
+            <span>RULES</span>
           </button>
         </div>
       </header>
 
-      <!-- MAIN WORKSPACE: BATTLEFIELD + COMMAND SIDEBAR -->
+      <!-- MAIN WORKSPACE: PIXEL BATTLEFIELD + COMMAND SIDEBAR -->
       <main id="game-layout">
-        <!-- LEFT: MEADOW TOWER DEFENSE STAGE -->
+        <!-- LEFT: PIXEL MEADOW TOWER DEFENSE STAGE -->
         <section id="stage-panel">
           <div id="canvas-frame">
-            <canvas id="td-canvas" width="920" height="600"></canvas>
+            <canvas id="td-canvas" width="460" height="300"></canvas>
 
             <!-- Top floating wave callout & placement hint -->
             <div id="wave-banner" class="stage-banner">
               <strong id="banner-title">Wave 1: Garden Scouts</strong> &mdash;
-              <span id="banner-desc">Place a Chicken Troop, then start Wave 1 to unlock the Corn Clicker!</span>
+              <span id="banner-desc"
+                >Place a Chicken Troop, then start Wave 1 to unlock the Corn Clicker!</span
+              >
             </div>
 
             <div id="placement-banner" class="placement-banner hidden">
               <span id="placement-text">Placing Pecker Hen — Click green grass to deploy</span>
-              <button id="btn-cancel-place" type="button">Cancel (ESC)</button>
+              <button id="btn-cancel-place" type="button">CANCEL [ESC]</button>
             </div>
 
             <!-- Bottom Selected Chicken Upgrade & Targeting Inspector -->
             <div id="inspector-card" class="inspector-card hidden">
+              <img id="insp-portrait" class="insp-portrait" alt="" />
               <div class="insp-left">
                 <div class="insp-header">
                   <strong id="insp-name">Pecker Hen</strong>
-                  <span id="insp-tier-badge" class="tier-pill">Tier 1</span>
+                  <span id="insp-tier-badge" class="tier-pill">TIER 1</span>
                 </div>
-                <div id="insp-stats" class="insp-stats">DMG 1 &bull; 1.85/s &bull; RNG 128</div>
-                <div id="insp-next-desc" class="insp-desc">Next: Faster firing speed, +1 damage, and +1 pierce.</div>
+                <div id="insp-stats" class="insp-stats">DMG 1 &bull; 1.90/s &bull; RNG 130</div>
+                <div id="insp-next-desc" class="insp-desc">
+                  Next: Faster firing speed, +1 damage, and +1 pierce.
+                </div>
               </div>
 
               <div class="insp-actions">
                 <button id="btn-insp-target" class="insp-btn target-btn" type="button">
-                  🎯 Target: First
+                  AIM: FIRST
                 </button>
                 <button id="btn-insp-upgrade" class="insp-btn upgrade-btn" type="button">
-                  ⬆ Upgrade (🌽 110)
+                  UPGRADE (110)
                 </button>
                 <button id="btn-insp-sell" class="insp-btn sell-btn" type="button">
-                  💰 Sell (+84)
+                  SELL (+84)
                 </button>
                 <button id="btn-insp-close" class="insp-close" type="button" title="Deselect">
-                  ✕
+                  X
                 </button>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- RIGHT: CLICKER PAD + TROOPS & UPGRADES SHOP -->
+        <!-- RIGHT: CLICKER PAD + 14-UNIT TROOP & UPGRADES SHOP -->
         <aside id="command-sidebar">
           <!-- 1. THE HENHOUSE CLICKER (12 CPS CAP, ACTIVE WAVES ONLY!) -->
           <div id="clicker-card" class="clicker-card locked">
             <div class="clicker-top-row">
-              <span class="clicker-title">🌽 Henhouse Clicker</span>
-              <span id="cps-badge" class="cps-badge">0 / 12 CPS MAX</span>
+              <span class="clicker-title">
+                <img id="icon-clicker-corn" class="px-icon px-icon-sm" alt="" />
+                HENHOUSE CLICKER
+              </span>
+              <span id="cps-badge" class="cps-badge">0 / 12 CPS</span>
             </div>
 
             <button id="btn-hen-click" class="hen-click-pad" type="button">
               <div id="click-float-layer" class="click-float-layer"></div>
-              <div class="hen-avatar">🐔🌽</div>
-              <div id="click-main-label" class="click-main-label">+2 Corn / Click</div>
+              <img id="hen-scene-img" class="hen-scene-img" alt="" />
+              <div id="click-main-label" class="click-main-label">+2 BASE CORN / CLICK</div>
               <div id="click-status-note" class="click-status-note">
-                😴 Locked Between Waves — Start Wave to Click!
+                LOCKED BETWEEN WAVES &mdash; START WAVE TO CLICK!
               </div>
             </button>
 
             <div class="clicker-meters">
               <div class="mini-meter">
                 <div class="meter-lbl-row">
-                  <span>CPS Cap Meter (Max 12/s)</span>
+                  <span>CPS CAP METER (MAX 12/S)</span>
                   <strong id="meter-cps-text">0 / 12</strong>
                 </div>
                 <div class="meter-track">
@@ -148,8 +165,8 @@
 
               <div class="mini-meter">
                 <div class="meter-lbl-row">
-                  <span id="frenzy-label">Frenzy Streak (1.00x)</span>
-                  <span id="basket-label">Mega Cob: Off</span>
+                  <span id="frenzy-label">FRENZY (1.00X)</span>
+                  <span id="basket-label">MEGA COB: LOCKED</span>
                 </div>
                 <div class="meter-track">
                   <div id="meter-frenzy-fill" class="meter-fill frenzy-fill" style="width: 0%"></div>
@@ -158,17 +175,20 @@
             </div>
           </div>
 
-          <!-- 2. TABBED SHOP: CHICKEN TROOPS | CLICKER UPGRADES | TD UPGRADES -->
+          <!-- 2. TABBED PIXEL SHOP: 14 TROOPS | CLICKER UPGRADES | TD LAB -->
           <div class="shop-card">
             <div class="shop-tabs" role="tablist">
               <button class="shop-tab active" data-tab="troops" type="button">
-                🐔 Troops
+                <img id="icon-tab-troops" class="px-icon px-icon-sm" alt="" />
+                <span>TROOPS (14)</span>
               </button>
               <button class="shop-tab" data-tab="clicker" type="button">
-                🌽 Clicker
+                <img id="icon-tab-clicker" class="px-icon px-icon-sm" alt="" />
+                <span>CLICKER</span>
               </button>
               <button class="shop-tab" data-tab="td" type="button">
-                🛡️ TD Lab
+                <img id="icon-tab-td" class="px-icon px-icon-sm" alt="" />
+                <span>TD LAB</span>
               </button>
             </div>
 
@@ -187,7 +207,7 @@
 
           <!-- 3. START WAVE CTA -->
           <button id="btn-start-wave" class="start-wave-btn" type="button">
-            ▶ Start Wave 1 (Unlock Clicker!)
+            &gt;&gt; START WAVE 1 (UNLOCK CLICKER!)
           </button>
         </aside>
       </main>
@@ -196,44 +216,51 @@
     <!-- HOW TO PLAY / RULES MODAL -->
     <div id="rules-modal" class="modal-backdrop hidden">
       <div class="modal-box">
-        <h2>🐔 How to Play ChickenTD</h2>
+        <h2 class="modal-heading">
+          <img id="icon-rules-chicken" class="px-icon px-icon-md" alt="" />
+          <span>HOW TO PLAY CHICKENTD</span>
+        </h2>
         <ul class="rules-list">
           <li>
-            <strong>Protect the Golden Nest:</strong> Bugs (Bloons-style multi-layer pests!) and
-            <strong>Giant Foxes</strong> (MOAB-class bosses that burst into smaller bugs!) march down
-            the farm path toward your Nest Eggs.
+            <strong>14 PIXEL CHICKEN UNITS:</strong> Deploy Brawlers, Peckers, Honeycomb Hens,
+            Outback Boomerangs, Frost-Hens, Plague Pullets, Rangers, Egg Lobbers, Arcane
+            Wyandottes, Shinobis, Buccaneers, Mariachi Roosters, Sun Chanteclers, and Cyber-Cluck
+            9000s (`[1]-[9]`, `[0]`, `[Q]`, `[W]`, `[E]`, `[R]`).
           </li>
           <li>
-            <strong>Bugs &amp; Foxes Drop $0:</strong> Popping enemies gives <strong>no money</strong>!
-            100% of your Corn comes from clicking the <strong>Henhouse Clicker</strong>.
+            <strong>BUGS &amp; FOXES GIVE 0 CORN:</strong> Layered Bugs and MOAB-class Giant Fox
+            Bosses drop zero money on pop! 100% of your Corn comes from clicking the Henhouse.
           </li>
           <li>
-            <strong>Active-Wave Clicking Only (12 CPS Cap):</strong> You can
-            <strong>only click to earn Corn while a wave is active</strong> (locked between waves!),
-            and clicking is strictly capped at <strong>12 CPS</strong>—any faster clicks do nothing.
+            <strong>ACTIVE-WAVE CLICKING + 12 CPS CAP:</strong> Clicking is locked between waves,
+            and strictly capped at <strong>12 CPS</strong> &mdash; faster clicks do nothing.
           </li>
           <li>
-            <strong>Strategic Tradeoff:</strong> Every kernel forces a choice—invest in
-            <strong>Clicker Upgrades</strong> for bigger future harvests, or deploy/upgrade
-            <strong>Chicken Troops &amp; TD Roost Lab</strong> before the Foxes overrun your Nest!
+            <strong>ECONOMY VS. DEFENSE:</strong> Every kernel is a choice between Clicker
+            upgrades, TD Roost Lab buffs, or placing &amp; upgrading your 14 Chicken units!
           </li>
         </ul>
-        <button id="btn-close-rules" class="primary-modal-btn" type="button">Got It — Cluck On!</button>
+        <button id="btn-close-rules" class="primary-modal-btn" type="button">
+          GOT IT &mdash; DEFEND THE NEST!
+        </button>
       </div>
     </div>
 
     <!-- VICTORY MODAL (WAVE 25 CLEARED) -->
     <div id="victory-modal" class="modal-backdrop hidden">
       <div class="modal-box victory-box">
-        <div class="modal-badge">🏆 CAMPAIGN CLEARED!</div>
-        <h2>Golden Nest Saved!</h2>
+        <div class="modal-badge">
+          <img id="icon-victory-trophy" class="px-icon px-icon-sm" alt="" />
+          <span>CAMPAIGN CLEARED!</span>
+        </div>
+        <h2>GOLDEN NEST SAVED!</h2>
         <p id="victory-summary">You defeated Mega Alpha Reynard on Wave 25!</p>
         <div class="modal-btn-row">
           <button id="btn-continue-freeplay" class="primary-modal-btn" type="button">
-            🔥 Continue Endless Freeplay
+            CONTINUE FREEPLAY
           </button>
           <button id="btn-restart-victory" class="secondary-modal-btn" type="button">
-            New Game
+            NEW GAME
           </button>
         </div>
       </div>
@@ -242,11 +269,14 @@
     <!-- GAME OVER MODAL -->
     <div id="gameover-modal" class="modal-backdrop hidden">
       <div class="modal-box gameover-box">
-        <div class="modal-badge danger">🥚 NEST OVERRUN!</div>
-        <h2>Out of Nest Eggs!</h2>
+        <div class="modal-badge danger">
+          <img id="icon-gameover-egg" class="px-icon px-icon-sm" alt="" />
+          <span>NEST OVERRUN!</span>
+        </div>
+        <h2>OUT OF NEST EGGS!</h2>
         <p id="gameover-summary">The Foxes &amp; Bugs raided the Nest on Wave 1.</p>
         <button id="btn-restart-gameover" class="primary-modal-btn" type="button">
-          🔄 Hatch New Run
+          HATCH NEW RUN
         </button>
       </div>
     </div>
