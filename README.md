@@ -1,18 +1,24 @@
 # ChickenTD
 
-A 16-bit pixel-art mashup of an **active Clicker game** and a **Bloons TD-inspired Tower Defense game**! Deploy and upgrade **22 specialized pixel-art Chicken Troops** to protect your **Golden Egg Nest** from multi-layered **Bugs** and giant MOAB-class **Fox Bosses**.
+A 16-bit pixel-art mashup of an **active Clicker game** and a **Bloons TD-inspired Tower Defense game**! Choose across **5 Pixel-Art Biome Maps** and **4 Difficulties**, then deploy and upgrade **22 specialized pixel-art Chicken Troops** to protect your **Golden Egg Nest** from **19 multi-layered Bugs and Mythic Fox Bosses** — including the **Solar Phoenix Fox** and **Nebula Cosmic Fox**.
 
 ## Core Mechanics
 
+- **Main Menu — 5 Maps & 4 Difficulties**:
+  - **Maps**: *Sunny Clover Meadow* (`Beginner`), *Frostbite Pine Fjord* (`Intermediate`), *Scorched Roost Caldera* (`Advanced`), *Whispering Honey-Bog* (`Expert`), and *Cosmic Egg Sanctum* (`Master`).
+  - **Difficulties**: *Chickadee* (`Easy`), *Barnyard* (`Normal`), *Fox-Hunt* (`Hard`), and *Henpocalypse* (`Nightmare`).
 - **100% Handcrafted Pixel-Art Graphics**:
-  - Custom nearest-neighbor `460x300` pixel-art meadow stage, midpoint pixel circles, square pixel pop particles, and bespoke pixel-art sprites for all 22 Chicken classes, 7 Bug types, 4 Giant Fox Bosses, and UI icons (with zero emoji sprites).
+  - Custom nearest-neighbor `460x300` pixel-art biome stages, live baked pixel-art map thumbnails, midpoint pixel circles, square pixel pop particles, and bespoke pixel-art sprites for all 22 Chicken classes, 10 Bug types, 9 Giant Fox Bosses, and UI icons (with zero emoji sprites).
+- **19 Multi-Layered Pests & Giant Fox Bosses**:
+  - **10 Bugs**: Red Ant, Blue Aphid, Spotted Ladybug, Yellow Hornet, Camo Night-Moth, Iron Stag Beetle, Emerald Mantis, Blazing Firefly (`Camo`), Obsidian Scorpion (`Armored`), and Astral Scarab (`Camo + Armored`).
+  - **9 Giant Fox Bosses**: Red Scout Fox, Armored Timber Fox, Wraith Camo-Fox (`DDT-class Camo + Armored`), Shadow Kitsune, Glacial Frost-Fox, Mega Alpha Reynard, Cyber-Reynard MK-X, **Solar Phoenix Fox**, and **Nebula Cosmic Fox**.
 - **Zero Enemy Gold — 100% Clicker Economy**:
   - Popping Bugs and Foxes awards **0 Corn**! Every single kernel of **Corn** is earned by clicking the **Henhouse Clicker**.
 - **Active-Wave Clicking Only (`12 CPS` Hard Cap)**:
   - The Henhouse Clicker is **locked between waves** — you can only click to harvest Corn while a wave of Bugs and Foxes is actively marching toward your Nest!
   - Clicking speed is strictly capped at **12 CPS** (clicks per second) in a rolling 1-second window; any clicks beyond 12 CPS do nothing.
 - **Post-Wave-10 Overdrive Scaling**:
-  - Every wave after Wave 10 ramps steeply in enemy HP (accelerating up to `~1,835x` HP on Wave 25, then compounding `1.75x` per wave in Freeplay), enemy movement speed (`+7%` per wave), and Fox Boss armada density.
+  - Every wave after Wave 10 ramps steeply in enemy HP, enemy movement speed (`+7%` per wave), and Mythic Fox Boss armada density.
 - **22 Upgradable Chicken Units (4 Tiers Each)**:
   1. `[1]` **Brawler Bantam** — Close Melee Flurry
   2. `[2]` **Pecker Hen** — Fast Seed Shooter

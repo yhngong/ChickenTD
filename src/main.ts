@@ -4,19 +4,37 @@ import {
   CHICKEN_DEFS,
   CHICKEN_ORDER,
   CLICKER_UPGRADES,
+  DIFFICULTY_DEFS,
+  DIFFICULTY_ORDER,
   getBaseCornPerClick,
-  getUpgradeCost,
   getWaveDefinition,
   MAX_CPS_CAP,
   TD_UPGRADES,
 } from './data';
 import { ChickenTdEngine } from './engine';
-import { MAP_HEIGHT, MAP_WIDTH } from './map';
-import { GhostPlacementState, MeadowRenderer, PIXEL_CANVAS_H, PIXEL_CANVAS_W } from './renderer';
+import { MAP_DEFS, MAP_HEIGHT, MAP_ORDER, MAP_WIDTH } from './map';
+import {
+  bakeMapPreviewDataUrl,
+  GhostPlacementState,
+  MeadowRenderer,
+  PIXEL_CANVAS_H,
+  PIXEL_CANVAS_W,
+} from './renderer';
 import { PIXEL_ATLAS } from './sprites';
-import { ChickenTypeId } from './types';
+import { ChickenTypeId, DifficultyId, MapId } from './types';
+
+// Main Menu Elements
+const mainMenuScreen = document.getElementById('main-menu-screen') as HTMLDivElement;
+const menuMapGrid = document.getElementById('menu-map-grid') as HTMLDivElement;
+const menuDiffGrid = document.getElementById('menu-diff-grid') as HTMLDivElement;
+const menuMapSummary = document.getElementById('menu-map-summary') as HTMLElement;
+const menuDiffSummary = document.getElementById('menu-diff-summary') as HTMLElement;
+const btnMenuStart = document.getElementById('btn-menu-start') as HTMLButtonElement;
+const btnMenuResume = document.getElementById('btn-menu-resume') as HTMLButtonElement;
+const btnMenuRules = document.getElementById('btn-menu-rules') as HTMLButtonElement;
 
 const canvas = document.getElementById('td-canvas') as HTMLCanvasElement;
+const brandSubText = document.getElementById('brand-sub-text') as HTMLElement;
 const hudCorn = document.getElementById('hud-corn') as HTMLElement;
 const hudEggs = document.getElementById('hud-eggs') as HTMLElement;
 const hudWave = document.getElementById('hud-wave') as HTMLElement;
@@ -27,6 +45,7 @@ const lblSpeed = document.getElementById('lbl-speed') as HTMLElement;
 const btnMute = document.getElementById('btn-mute') as HTMLButtonElement;
 const iconBtnSound = document.getElementById('icon-btn-sound') as HTMLImageElement;
 const btnRules = document.getElementById('btn-rules') as HTMLButtonElement;
+const btnMenu = document.getElementById('btn-menu') as HTMLButtonElement;
 
 const bannerTitle = document.getElementById('banner-title') as HTMLElement;
 const bannerDesc = document.getElementById('banner-desc') as HTMLElement;
@@ -73,9 +92,11 @@ const victoryModal = document.getElementById('victory-modal') as HTMLDivElement;
 const victorySummary = document.getElementById('victory-summary') as HTMLElement;
 const btnContinueFreeplay = document.getElementById('btn-continue-freeplay') as HTMLButtonElement;
 const btnRestartVictory = document.getElementById('btn-restart-victory') as HTMLButtonElement;
+const btnMenuVictory = document.getElementById('btn-menu-victory') as HTMLButtonElement;
 const gameoverModal = document.getElementById('gameover-modal') as HTMLDivElement;
 const gameoverSummary = document.getElementById('gameover-summary') as HTMLElement;
 const btnRestartGameover = document.getElementById('btn-restart-gameover') as HTMLButtonElement;
+const btnMenuGameover = document.getElementById('btn-menu-gameover') as HTMLButtonElement;
 
 // Wire all Pixel-Art UI Icons into the DOM (zero emojis!)
 function initStaticPixelIcons(): void {
@@ -91,6 +112,7 @@ function initStaticPixelIcons(): void {
   setImg('icon-btn-speed', PIXEL_ATLAS.getIconUrl('speed'));
   setImg('icon-btn-sound', PIXEL_ATLAS.getIconUrl('sound_on'));
   setImg('icon-btn-rules', PIXEL_ATLAS.getIconUrl('rules'));
+  setImg('icon-btn-menu', PIXEL_ATLAS.getIconUrl('menu'));
   setImg('icon-clicker-corn', PIXEL_ATLAS.getIconUrl('corn'));
   setImg('icon-tab-troops', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-tab-clicker', PIXEL_ATLAS.getIconUrl('corn'));
@@ -98,6 +120,9 @@ function initStaticPixelIcons(): void {
   setImg('icon-rules-chicken', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-victory-trophy', PIXEL_ATLAS.getIconUrl('trophy'));
   setImg('icon-gameover-egg', PIXEL_ATLAS.getIconUrl('cracked_egg'));
+  setImg('menu-hero-chicken', PIXEL_ATLAS.getChickenSprite('omega_god')?.portraitUrl ?? '');
+  setImg('menu-boss-phoenix', PIXEL_ATLAS.getEnemySprite('fox_phoenix')?.portraitUrl ?? '');
+  setImg('menu-boss-cosmic', PIXEL_ATLAS.getEnemySprite('fox_cosmic')?.portraitUrl ?? '');
   henSceneImg.src = PIXEL_ATLAS.henhouseIdleUrl;
 }
 
@@ -110,6 +135,107 @@ const renderer = new MeadowRenderer(canvas);
 
 let selectedTowerId: number | null = null;
 let peckAnimTimeout: number | null = null;
+let inMainMenu = true;
+let hasStartedRun = false;
+let pendingMapId: MapId = 'sunny_meadow';
+let pendingDifficultyId: DifficultyId = 'normal';
+
+// Bake crisp pixel-art map thumbnails once for all 5 maps!
+const MAP_THUMB_URLS = new Map<MapId, string>();
+for (const mId of MAP_ORDER) {
+  MAP_THUMB_URLS.set(mId, bakeMapPreviewDataUrl(mId));
+}
+
+function renderMainMenu(): void {
+  const selMap = MAP_DEFS[pendingMapId];
+  const selDiff = DIFFICULTY_DEFS[pendingDifficultyId];
+  menuMapSummary.textContent = `${selMap.name.toUpperCase()} • ${selMap.badge}`;
+  menuDiffSummary.textContent = `${selDiff.name.toUpperCase()} (${selDiff.badge})`;
+  btnMenuStart.textContent = `>> START BATTLE — ${selMap.name.toUpperCase()} [${selDiff.badge}]`;
+
+  const canResume = hasStartedRun && engine.status !== 'gameover';
+  if (canResume) {
+    btnMenuResume.textContent = `RESUME (WAVE ${engine.waveNumber})`;
+    btnMenuResume.classList.remove('hidden');
+  } else {
+    btnMenuResume.classList.add('hidden');
+  }
+
+  menuMapGrid.innerHTML = '';
+  for (const mId of MAP_ORDER) {
+    const mDef = MAP_DEFS[mId];
+    const isSel = mId === pendingMapId;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `map-card-btn${isSel ? ' selected' : ''}`;
+    card.innerHTML = `
+      <div class="map-thumb-wrap">
+        <img class="map-thumb-img" src="${MAP_THUMB_URLS.get(mId) ?? ''}" alt="" />
+        <span class="map-badge-pill" style="color: ${mDef.badgeColor}">${mDef.badge}</span>
+        <span class="map-len-pill">${Math.round(mDef.totalPathLength)} PX</span>
+      </div>
+      <div class="map-card-title">${mDef.name}</div>
+      <div class="map-card-desc">${mDef.description}</div>
+    `;
+    card.addEventListener('click', () => {
+      pendingMapId = mId;
+      engine.audio.playUpgrade();
+      renderMainMenu();
+    });
+    menuMapGrid.appendChild(card);
+  }
+
+  menuDiffGrid.innerHTML = '';
+  for (const dId of DIFFICULTY_ORDER) {
+    const dDef = DIFFICULTY_DEFS[dId];
+    const isSel = dId === pendingDifficultyId;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `diff-card-btn${isSel ? ' selected' : ''}`;
+    card.innerHTML = `
+      <div class="diff-card-top">
+        <span class="diff-card-name">${dDef.name}</span>
+        <span class="diff-badge" style="color: ${dDef.accentColor}">${dDef.badge}</span>
+      </div>
+      <div class="diff-card-desc">${dDef.description}</div>
+    `;
+    card.addEventListener('click', () => {
+      pendingDifficultyId = dId;
+      engine.audio.playUpgrade();
+      renderMainMenu();
+    });
+    menuDiffGrid.appendChild(card);
+  }
+}
+
+function openMainMenu(): void {
+  inMainMenu = true;
+  pendingMapId = engine.mapId;
+  pendingDifficultyId = engine.difficultyId;
+  victoryModal.classList.add('hidden');
+  gameoverModal.classList.add('hidden');
+  renderMainMenu();
+  mainMenuScreen.classList.remove('hidden');
+}
+
+function launchSelectedRun(): void {
+  selectedTowerId = null;
+  ghost.typeId = null;
+  placementBanner.classList.add('hidden');
+  hasStartedRun = true;
+  inMainMenu = false;
+  mainMenuScreen.classList.add('hidden');
+  engine.startNewRun(pendingMapId, pendingDifficultyId);
+  renderer.setMap(pendingMapId);
+  refreshFullUi();
+}
+
+function resumeActiveRun(): void {
+  if (!hasStartedRun || engine.status === 'gameover') return;
+  inMainMenu = false;
+  mainMenuScreen.classList.add('hidden');
+  refreshFullUi();
+}
 
 const ghost: GhostPlacementState = {
   typeId: null,
@@ -132,7 +258,8 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
   if (typeId) {
     selectedTowerId = null;
     const def = CHICKEN_DEFS[typeId];
-    placementText.textContent = `DEPLOYING ${def.name.toUpperCase()} (${def.baseCost.toLocaleString()} CORN) — CLICK GRASS`;
+    const cost = engine.getTowerBaseCost(typeId);
+    placementText.textContent = `DEPLOYING ${def.name.toUpperCase()} (${cost.toLocaleString()} CORN) — CLICK GRASS`;
     placementBanner.classList.remove('hidden');
   } else {
     placementBanner.classList.add('hidden');
@@ -152,20 +279,21 @@ function renderTroopCards(): void {
   troopGrid.innerHTML = '';
   for (const id of CHICKEN_ORDER) {
     const def = CHICKEN_DEFS[id];
-    const canAfford = engine.corn >= def.baseCost;
+    const cost = engine.getTowerBaseCost(id);
+    const canAfford = engine.corn >= cost;
     const isSelected = ghost.typeId === id;
     const spr = PIXEL_ATLAS.getChickenSprite(id);
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
-    btn.title = `${def.name} (${def.role}) — ${def.baseCost.toLocaleString()} Corn — Hotkey [${def.hotkey}]`;
+    btn.title = `${def.name} (${def.role}) — ${cost.toLocaleString()} Corn — Hotkey [${def.hotkey}]`;
     btn.innerHTML = `
       <img class="troop-portrait" src="${spr?.portraitUrl ?? ''}" alt="" />
       <div class="troop-meta">
         <div class="troop-top">
           <span class="troop-key">[${def.hotkey}]</span>
-          <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(def.baseCost)}</span>
+          <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(cost)}</span>
         </div>
         <span class="troop-name">${def.name}</span>
         <span class="troop-role">${def.role}</span>
@@ -187,7 +315,7 @@ function renderUpgradeLists(): void {
   for (const def of CLICKER_UPGRADES) {
     const lvl = engine.clickerLevels[def.id];
     const maxed = lvl >= def.maxLevel;
-    const cost = maxed ? 0 : getUpgradeCost(def, lvl);
+    const cost = maxed ? 0 : engine.getScaledUpgradeCost(def, lvl);
     const canBuy = !maxed && engine.corn >= cost;
     const iconUrl = PIXEL_ATLAS.getIconUrl(def.iconId);
 
@@ -208,7 +336,7 @@ function renderUpgradeLists(): void {
         ${
           maxed
             ? 'MAX'
-            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost}`
+            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost.toLocaleString()}`
         }
       </button>
     `;
@@ -222,7 +350,7 @@ function renderUpgradeLists(): void {
   for (const def of TD_UPGRADES) {
     const lvl = engine.tdLevels[def.id];
     const maxed = lvl >= def.maxLevel;
-    const cost = maxed ? 0 : getUpgradeCost(def, lvl);
+    const cost = maxed ? 0 : engine.getScaledUpgradeCost(def, lvl);
     const canBuy = !maxed && engine.corn >= cost;
     const iconUrl = PIXEL_ATLAS.getIconUrl(def.iconId);
 
@@ -243,7 +371,7 @@ function renderUpgradeLists(): void {
         ${
           maxed
             ? 'MAX'
-            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost}`
+            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost.toLocaleString()}`
         }
       </button>
     `;
@@ -291,10 +419,12 @@ function renderInspector(): void {
   btnInspTarget.textContent = `AIM: ${tower.targetMode.toUpperCase()}`;
 
   if (tower.tier < 3) {
-    const nextTier = def.tiers[(tower.tier + 1) as 1 | 2 | 3];
+    const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
+    const nextTier = def.tiers[nextTierIdx];
+    const upgCost = engine.getTowerUpgradeCost(tower.typeId, nextTierIdx);
     inspNextDesc.textContent = `NEXT (${nextTier.tierName}): ${nextTier.description}`;
-    btnInspUpgrade.textContent = `TIER ${tierNum + 1} (${nextTier.upgradeCost.toLocaleString()} CORN)`;
-    btnInspUpgrade.disabled = engine.corn < nextTier.upgradeCost;
+    btnInspUpgrade.textContent = `TIER ${tierNum + 1} (${upgCost.toLocaleString()} CORN)`;
+    btnInspUpgrade.disabled = engine.corn < upgCost;
   } else {
     inspNextDesc.textContent = 'MAXIMUM CHICKEN EVOLUTION ACHIEVED!';
     btnInspUpgrade.textContent = 'MAX TIER';
@@ -307,6 +437,10 @@ function renderInspector(): void {
 }
 
 function refreshFullUi(): void {
+  const mapName = MAP_DEFS[engine.mapId].name.toUpperCase();
+  const diffBadge = engine.getDifficulty().badge;
+  brandSubText.textContent = `${mapName} • ${diffBadge}`;
+
   hudCorn.textContent = engine.corn.toLocaleString();
   hudEggs.textContent = `${engine.eggs} / ${engine.maxEggs}`;
   hudWave.textContent = engine.freeplayUnlocked
@@ -340,15 +474,15 @@ function refreshFullUi(): void {
   renderUpgradeLists();
   renderInspector();
 
-  if (engine.status === 'victory_prompt') {
-    victorySummary.textContent = `You crushed the Omega Reynard Armada on Wave 25! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
+  if (!inMainMenu && engine.status === 'victory_prompt') {
+    victorySummary.textContent = `You crushed the Nebula Cosmic Foxes & Solar Phoenix Foxes on ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge})! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
     victoryModal.classList.remove('hidden');
   } else {
     victoryModal.classList.add('hidden');
   }
 
-  if (engine.status === 'gameover') {
-    gameoverSummary.textContent = `The Bugs & Foxes raided the Nest on Wave ${engine.waveNumber}. Total Popped: ${engine.totalBugsPopped.toLocaleString()} | Total Corn Clicked: ${engine.totalCornClicked.toLocaleString()}.`;
+  if (!inMainMenu && engine.status === 'gameover') {
+    gameoverSummary.textContent = `The Foxes & Bugs raided ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge}) on Wave ${engine.waveNumber}. Total Popped: ${engine.totalBugsPopped.toLocaleString()} | Total Corn Clicked: ${engine.totalCornClicked.toLocaleString()}.`;
     gameoverModal.classList.remove('hidden');
   } else {
     gameoverModal.classList.add('hidden');
@@ -488,7 +622,7 @@ canvas.addEventListener('click', (e) => {
   if (ghost.typeId) {
     const placed = engine.placeChicken(ghost.typeId, pt.x, pt.y);
     if (placed) {
-      if (!e.shiftKey || engine.corn < CHICKEN_DEFS[ghost.typeId].baseCost) {
+      if (!e.shiftKey || engine.corn < engine.getTowerBaseCost(ghost.typeId)) {
         ghost.typeId = null;
         placementBanner.classList.add('hidden');
         selectedTowerId = placed.id;
@@ -552,10 +686,18 @@ btnMute.addEventListener('click', () => {
 });
 
 btnRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
+btnMenuRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
 btnCloseRules.addEventListener('click', () => rulesModal.classList.add('hidden'));
 rulesModal.addEventListener('click', (e) => {
   if (e.target === rulesModal) rulesModal.classList.add('hidden');
 });
+
+btnMenu.addEventListener('click', () => {
+  btnMenu.blur();
+  openMainMenu();
+});
+btnMenuStart.addEventListener('click', () => launchSelectedRun());
+btnMenuResume.addEventListener('click', () => resumeActiveRun());
 
 btnContinueFreeplay.addEventListener('click', () => {
   engine.freeplayUnlocked = true;
@@ -569,11 +711,15 @@ btnRestartVictory.addEventListener('click', () => {
   engine.resetGame();
 });
 
+btnMenuVictory.addEventListener('click', () => openMainMenu());
+
 btnRestartGameover.addEventListener('click', () => {
   selectedTowerId = null;
   setPlacementType(null);
   engine.resetGame();
 });
+
+btnMenuGameover.addEventListener('click', () => openMainMenu());
 
 // Hotkey map for all 22 Chicken Units!
 const HOTKEY_TO_CHICKEN = new Map<string, ChickenTypeId>();
@@ -586,6 +732,8 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!rulesModal.classList.contains('hidden')) {
       rulesModal.classList.add('hidden');
+    } else if (inMainMenu) {
+      resumeActiveRun();
     } else if (ghost.typeId) {
       setPlacementType(null);
     } else if (selectedTowerId !== null) {
@@ -594,6 +742,8 @@ window.addEventListener('keydown', (e) => {
     }
     return;
   }
+
+  if (inMainMenu) return;
 
   const mappedUnit = HOTKEY_TO_CHICKEN.get(e.key.toUpperCase());
   if (mappedUnit) {
@@ -607,7 +757,8 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// Initial UI population
+// Initial UI & Main Menu population
+renderMainMenu();
 refreshFullUi();
 
 let lastPerfMs = performance.now();
@@ -617,8 +768,10 @@ function loop(nowMs: number): void {
     const dt = Math.max(0.001, Math.min(0.08, (nowMs - lastPerfMs) / 1000));
     lastPerfMs = nowMs;
 
-    engine.tick(dt);
-    updateLiveClickerMeters();
+    if (!inMainMenu) {
+      engine.tick(dt);
+      updateLiveClickerMeters();
+    }
     renderer.render(canvas, engine, selectedTowerId, ghost, nowMs / 1000);
   } catch (err) {
     console.error('ChickenTD tick error:', err);

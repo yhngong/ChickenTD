@@ -12,6 +12,66 @@
     />
   </head>
   <body>
+    <!-- 16-BIT PIXEL MAIN MENU (CHOOSE MAP & DIFFICULTY) -->
+    <div id="main-menu-screen" class="main-menu-screen">
+      <div class="menu-container">
+        <header class="menu-hero">
+          <div class="menu-brand-side">
+            <img id="menu-hero-chicken" class="menu-hero-sprite" alt="" />
+            <div>
+              <div class="menu-kicker">16-BIT CLICKER &times; TOWER DEFENSE</div>
+              <h1 class="menu-logo">CHICKEN<span>TD</span></h1>
+              <p class="menu-tagline">
+                22 Pixel Chicken Units &bull; 19 Layered Bugs &amp; Mythic Fox Bosses &bull; 12 CPS Clicker Economy
+              </p>
+            </div>
+          </div>
+
+          <div class="menu-boss-showcase">
+            <span class="showcase-lbl">NEW APEX BOSS THREATS</span>
+            <div class="showcase-pair">
+              <div class="showcase-chip">
+                <img id="menu-boss-phoenix" class="showcase-fox-img" alt="" />
+                <span>SOLAR PHOENIX FOX</span>
+              </div>
+              <div class="showcase-chip cosmic">
+                <img id="menu-boss-cosmic" class="showcase-fox-img" alt="" />
+                <span>NEBULA COSMIC FOX</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section class="menu-section">
+          <div class="menu-sec-head">
+            <h2>1. SELECT BATTLEFIELD MAP (5 BIOMES)</h2>
+            <span id="menu-map-summary" class="menu-sec-sub">SUNNY CLOVER MEADOW &bull; BEGINNER</span>
+          </div>
+          <div id="menu-map-grid" class="menu-map-grid"></div>
+        </section>
+
+        <section class="menu-section">
+          <div class="menu-sec-head">
+            <h2>2. SELECT DIFFICULTY</h2>
+            <span id="menu-diff-summary" class="menu-sec-sub">BARNYARD (NORMAL)</span>
+          </div>
+          <div id="menu-diff-grid" class="menu-diff-grid"></div>
+        </section>
+
+        <footer class="menu-cta-row">
+          <button id="btn-menu-resume" class="secondary-modal-btn menu-side-btn hidden" type="button">
+            RESUME CURRENT RUN
+          </button>
+          <button id="btn-menu-start" class="menu-play-btn" type="button">
+            &gt;&gt; START NEW GAME
+          </button>
+          <button id="btn-menu-rules" class="secondary-modal-btn menu-side-btn" type="button">
+            HOW TO PLAY
+          </button>
+        </footer>
+      </div>
+    </div>
+
     <div id="app-root">
       <!-- TOP PIXEL HUD BAR -->
       <header id="top-hud">
@@ -19,7 +79,7 @@
           <img id="icon-brand" class="px-icon px-icon-lg" alt="" />
           <div>
             <h1 class="brand-title">CHICKEN<span>TD</span></h1>
-            <span class="brand-sub">PIXEL NEST DEFENSE &bull; 22 UNITS</span>
+            <span id="brand-sub-text" class="brand-sub">SUNNY CLOVER MEADOW &bull; NORMAL</span>
           </div>
         </div>
 
@@ -75,6 +135,10 @@
           <button id="btn-rules" class="hud-btn" type="button" title="How to Play">
             <img id="icon-btn-rules" class="px-icon px-icon-sm" alt="" />
             <span>RULES</span>
+          </button>
+          <button id="btn-menu" class="hud-btn menu-hud-btn" type="button" title="Open Main Menu (Maps & Difficulty)">
+            <img id="icon-btn-menu" class="px-icon px-icon-sm" alt="" />
+            <span>MENU</span>
           </button>
         </div>
       </header>
@@ -228,6 +292,11 @@
             `[0]`, `[Q]-[R]`, `[A]-[F]`, `[Z]-[V]`).
           </li>
           <li>
+            <strong>19 LAYERED ENEMIES &amp; MYTHIC FOX BOSSES:</strong> Battle Scorpions, Astral
+            Scarabs, stealthy Wraith Camo-Foxes, Glacial Frost-Foxes, Cyber-Reynards, blazing
+            <strong>Solar Phoenix Foxes</strong>, and galaxy-eating <strong>Nebula Cosmic Foxes</strong>!
+          </li>
+          <li>
             <strong>POST-WAVE-10 OVERDRIVE:</strong> Every wave after Wave 10 ramps exponentially in
             HP, movement speed, and Giant Fox Boss density &mdash; push your economy hard to keep up!
           </li>
@@ -258,13 +327,16 @@
           <span>CAMPAIGN CLEARED!</span>
         </div>
         <h2>GOLDEN NEST SAVED!</h2>
-        <p id="victory-summary">You defeated the Omega Reynard Armada on Wave 25!</p>
+        <p id="victory-summary">You defeated the Nebula Cosmic Fox on Wave 25!</p>
         <div class="modal-btn-row">
           <button id="btn-continue-freeplay" class="primary-modal-btn" type="button">
             CONTINUE FREEPLAY
           </button>
           <button id="btn-restart-victory" class="secondary-modal-btn" type="button">
-            NEW GAME
+            RETRY MAP
+          </button>
+          <button id="btn-menu-victory" class="secondary-modal-btn" type="button">
+            MAIN MENU
           </button>
         </div>
       </div>
@@ -279,9 +351,14 @@
         </div>
         <h2>OUT OF NEST EGGS!</h2>
         <p id="gameover-summary">The Foxes &amp; Bugs raided the Nest on Wave 1.</p>
-        <button id="btn-restart-gameover" class="primary-modal-btn" type="button">
-          HATCH NEW RUN
-        </button>
+        <div class="modal-btn-row">
+          <button id="btn-restart-gameover" class="primary-modal-btn" type="button">
+            HATCH NEW RUN
+          </button>
+          <button id="btn-menu-gameover" class="secondary-modal-btn" type="button">
+            MAIN MENU
+          </button>
+        </div>
       </div>
     </div>
 

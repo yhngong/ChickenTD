@@ -2,17 +2,14 @@ import { CHICKEN_DEFS, ENEMY_DEFS } from './data';
 import { ChickenTdEngine } from './engine';
 import {
   canPlaceChickenAt,
-  DECOR_TREES,
-  ENTRANCE_POSITION,
+  getActiveMap,
   getPointAlongPath,
-  NEST_POSITION,
+  MAP_DEFS,
+  MapDefinition,
   PATH_HALF_WIDTH,
-  PATH_WAYPOINTS,
-  POND_OBSTACLE,
-  TOTAL_PATH_LENGTH,
 } from './map';
 import { PIXEL_ATLAS } from './sprites';
-import { ActiveEnemy, ActiveProjectile, ChickenTypeId, PlacedChicken } from './types';
+import { ActiveEnemy, ActiveProjectile, ChickenTypeId, MapId, PlacedChicken } from './types';
 
 export interface GhostPlacementState {
   typeId: ChickenTypeId | null;
@@ -175,8 +172,219 @@ function drawFilledPixelDisk(
   }
 }
 
+function bakeStaticMapOntoCanvas(targetCanvas: HTMLCanvasElement, mapDef: MapDefinition): void {
+  const ctx = targetCanvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const th = mapDef.theme;
+
+  // 1. Pixel-art checkerboard biome tiles (20x20 px tiles)
+  const tile = 20;
+  for (let py = 0; py < PIXEL_CANVAS_H; py += tile) {
+    for (let px = 0; px < PIXEL_CANVAS_W; px += tile) {
+      const odd = ((px / tile + py / tile) & 1) === 1;
+      ctx.fillStyle = odd ? th.tileOdd : th.tileEven;
+      ctx.fillRect(px, py, tile, tile);
+
+      // Deterministic pixel grass/snow/ash/star tufts inside each tile
+      const hash = ((px * 73856093) ^ (py * 19349663)) >>> 0;
+      ctx.fillStyle = odd ? th.tuftOdd : th.tuftEven;
+      if (mapDef.biome === 'cosmic') {
+        ctx.fillRect(px + (hash % 15) + 2, py + ((hash >> 4) % 15) + 2, 1, 1);
+        if ((hash & 3) === 0) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(px + ((hash >> 8) % 14) + 3, py + ((hash >> 12) % 14) + 3, 1, 1);
+        }
+      } else {
+        ctx.fillRect(px + (hash % 14) + 2, py + ((hash >> 4) % 14) + 2, 1, 2);
+        ctx.fillRect(px + ((hash >> 8) % 14) + 3, py + ((hash >> 12) % 14) + 2, 2, 1);
+      }
+    }
+  }
+
+  // 2. Biome ground details (wildflowers / frost crystals / ember vents / bog mushrooms / star prisms)
+  for (const f of mapDef.flowers) {
+    const fx = toPx(f.x);
+    const fy = toPx(f.y);
+    if (mapDef.biome === 'meadow') {
+      ctx.fillStyle = '#2E6F21';
+      ctx.fillRect(fx, fy + 2, 1, 2);
+    }
+    ctx.fillStyle = f.c;
+    ctx.fillRect(fx - 1, fy, 3, 1);
+    ctx.fillRect(fx, fy - 1, 1, 3);
+    ctx.fillStyle = mapDef.biome === 'cosmic' ? '#FFFFFF' : '#F59E0B';
+    ctx.fillRect(fx, fy, 1, 1);
+  }
+
+  // 3. Chunky Stepped Pixel Road
+  const halfPx = toPx(PATH_HALF_WIDTH);
+  const wps = mapDef.waypoints;
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i];
+    const b = wps[i + 1];
+    const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx + 2);
+    const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx + 2);
+    const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx + 2);
+    const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx + 2);
+    ctx.fillStyle = th.roadBorder;
+    ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+  }
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i];
+    const b = wps[i + 1];
+    const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx + 1);
+    const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx + 1);
+    const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx + 1);
+    const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx + 1);
+    ctx.fillStyle = th.roadCurb;
+    ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+  }
+  for (let i = 0; i < wps.length - 1; i++) {
+    const a = wps[i];
+    const b = wps[i + 1];
+    const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx - 1);
+    const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx - 1);
+    const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx - 1);
+    const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx - 1);
+    ctx.fillStyle = th.roadFill;
+    ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+  }
+
+  // Center pixel cobble trail markers
+  for (let d = 18; d < mapDef.totalPathLength - 20; d += 26) {
+    const pt = getPointAlongPath(d, 0, mapDef);
+    const px = toPx(pt.x);
+    const py = toPx(pt.y);
+    ctx.fillStyle = th.cobbleDark;
+    ctx.fillRect(px - 2, py - 1, 4, 2);
+    ctx.fillStyle = th.cobbleLight;
+    ctx.fillRect(px - 1, py - 1, 2, 1);
+  }
+
+  // 4. Pixel Pools / Glacier Lakes / Magma Pools / Void Rifts
+  for (const pond of mapDef.ponds) {
+    const pondX = toPx(pond.x);
+    const pondY = toPx(pond.y);
+    const pondRx = toPx(pond.rx);
+    const pondRy = toPx(pond.ry);
+    drawFilledPixelDisk(ctx, pondX, pondY, pondRx + 3, pondRy + 3, th.poolOuter);
+    drawFilledPixelDisk(ctx, pondX, pondY, pondRx + 1, pondRy + 1, th.poolRim);
+    drawFilledPixelDisk(ctx, pondX, pondY, pondRx, pondRy, th.poolFill);
+    drawFilledPixelDisk(
+      ctx,
+      pondX - 2,
+      pondY - 2,
+      Math.max(3, pondRx - 4),
+      Math.max(3, pondRy - 4),
+      th.poolHighlight
+    );
+
+    if (mapDef.biome === 'meadow' || mapDef.biome === 'bog') {
+      drawFilledPixelDisk(ctx, pondX + 7, pondY + 4, 5, 4, '#16A34A');
+      ctx.fillStyle = th.poolAccent;
+      ctx.fillRect(pondX + 6, pondY + 2, 2, 2);
+    } else if (mapDef.biome === 'caldera') {
+      drawFilledPixelDisk(ctx, pondX + 6, pondY + 3, 4, 3, th.poolAccent);
+      drawFilledPixelDisk(ctx, pondX - 7, pondY - 3, 3, 2, '#FFFFFF');
+    } else if (mapDef.biome === 'cosmic') {
+      drawPixelCircle(ctx, pondX, pondY, Math.max(4, pondRy - 4), th.poolAccent, true);
+    }
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(pondX - 9, pondY - 5, 5, 1);
+    ctx.fillRect(pondX - 6, pondY - 3, 3, 1);
+  }
+
+  // 5. Pixel Trees / Snow Pines / Obsidian Spires / Crystal Obelisks
+  for (const tree of mapDef.trees) {
+    const tx = toPx(tree.x);
+    const ty = toPx(tree.y);
+    const tr = toPx(tree.r);
+    drawFilledPixelDisk(ctx, tx + 2, ty + 6, tr, Math.max(4, tr - 4), 'rgba(15,23,42,0.32)');
+
+    if (mapDef.biome === 'caldera' || mapDef.biome === 'cosmic') {
+      // Jagged obsidian volcano spire or floating astral crystal!
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(tx - 6, ty - 7, 12, 15);
+      ctx.fillStyle = th.treeDark;
+      ctx.fillRect(tx - 5, ty - 6, 10, 13);
+      ctx.fillStyle = th.treeMid;
+      ctx.fillRect(tx - 3, ty - 8, 6, 12);
+      ctx.fillStyle = th.treeLight;
+      ctx.fillRect(tx - 1, ty - 9, 3, 7);
+    } else {
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(tx - 3, ty + 2, 6, 7);
+      ctx.fillStyle = th.treeTrunk;
+      ctx.fillRect(tx - 2, ty + 2, 4, 6);
+      drawFilledPixelDisk(ctx, tx, ty, tr + 1, tr, OUTLINE);
+      drawFilledPixelDisk(ctx, tx, ty, tr, tr - 1, th.treeDark);
+      drawFilledPixelDisk(
+        ctx,
+        tx - 2,
+        ty - 2,
+        Math.max(3, tr - 3),
+        Math.max(3, tr - 3),
+        th.treeMid
+      );
+      drawFilledPixelDisk(
+        ctx,
+        tx - 3,
+        ty - 4,
+        Math.max(2, tr - 7),
+        Math.max(2, tr - 7),
+        th.treeLight
+      );
+    }
+  }
+
+  // 6. Pixel Den / Portal Entrance
+  const ex = toPx(mapDef.entrancePos.x);
+  const ey = toPx(mapDef.entrancePos.y);
+  ctx.fillStyle = OUTLINE;
+  ctx.fillRect(ex - 9, ey - 13, 18, 26);
+  ctx.fillStyle = th.denOuter;
+  ctx.fillRect(ex - 8, ey - 12, 16, 24);
+  ctx.fillStyle = th.denStripe;
+  ctx.fillRect(ex - 7, ey - 10, 13, 5);
+  ctx.fillRect(ex - 7, ey + 5, 13, 5);
+  ctx.fillStyle = '#0F172A';
+  ctx.fillRect(ex + 2, ey - 10, 6, 20);
+  ctx.fillStyle = th.denEye;
+  ctx.fillRect(ex + 4, ey - 3, 1, 1);
+  ctx.fillRect(ex + 4, ey + 2, 1, 1);
+}
+
+/**
+ * Bakes a crisp 115x75 pixel-art thumbnail PNG data URL for Main Menu Map Cards!
+ */
+export function bakeMapPreviewDataUrl(mapId: MapId): string {
+  if (typeof document === 'undefined') return '';
+  const mapDef = MAP_DEFS[mapId];
+  const full = document.createElement('canvas');
+  full.width = PIXEL_CANVAS_W;
+  full.height = PIXEL_CANVAS_H;
+  bakeStaticMapOntoCanvas(full, mapDef);
+
+  // Stamp Golden Nest marker onto full canvas before downsampling
+  const fCtx = full.getContext('2d')!;
+  const nx = toPx(mapDef.nestPos.x);
+  const ny = toPx(mapDef.nestPos.y);
+  drawFilledPixelDisk(fCtx, nx, ny, 14, 11, OUTLINE);
+  drawFilledPixelDisk(fCtx, nx, ny, 11, 8, '#FACC15');
+  drawFilledPixelDisk(fCtx, nx, ny, 6, 5, '#FEF9C3');
+
+  const thumb = document.createElement('canvas');
+  thumb.width = 115;
+  thumb.height = 75;
+  const tCtx = thumb.getContext('2d')!;
+  tCtx.imageSmoothingEnabled = false;
+  tCtx.drawImage(full, 0, 0, 115, 75);
+  return thumb.toDataURL();
+}
+
 export class MeadowRenderer {
   private staticBg: HTMLCanvasElement;
+  private bakedMapId: MapId | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     canvas.width = PIXEL_CANVAS_W;
@@ -187,157 +395,13 @@ export class MeadowRenderer {
     this.staticBg = document.createElement('canvas');
     this.staticBg.width = PIXEL_CANVAS_W;
     this.staticBg.height = PIXEL_CANVAS_H;
-    this.bakeStaticPixelMeadow();
+    this.setMap(getActiveMap().id);
   }
 
-  private bakeStaticPixelMeadow(): void {
-    const ctx = this.staticBg.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-
-    // 1. Pixel-art checkerboard meadow tiles (20x20 px tiles)
-    const tile = 20;
-    for (let py = 0; py < PIXEL_CANVAS_H; py += tile) {
-      for (let px = 0; px < PIXEL_CANVAS_W; px += tile) {
-        const odd = ((px / tile + py / tile) & 1) === 1;
-        ctx.fillStyle = odd ? '#49A835' : '#54B83C';
-        ctx.fillRect(px, py, tile, tile);
-
-        // Deterministic pixel grass tufts inside each tile
-        const hash = ((px * 73856093) ^ (py * 19349663)) >>> 0;
-        ctx.fillStyle = odd ? '#3B8D29' : '#68CC4E';
-        ctx.fillRect(px + (hash % 14) + 2, py + ((hash >> 4) % 14) + 2, 1, 2);
-        ctx.fillRect(px + ((hash >> 8) % 14) + 3, py + ((hash >> 12) % 14) + 2, 2, 1);
-      }
-    }
-
-    // 2. Pixel wildflowers scattered on grass
-    const flowers = [
-      { x: 115, y: 235, c: '#FEF08A' },
-      { x: 145, y: 380, c: '#FB7185' },
-      { x: 335, y: 340, c: '#93C5FD' },
-      { x: 405, y: 225, c: '#FDE047' },
-      { x: 575, y: 205, c: '#FFFFFF' },
-      { x: 565, y: 455, c: '#F472B6' },
-      { x: 775, y: 355, c: '#C4B5FD' },
-      { x: 785, y: 185, c: '#FEF08A' },
-      { x: 130, y: 495, c: '#FDE047' },
-      { x: 350, y: 165, c: '#FFFFFF' },
-    ];
-    for (const f of flowers) {
-      const fx = toPx(f.x);
-      const fy = toPx(f.y);
-      ctx.fillStyle = '#2E6F21';
-      ctx.fillRect(fx, fy + 2, 1, 2);
-      ctx.fillStyle = f.c;
-      ctx.fillRect(fx - 1, fy, 3, 1);
-      ctx.fillRect(fx, fy - 1, 1, 3);
-      ctx.fillStyle = '#F59E0B';
-      ctx.fillRect(fx, fy, 1, 1);
-    }
-
-    // 3. Chunky Stepped Pixel Dirt Path
-    const halfPx = toPx(PATH_HALF_WIDTH); // 13px half-width
-    // Pass A: Dark pixel border
-    for (let i = 0; i < PATH_WAYPOINTS.length - 1; i++) {
-      const a = PATH_WAYPOINTS[i];
-      const b = PATH_WAYPOINTS[i + 1];
-      const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx + 2);
-      const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx + 2);
-      const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx + 2);
-      const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx + 2);
-      ctx.fillStyle = '#5C3A1E';
-      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-    }
-    // Pass B: Mid-brown curb lip
-    for (let i = 0; i < PATH_WAYPOINTS.length - 1; i++) {
-      const a = PATH_WAYPOINTS[i];
-      const b = PATH_WAYPOINTS[i + 1];
-      const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx + 1);
-      const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx + 1);
-      const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx + 1);
-      const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx + 1);
-      ctx.fillStyle = '#9C6B3B';
-      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-    }
-    // Pass C: Warm pixel sand interior + pixel pebbles
-    for (let i = 0; i < PATH_WAYPOINTS.length - 1; i++) {
-      const a = PATH_WAYPOINTS[i];
-      const b = PATH_WAYPOINTS[i + 1];
-      const x1 = Math.min(toPx(a.x), toPx(b.x)) - (halfPx - 1);
-      const y1 = Math.min(toPx(a.y), toPx(b.y)) - (halfPx - 1);
-      const x2 = Math.max(toPx(a.x), toPx(b.x)) + (halfPx - 1);
-      const y2 = Math.max(toPx(a.y), toPx(b.y)) + (halfPx - 1);
-      ctx.fillStyle = '#DFBA84';
-      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-    }
-
-    // Center pixel cobble trail markers
-    for (let d = 18; d < TOTAL_PATH_LENGTH - 20; d += 26) {
-      const pt = getPointAlongPath(d);
-      const px = toPx(pt.x);
-      const py = toPx(pt.y);
-      ctx.fillStyle = '#C69B61';
-      ctx.fillRect(px - 2, py - 1, 4, 2);
-      ctx.fillStyle = '#EED3A7';
-      ctx.fillRect(px - 1, py - 1, 2, 1);
-    }
-
-    // 4. Pixel Pond Obstacle
-    const pondX = toPx(POND_OBSTACLE.x);
-    const pondY = toPx(POND_OBSTACLE.y);
-    const pondRx = toPx(POND_OBSTACLE.rx);
-    const pondRy = toPx(POND_OBSTACLE.ry);
-    drawFilledPixelDisk(ctx, pondX, pondY, pondRx + 3, pondRy + 3, '#6B4F35');
-    drawFilledPixelDisk(ctx, pondX, pondY, pondRx + 1, pondRy + 1, '#93704D');
-    drawFilledPixelDisk(ctx, pondX, pondY, pondRx, pondRy, '#0284C7');
-    drawFilledPixelDisk(ctx, pondX - 2, pondY - 2, pondRx - 4, pondRy - 4, '#38BDF8');
-    // Pixel lilypad + pink pixel blossom
-    drawFilledPixelDisk(ctx, pondX + 8, pondY + 5, 5, 4, '#16A34A');
-    ctx.fillStyle = '#38BDF8';
-    ctx.fillRect(pondX + 10, pondY + 4, 3, 2);
-    ctx.fillStyle = '#F472B6';
-    ctx.fillRect(pondX + 7, pondY + 3, 2, 2);
-    // Pixel water sparkle lines
-    ctx.fillStyle = '#E0F2FE';
-    ctx.fillRect(pondX - 11, pondY - 6, 6, 1);
-    ctx.fillRect(pondX - 8, pondY - 4, 4, 1);
-
-    // 5. Pixel Decorative Oak Trees
-    for (const tree of DECOR_TREES) {
-      const tx = toPx(tree.x);
-      const ty = toPx(tree.y);
-      const tr = toPx(tree.r);
-      // Ground shadow
-      drawFilledPixelDisk(ctx, tx + 2, ty + 6, tr, Math.max(4, tr - 4), 'rgba(15,23,42,0.28)');
-      // Trunk
-      ctx.fillStyle = OUTLINE;
-      ctx.fillRect(tx - 3, ty + 2, 6, 7);
-      ctx.fillStyle = '#78350F';
-      ctx.fillRect(tx - 2, ty + 2, 4, 6);
-      // Layered pixel foliage
-      drawFilledPixelDisk(ctx, tx, ty, tr + 1, tr, OUTLINE);
-      drawFilledPixelDisk(ctx, tx, ty, tr, tr - 1, '#15803D');
-      drawFilledPixelDisk(ctx, tx - 2, ty - 2, Math.max(3, tr - 3), Math.max(3, tr - 3), '#22C55E');
-      drawFilledPixelDisk(ctx, tx - 3, ty - 4, Math.max(2, tr - 7), Math.max(2, tr - 7), '#86EFAC');
-    }
-
-    // 6. Pixel Hollow Log Bug Den Entrance
-    const ex = toPx(ENTRANCE_POSITION.x);
-    const ey = toPx(ENTRANCE_POSITION.y);
-    ctx.fillStyle = OUTLINE;
-    ctx.fillRect(ex - 9, ey - 13, 18, 26);
-    ctx.fillStyle = '#78350F';
-    ctx.fillRect(ex - 8, ey - 12, 16, 24);
-    ctx.fillStyle = '#92400E';
-    ctx.fillRect(ex - 7, ey - 10, 13, 5);
-    ctx.fillRect(ex - 7, ey + 5, 13, 5);
-    // Dark cave opening
-    ctx.fillStyle = '#0F172A';
-    ctx.fillRect(ex + 2, ey - 10, 6, 20);
-    // Glowing bug eyes inside den!
-    ctx.fillStyle = '#EF4444';
-    ctx.fillRect(ex + 4, ey - 3, 1, 1);
-    ctx.fillRect(ex + 4, ey + 2, 1, 1);
+  public setMap(mapId: MapId): void {
+    if (this.bakedMapId === mapId) return;
+    this.bakedMapId = mapId;
+    bakeStaticMapOntoCanvas(this.staticBg, MAP_DEFS[mapId]);
   }
 
   public render(
@@ -347,11 +411,14 @@ export class MeadowRenderer {
     ghost: GhostPlacementState,
     nowSec: number
   ): void {
+    if (this.bakedMapId !== engine.mapId) {
+      this.setMap(engine.mapId);
+    }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Static pixel meadow background
+    // 1. Static pixel biome background
     ctx.drawImage(this.staticBg, 0, 0);
 
     // 2. Pixel Golden Egg Nest
@@ -373,9 +440,9 @@ export class MeadowRenderer {
     // 4. Ghost Placement Preview (Pixel Sprite + Pixel Range Ring)
     if (ghost.typeId && ghost.insideCanvas) {
       const def = CHICKEN_DEFS[ghost.typeId];
+      const cost = engine.getTowerBaseCost(ghost.typeId);
       const valid =
-        canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) &&
-        engine.corn >= def.baseCost;
+        canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) && engine.corn >= cost;
       const range = Math.round(def.tiers[0].range * (1 + engine.tdLevels.eagleRoost * 0.08));
       const gx = toPx(ghost.mouseX);
       const gy = toPx(ghost.mouseY);
@@ -444,8 +511,9 @@ export class MeadowRenderer {
     eggs: number,
     nowSec: number
   ): void {
-    const nx = toPx(NEST_POSITION.x);
-    const ny = toPx(NEST_POSITION.y);
+    const nestPos = getActiveMap().nestPos;
+    const nx = toPx(nestPos.x);
+    const ny = toPx(nestPos.y);
 
     // Subtle pulsing pixel halo
     const pulseR = 16 + Math.round(Math.sin(nowSec * 3.2));
@@ -815,14 +883,15 @@ export class MeadowRenderer {
     ctx: CanvasRenderingContext2D,
     engine: ChickenTdEngine
   ): void {
+    const mapDef = getActiveMap();
     // BUG DEN pixel sign
-    const ex = toPx(ENTRANCE_POSITION.x) + 14;
-    const ey = toPx(ENTRANCE_POSITION.y) - 18;
+    const ex = toPx(mapDef.entrancePos.x) + 14;
+    const ey = toPx(mapDef.entrancePos.y) - 18;
     drawCrispPixelText(ctx, 'BUG DEN', ex, ey, '#FEF08A');
 
     // NEST EGGS pixel counter above Nest
-    const nx = toPx(NEST_POSITION.x);
-    const ny = toPx(NEST_POSITION.y) - 17;
+    const nx = toPx(mapDef.nestPos.x);
+    const ny = toPx(mapDef.nestPos.y) - 17;
     drawCrispPixelText(ctx, `${engine.eggs} EGGS`, nx, ny, '#FFFBEB');
 
     // Floating combat / upgrade pixel popups

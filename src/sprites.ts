@@ -395,6 +395,23 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
       '..............',
     ],
   },
+  menu: {
+    pal: { O: OUTLINE, Y: '#FACC15', W: '#F8FAFC' },
+    rows: [
+      '..............',
+      '.OOOOOOOOOOOO.',
+      '.OYYYYYYYYYYO.',
+      '.OOOOOOOOOOOO.',
+      '.OOOOOOOOOOOO.',
+      '.OWWWWWWWWWWO.',
+      '.OOOOOOOOOOOO.',
+      '.OOOOOOOOOOOO.',
+      '.OYYYYYYYYYYO.',
+      '.OOOOOOOOOOOO.',
+      '..............',
+      '..............',
+    ],
+  },
 };
 
 // ==================== 2. PIXEL CHICKEN GENERATOR (22 DISTINCT UNITS!) ====================
@@ -732,10 +749,11 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
   return c;
 }
 
-// ==================== 3. ENEMY PIXEL SPRITES (7 BUGS + 4 GIANT FOXES) ====================
+// ==================== 3. ENEMY PIXEL SPRITES (10 BUGS + 9 GIANT FOXES) ====================
 export interface EnemySpriteSet {
   frames: [HTMLCanvasElement, HTMLCanvasElement];
   flashFrames: [HTMLCanvasElement, HTMLCanvasElement];
+  portraitUrl: string;
 }
 
 function buildBugSprite(typeId: EnemyTypeId, frameIdx: 0 | 1): HTMLCanvasElement {
@@ -823,6 +841,56 @@ function buildBugSprite(typeId: EnemyTypeId, frameIdx: 0 | 1): HTMLCanvasElement
     );
   }
 
+  if (typeId === 'firefly_wisp') {
+    const wingRow = frameIdx === 0 ? '..OOWWOOWWOO..' : '...OOWWWWOO...';
+    return compileGridSprite(
+      [
+        wingRow,
+        '....OOWWOO....',
+        '.OOOOOOOOOOOO.',
+        'OYYYYFFFFDDDEO',
+        'OHHHYFFFFDDDEO',
+        '.OOOOOOOOOOOO.',
+        '..............',
+      ],
+      { O: OUTLINE, Y: '#FACC15', H: '#FFFFFF', F: '#F97316', D: '#7C2D12', W: '#FEF9C3', E: '#38BDF8' }
+    );
+  }
+
+  if (typeId === 'scorpion') {
+    const tailTip = frameIdx === 0 ? '.ORRO.........' : '..ORRO........';
+    return compileGridSprite(
+      [
+        tailTip,
+        '.OPPPO........',
+        '..OPPOOOOOOO..',
+        '..OPPPPPPPPPOO',
+        '..OPPDDPPPPPRR',
+        '..OPPPPPPPPPOO',
+        '..OOOOOOOOOO..',
+        legShift ? '..O..O..O..O..' : '...O..O..O..O.',
+      ],
+      { O: OUTLINE, P: '#581C87', D: '#A855F7', R: '#EF4444' }
+    );
+  }
+
+  if (typeId === 'void_scarab') {
+    return compileGridSprite(
+      [
+        legShift ? '..O..OO..O....' : '.O..OO..O.....',
+        '..OOOOOOOOOO..',
+        '.OYYCCCCCCYYO.',
+        'OYCCICCCCCICYO',
+        'OYCCIIYYYYCCEO',
+        'OYCCICCCCCICYO',
+        '.OYYCCCCCCYYO.',
+        '..OOOOOOOOOO..',
+        legShift ? '.O..OO..O.....' : '..O..OO..O....',
+      ],
+      { O: OUTLINE, C: '#0891B2', I: '#67E8F9', Y: '#FACC15', E: '#FFFFFF' }
+    );
+  }
+
   // Emerald Mantis
   return compileGridSprite(
     [
@@ -841,6 +909,73 @@ function buildBugSprite(typeId: EnemyTypeId, frameIdx: 0 | 1): HTMLCanvasElement
 
 function buildFoxBossSprite(typeId: EnemyTypeId, frameIdx: 0 | 1): HTMLCanvasElement {
   const step = frameIdx === 0 ? 0 : 1;
+
+  // Bespoke Winged Solar Phoenix Fox (30x14 pixel art with flapping Flame Wings!)
+  if (typeId === 'fox_phoenix') {
+    const wingTop = step
+      ? '..........OOYYYYOO..OO..OO....'
+      : '........OOYYYYYYOO..OO..OO....';
+    const wingMid = step
+      ? '........OOYYFFFFYYOOFFOOFFO...'
+      : '.......OYYFFFFFFFFYYFFOOFFO...';
+    return compileGridSprite(
+      [
+        wingTop,
+        wingMid,
+        '.OOOO....OFFFFFFFFFFFFLLFFFO..',
+        'OYYYYFOO..OFFFFYYFFFFLLLLLLFFO',
+        'OWWYYFFFOOOFFFFYYYYFFLLFEWLLFO',
+        '.OYYYYFFFFFFFFFYYYYFFFFFWWFFO.',
+        '..OFFYYYYFFFFFFFFFFFFFFFWWWW0.'.replace('0', 'O'),
+        '...OOFFFFFFFFYYYYYYFFFFFFFOO..',
+        '.....OOOOOFFFFWWWWWWFFFFOO....',
+        '..........OOOOOOOOOOOOOO......',
+        step ? '........OO..OO......OO..OO....' : '.........OO..OO....OO..OO.....',
+        step ? '........OYY.OYY.....OYY.OYY...' : '.........OYY.OYY...OYY.OYY....',
+      ],
+      {
+        O: OUTLINE,
+        F: '#EA580C',
+        L: '#F97316',
+        Y: '#FACC15',
+        W: '#FEF9C3',
+        E: '#38BDF8',
+      }
+    );
+  }
+
+  // Bespoke Galaxy-Devouring Nebula Cosmic Fox (32x14 pixel art with Saturn Halo & Starfield!)
+  if (typeId === 'fox_cosmic') {
+    return compileGridSprite(
+      [
+        '...............OCCCCCCCO........',
+        '.............OOCCYYYYYCCOO......',
+        '.OOOO........OC..OFFO.OFFOC.....',
+        'OCCPPFOO........OFFLLLLLFFO.....',
+        'OSWPPPFFOO.....OFFLLSLFEWLLFO...',
+        '.OCCPPPFFFOOOOOFFFMPMMPFFWWFFO..',
+        '..OPPPPSPPPPPPPPMMSMMMMPFFFFCC0.'.replace('0', 'O'),
+        '...OOPPPPPPPPPPPMMMMMMMMPPPFOO..',
+        '.....OOOOOPPPPPCCCCCCCCPPPOO....',
+        '..........OOOOOOOOOOOOOOOO......',
+        step ? '........OO..OO......OO..OO......' : '.........OO..OO....OO..OO.......',
+        step ? '........OCC.OCC.....OCC.OCC.....' : '.........OCC.OCC...OCC.OCC......',
+      ],
+      {
+        O: OUTLINE,
+        P: '#312E81',
+        F: '#4C1D95',
+        L: '#7E22CE',
+        M: '#A855F7',
+        C: '#22D3EE',
+        Y: '#FACC15',
+        S: '#FFFFFF',
+        W: '#F0ABFC',
+        E: '#FEF08A',
+      }
+    );
+  }
+
   const pal: Record<string, string> = {
     O: OUTLINE,
     F: '#EA580C',
@@ -855,27 +990,51 @@ function buildFoxBossSprite(typeId: EnemyTypeId, frameIdx: 0 | 1): HTMLCanvasEle
     pal.F = '#7C2D12';
     pal.L = '#9A3412';
     pal.W = '#CBD5E1';
+  } else if (typeId === 'fox_phantom') {
+    pal.F = '#0F172A';
+    pal.L = '#0284C7';
+    pal.W = '#67E8F9';
+    pal.E = '#F43F5E';
+    pal.C = '#22D3EE';
   } else if (typeId === 'fox_kitsune') {
     pal.F = '#7E22CE';
     pal.L = '#A855F7';
     pal.W = '#F5D0FE';
     pal.E = '#38BDF8';
+  } else if (typeId === 'fox_frost') {
+    pal.F = '#0284C7';
+    pal.L = '#38BDF8';
+    pal.W = '#FFFFFF';
+    pal.E = '#FEF08A';
+    pal.C = '#BAE6FD';
   } else if (typeId === 'fox_alpha') {
     pal.F = '#B91C1C';
     pal.L = '#EF4444';
     pal.W = '#FEF08A';
     pal.E = '#38BDF8';
+  } else if (typeId === 'fox_mecha') {
+    pal.F = '#334155';
+    pal.L = '#64748B';
+    pal.W = '#22D3EE';
+    pal.E = '#10B981';
+    pal.C = '#F43F5E';
   }
 
-  const crownRow =
-    typeId === 'fox_alpha'
-      ? '.................OC.OC.OCO..'
-      : '..................OO...OO...';
-  const earRow =
-    typeId === 'fox_alpha'
-      ? '.................OCCCCCCC0..'.replace('0', 'O')
-      : '.................OFFO.OFFO..';
-  pal.M = typeId === 'fox_timber' || typeId === 'fox_alpha' ? '#94A3B8' : pal.L;
+  const hasCrown = typeId === 'fox_alpha' || typeId === 'fox_frost' || typeId === 'fox_mecha';
+  const crownRow = hasCrown
+    ? '.................OC.OC.OCO..'
+    : '..................OO...OO...';
+  const earRow = hasCrown
+    ? '.................OCCCCCCC0..'.replace('0', 'O')
+    : '.................OFFO.OFFO..';
+  pal.M =
+    typeId === 'fox_timber' || typeId === 'fox_alpha'
+      ? '#94A3B8'
+      : typeId === 'fox_mecha'
+      ? '#10B981'
+      : typeId === 'fox_frost'
+      ? '#E0F2FE'
+      : pal.L;
 
   const legRow1 = step
     ? '.......OO..OO......OO..OO...'
@@ -981,7 +1140,7 @@ export class PixelSpriteAtlas {
       });
     }
 
-    // Bake all 11 Enemy sprites (7 Bugs + 4 Giant Foxes) + hit-flash silhouettes
+    // Bake all 19 Enemy sprites (10 Bugs + 9 Giant Foxes) + hit-flash silhouettes + 2x portraits
     const bugIds: EnemyTypeId[] = [
       'ant',
       'aphid',
@@ -990,23 +1149,42 @@ export class PixelSpriteAtlas {
       'camo_moth',
       'beetle',
       'mantis',
+      'firefly_wisp',
+      'scorpion',
+      'void_scarab',
     ];
     for (const id of bugIds) {
       const f0 = buildBugSprite(id, 0);
       const f1 = buildBugSprite(id, 1);
+      const pCan = makeCanvas(f0.width * 2, f0.height * 2);
+      pCan.getContext('2d')!.drawImage(f0, 0, 0, f0.width * 2, f0.height * 2);
       this.enemySprites.set(id, {
         frames: [f0, f1],
         flashFrames: [makeFlashSprite(f0), makeFlashSprite(f1)],
+        portraitUrl: pCan.toDataURL(),
       });
     }
 
-    const foxIds: EnemyTypeId[] = ['fox_scout', 'fox_timber', 'fox_kitsune', 'fox_alpha'];
+    const foxIds: EnemyTypeId[] = [
+      'fox_scout',
+      'fox_timber',
+      'fox_phantom',
+      'fox_kitsune',
+      'fox_frost',
+      'fox_alpha',
+      'fox_mecha',
+      'fox_phoenix',
+      'fox_cosmic',
+    ];
     for (const id of foxIds) {
       const f0 = buildFoxBossSprite(id, 0);
       const f1 = buildFoxBossSprite(id, 1);
+      const pCan = makeCanvas(f0.width * 2, f0.height * 2);
+      pCan.getContext('2d')!.drawImage(f0, 0, 0, f0.width * 2, f0.height * 2);
       this.enemySprites.set(id, {
         frames: [f0, f1],
         flashFrames: [makeFlashSprite(f0), makeFlashSprite(f1)],
+        portraitUrl: pCan.toDataURL(),
       });
     }
 

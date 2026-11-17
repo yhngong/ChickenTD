@@ -2,6 +2,8 @@ import {
   ChickenTowerDef,
   ChickenTypeId,
   ClickerUpgradeId,
+  DifficultyDef,
+  DifficultyId,
   EnemyDef,
   EnemyTypeId,
   TdUpgradeId,
@@ -13,6 +15,65 @@ export const STARTING_CORN = 150;
 export const STARTING_EGGS = 25;
 export const MAX_CPS_CAP = 12;
 export const CAMPAIGN_WAVES = 25;
+
+// ==================== 4 SELECTABLE DIFFICULTIES ====================
+export const DIFFICULTY_ORDER: readonly DifficultyId[] = [
+  'easy',
+  'normal',
+  'hard',
+  'nightmare',
+];
+
+export const DIFFICULTY_DEFS: Record<DifficultyId, DifficultyDef> = {
+  easy: {
+    id: 'easy',
+    name: 'Chickadee',
+    badge: 'EASY',
+    startingCorn: 225,
+    startingEggs: 40,
+    costMult: 0.85,
+    enemyHpMult: 0.72,
+    enemySpeedMult: 0.9,
+    accentColor: '#4ADE80',
+    description: '225 Corn • 40 Eggs • -15% Shop Costs • 0.72x Enemy HP',
+  },
+  normal: {
+    id: 'normal',
+    name: 'Barnyard',
+    badge: 'NORMAL',
+    startingCorn: 150,
+    startingEggs: 25,
+    costMult: 1.0,
+    enemyHpMult: 1.0,
+    enemySpeedMult: 1.0,
+    accentColor: '#FACC15',
+    description: '150 Corn • 25 Eggs • 1.00x Shop Costs • Standard Balance',
+  },
+  hard: {
+    id: 'hard',
+    name: 'Fox-Hunt',
+    badge: 'HARD',
+    startingCorn: 130,
+    startingEggs: 15,
+    costMult: 1.12,
+    enemyHpMult: 1.35,
+    enemySpeedMult: 1.1,
+    accentColor: '#FB923C',
+    description: '130 Corn • 15 Eggs • +12% Shop Costs • 1.35x HP & 1.10x Speed',
+  },
+  nightmare: {
+    id: 'nightmare',
+    name: 'Henpocalypse',
+    badge: 'NIGHTMARE',
+    startingCorn: 120,
+    startingEggs: 5,
+    costMult: 1.2,
+    enemyHpMult: 1.65,
+    enemySpeedMult: 1.18,
+    accentColor: '#F43F5E',
+    description: '120 Corn • 5 Eggs • +20% Shop Costs • 1.65x HP & 1.18x Speed!',
+  },
+};
 
 // 22 Playable Chicken Units (14 core troops + 8 apex units above Cyber-Cluck 9000!)
 export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
@@ -1973,8 +2034,53 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     secondaryColor: '#065F46',
     childrenOnPop: [{ type: 'beetle', count: 2 }],
   },
+  firefly_wisp: {
+    id: 'firefly_wisp',
+    name: 'Blazing Firefly',
+    isFoxBoss: false,
+    isArmored: false,
+    isCamo: true,
+    maxHp: 34,
+    speed: 142,
+    radius: 14,
+    eggDamage: 6,
+    bodyColor: '#F97316',
+    secondaryColor: '#FEF08A',
+    childrenOnPop: [{ type: 'camo_moth', count: 2 }],
+  },
+  scorpion: {
+    id: 'scorpion',
+    name: 'Obsidian Scorpion',
+    isFoxBoss: false,
+    isArmored: true,
+    isCamo: false,
+    maxHp: 98,
+    speed: 90,
+    radius: 18,
+    eggDamage: 10,
+    bodyColor: '#581C87',
+    secondaryColor: '#EF4444',
+    childrenOnPop: [
+      { type: 'mantis', count: 2 },
+      { type: 'beetle', count: 1 },
+    ],
+  },
+  void_scarab: {
+    id: 'void_scarab',
+    name: 'Astral Scarab',
+    isFoxBoss: false,
+    isArmored: true,
+    isCamo: true,
+    maxHp: 185,
+    speed: 126,
+    radius: 19,
+    eggDamage: 12,
+    bodyColor: '#06B6D4',
+    secondaryColor: '#FACC15',
+    childrenOnPop: [{ type: 'scorpion', count: 2 }],
+  },
 
-  // ==================== MOAB-CLASS GIANT FOX BOSSES ("BLIMPS") ====================
+  // ==================== 9 MOAB-CLASS GIANT FOX BOSSES ("BLIMPS") ====================
   fox_scout: {
     id: 'fox_scout',
     name: 'Red Scout Fox',
@@ -2003,6 +2109,23 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     secondaryColor: '#94A3B8',
     childrenOnPop: [{ type: 'fox_scout', count: 3 }],
   },
+  fox_phantom: {
+    id: 'fox_phantom',
+    name: 'Wraith Camo-Fox',
+    isFoxBoss: true,
+    isArmored: true,
+    isCamo: true,
+    maxHp: 1650,
+    speed: 92,
+    radius: 28,
+    eggDamage: 20,
+    bodyColor: '#0EA5E9',
+    secondaryColor: '#1E293B',
+    childrenOnPop: [
+      { type: 'firefly_wisp', count: 4 },
+      { type: 'scorpion', count: 2 },
+    ],
+  },
   fox_kitsune: {
     id: 'fox_kitsune',
     name: 'Shadow Kitsune',
@@ -2020,6 +2143,24 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
       { type: 'mantis', count: 4 },
     ],
   },
+  fox_frost: {
+    id: 'fox_frost',
+    name: 'Glacial Frost-Fox',
+    isFoxBoss: true,
+    isArmored: true,
+    isCamo: false,
+    maxHp: 4200,
+    speed: 44,
+    radius: 34,
+    eggDamage: 26,
+    bodyColor: '#38BDF8',
+    secondaryColor: '#E0F2FE',
+    childrenOnPop: [
+      { type: 'fox_kitsune', count: 1 },
+      { type: 'fox_timber', count: 2 },
+      { type: 'scorpion', count: 3 },
+    ],
+  },
   fox_alpha: {
     id: 'fox_alpha',
     name: 'Mega Alpha Reynard',
@@ -2029,12 +2170,65 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     maxHp: 6800,
     speed: 32,
     radius: 38,
-    eggDamage: 99,
+    eggDamage: 45,
     bodyColor: '#B91C1C',
     secondaryColor: '#FDE047',
     childrenOnPop: [
       { type: 'fox_kitsune', count: 2 },
-      { type: 'fox_timber', count: 2 },
+      { type: 'fox_frost', count: 1 },
+    ],
+  },
+  fox_mecha: {
+    id: 'fox_mecha',
+    name: 'Cyber-Reynard MK-X',
+    isFoxBoss: true,
+    isArmored: true,
+    isCamo: false,
+    maxHp: 11500,
+    speed: 52,
+    radius: 37,
+    eggDamage: 55,
+    bodyColor: '#334155',
+    secondaryColor: '#10B981',
+    childrenOnPop: [
+      { type: 'fox_alpha', count: 1 },
+      { type: 'fox_phantom', count: 2 },
+    ],
+  },
+  fox_phoenix: {
+    id: 'fox_phoenix',
+    name: 'Solar Phoenix Fox',
+    isFoxBoss: true,
+    isArmored: false,
+    isCamo: false,
+    maxHp: 22000,
+    speed: 68,
+    radius: 40,
+    eggDamage: 75,
+    bodyColor: '#F97316',
+    secondaryColor: '#FEF08A',
+    childrenOnPop: [
+      { type: 'fox_alpha', count: 2 },
+      { type: 'fox_kitsune', count: 2 },
+      { type: 'firefly_wisp', count: 6 },
+    ],
+  },
+  fox_cosmic: {
+    id: 'fox_cosmic',
+    name: 'Nebula Cosmic Fox',
+    isFoxBoss: true,
+    isArmored: true,
+    isCamo: false,
+    maxHp: 52000,
+    speed: 28,
+    radius: 44,
+    eggDamage: 99,
+    bodyColor: '#312E81',
+    secondaryColor: '#22D3EE',
+    childrenOnPop: [
+      { type: 'fox_phoenix', count: 2 },
+      { type: 'fox_mecha', count: 1 },
+      { type: 'void_scarab', count: 4 },
     ],
   },
 };
@@ -2252,155 +2446,155 @@ const HANDCRAFTED_WAVES: readonly WaveDefinition[] = [
   },
   {
     waveNumber: 11,
-    title: 'Overdrive: Mantis Blitz',
-    callout: 'POST-WAVE-10 OVERDRIVE! Faster, tougher Mantises, Hornets & 2 Scout Foxes!',
+    title: 'Overdrive: Firefly & Mantis Blitz',
+    callout: 'POST-WAVE-10 OVERDRIVE! Camo Blazing Fireflies, Mantises & 2 Scout Foxes!',
     groups: [
-      { enemyType: 'mantis', count: 9, intervalSec: 1.0, startDelaySec: 0.3 },
-      { enemyType: 'hornet', count: 24, intervalSec: 0.3, startDelaySec: 1.5 },
+      { enemyType: 'mantis', count: 8, intervalSec: 1.0, startDelaySec: 0.3 },
+      { enemyType: 'firefly_wisp', count: 14, intervalSec: 0.42, startDelaySec: 1.6 },
       { enemyType: 'fox_scout', count: 2, intervalSec: 4.0, startDelaySec: 4.5 },
     ],
   },
   {
     waveNumber: 12,
-    title: 'BOSS: Early Timber Breach!',
-    callout: '1.7x HP! Armored Timber Fox arrives early with 3 Scout Foxes & 22 Camo Moths!',
+    title: 'BOSS: Timber & Scorpions!',
+    callout: 'Obsidian Scorpions + Armored Timber Fox + 3 Scout Foxes!',
     groups: [
-      { enemyType: 'camo_moth', count: 22, intervalSec: 0.45, startDelaySec: 0.2 },
-      { enemyType: 'fox_scout', count: 3, intervalSec: 2.8, startDelaySec: 2.0 },
+      { enemyType: 'scorpion', count: 8, intervalSec: 0.9, startDelaySec: 0.3 },
+      { enemyType: 'firefly_wisp', count: 16, intervalSec: 0.4, startDelaySec: 2.0 },
+      { enemyType: 'fox_scout', count: 3, intervalSec: 2.6, startDelaySec: 2.5 },
       { enemyType: 'fox_timber', count: 1, intervalSec: 4.0, startDelaySec: 5.5 },
     ],
   },
   {
     waveNumber: 13,
-    title: 'Armored Chitin Stampede',
-    callout: '2.3x Enemy HP! 24 Iron Beetles, 16 Mantises & Twin Armored Timber Foxes!',
+    title: 'Obsidian Stampede',
+    callout: 'Heavy armored Scorpion column backed by Twin Timber Foxes!',
     groups: [
-      { enemyType: 'beetle', count: 24, intervalSec: 0.38, startDelaySec: 0.2 },
-      { enemyType: 'mantis', count: 16, intervalSec: 0.55, startDelaySec: 2.0 },
-      { enemyType: 'fox_timber', count: 2, intervalSec: 4.2, startDelaySec: 4.5 },
+      { enemyType: 'scorpion', count: 16, intervalSec: 0.52, startDelaySec: 0.2 },
+      { enemyType: 'mantis', count: 18, intervalSec: 0.48, startDelaySec: 1.8 },
+      { enemyType: 'fox_timber', count: 2, intervalSec: 4.0, startDelaySec: 4.2 },
     ],
   },
   {
     waveNumber: 14,
-    title: 'Timber Wolfpack Raid',
-    callout: '3.4x HP! 3 Timber Foxes, 6 Scout Foxes & 28 Camo Moths! Deploy Tesla & Chrono!',
+    title: 'Astral Scarab Swarm',
+    callout: '[CAMO + ARMOR] Astral Scarabs resist basic shots AND require Camo Sight!',
     groups: [
-      { enemyType: 'camo_moth', count: 28, intervalSec: 0.32, startDelaySec: 0.2 },
-      { enemyType: 'fox_scout', count: 6, intervalSec: 1.6, startDelaySec: 1.5 },
-      { enemyType: 'fox_timber', count: 3, intervalSec: 3.4, startDelaySec: 4.0 },
+      { enemyType: 'void_scarab', count: 12, intervalSec: 0.72, startDelaySec: 0.3 },
+      { enemyType: 'fox_scout', count: 6, intervalSec: 1.5, startDelaySec: 1.5 },
+      { enemyType: 'fox_timber', count: 3, intervalSec: 3.2, startDelaySec: 4.0 },
     ],
   },
   {
     waveNumber: 15,
     title: 'BOSS: Shadow Kitsune Blitz!',
-    callout: '[KITSUNE ALERT] 5x HP Shadow Kitsune + 2 Timber Foxes + 45 Hornets!',
+    callout: '[KITSUNE ALERT] Fast Shadow Kitsune + 2 Timber Foxes + Blazing Fireflies!',
     groups: [
-      { enemyType: 'hornet', count: 45, intervalSec: 0.18, startDelaySec: 0.2 },
-      { enemyType: 'mantis', count: 22, intervalSec: 0.42, startDelaySec: 1.8 },
-      { enemyType: 'fox_timber', count: 2, intervalSec: 3.2, startDelaySec: 3.0 },
-      { enemyType: 'fox_kitsune', count: 1, intervalSec: 4.5, startDelaySec: 6.0 },
+      { enemyType: 'firefly_wisp', count: 34, intervalSec: 0.2, startDelaySec: 0.2 },
+      { enemyType: 'scorpion', count: 16, intervalSec: 0.45, startDelaySec: 1.8 },
+      { enemyType: 'fox_timber', count: 2, intervalSec: 3.0, startDelaySec: 3.0 },
+      { enemyType: 'fox_kitsune', count: 1, intervalSec: 4.5, startDelaySec: 5.8 },
     ],
   },
   {
     waveNumber: 16,
-    title: 'Iron & Shadow Siege',
-    callout: '7.8x Enemy HP! 4 Timber Foxes + Shadow Kitsune + relentless armored/camo swarm!',
+    title: 'BOSS: Wraith Camo-Fox!',
+    callout: '[DDT-CLASS STEALTH BOSS] High-speed Camo + Armored Wraith Foxes incoming!',
     groups: [
-      { enemyType: 'beetle', count: 34, intervalSec: 0.28, startDelaySec: 0.2 },
-      { enemyType: 'camo_moth', count: 30, intervalSec: 0.3, startDelaySec: 1.5 },
-      { enemyType: 'fox_timber', count: 4, intervalSec: 2.6, startDelaySec: 2.5 },
-      { enemyType: 'fox_kitsune', count: 1, intervalSec: 4.0, startDelaySec: 6.5 },
+      { enemyType: 'void_scarab', count: 18, intervalSec: 0.42, startDelaySec: 0.2 },
+      { enemyType: 'fox_timber', count: 3, intervalSec: 2.5, startDelaySec: 2.0 },
+      { enemyType: 'fox_phantom', count: 2, intervalSec: 3.2, startDelaySec: 4.5 },
     ],
   },
   {
     waveNumber: 17,
-    title: 'Twin Kitsune Tempest',
-    callout: '12.6x HP! Twin Shadow Kitsunes & 32 hyper-fast Mantises! Deploy Gund-Hens!',
+    title: 'BOSS: Glacial Frost-Fox!',
+    callout: '[ARCTIC BOSS] Armored Glacial Frost-Fox escorted by Twin Shadow Kitsunes!',
     groups: [
-      { enemyType: 'mantis', count: 32, intervalSec: 0.3, startDelaySec: 0.2 },
-      { enemyType: 'fox_scout', count: 10, intervalSec: 1.0, startDelaySec: 1.5 },
-      { enemyType: 'fox_kitsune', count: 2, intervalSec: 4.2, startDelaySec: 4.0 },
+      { enemyType: 'scorpion', count: 26, intervalSec: 0.3, startDelaySec: 0.2 },
+      { enemyType: 'fox_kitsune', count: 2, intervalSec: 3.6, startDelaySec: 2.5 },
+      { enemyType: 'fox_frost', count: 1, intervalSec: 4.5, startDelaySec: 5.5 },
     ],
   },
   {
     waveNumber: 18,
-    title: 'BOSS: Alpha Vanguard!',
-    callout: '[EARLY ALPHA BOSS] Mega Alpha Reynard arrives at 21x HP with 5 Timber Foxes!',
+    title: 'BOSS: Mega Alpha Vanguard!',
+    callout: 'Mega Alpha Reynard + 3 Wraith Camo-Foxes + Glacial Frost-Fox!',
     groups: [
-      { enemyType: 'fox_timber', count: 5, intervalSec: 2.2, startDelaySec: 0.3 },
-      { enemyType: 'camo_moth', count: 36, intervalSec: 0.24, startDelaySec: 2.0 },
-      { enemyType: 'fox_alpha', count: 1, intervalSec: 5.0, startDelaySec: 5.0 },
+      { enemyType: 'fox_phantom', count: 3, intervalSec: 2.2, startDelaySec: 0.4 },
+      { enemyType: 'fox_frost', count: 1, intervalSec: 3.5, startDelaySec: 3.0 },
+      { enemyType: 'fox_alpha', count: 1, intervalSec: 5.0, startDelaySec: 5.2 },
     ],
   },
   {
     waveNumber: 19,
-    title: 'Kitsune Blood-Moon',
-    callout: '36x HP! 3 Shadow Kitsunes + 6 Timber Foxes! Summon Void & Valkyrie Hens!',
+    title: 'Phantom & Frost Tempest',
+    callout: '4 Wraith Camo-Foxes, 3 Glacial Frost-Foxes & 28 Astral Scarabs!',
     groups: [
-      { enemyType: 'mantis', count: 38, intervalSec: 0.24, startDelaySec: 0.2 },
-      { enemyType: 'fox_timber', count: 6, intervalSec: 1.9, startDelaySec: 1.5 },
-      { enemyType: 'fox_kitsune', count: 3, intervalSec: 3.2, startDelaySec: 3.5 },
+      { enemyType: 'void_scarab', count: 28, intervalSec: 0.24, startDelaySec: 0.2 },
+      { enemyType: 'fox_phantom', count: 4, intervalSec: 1.8, startDelaySec: 1.5 },
+      { enemyType: 'fox_frost', count: 3, intervalSec: 2.8, startDelaySec: 3.5 },
     ],
   },
   {
     waveNumber: 20,
-    title: 'BOSS: Twin Alpha Eclipse!',
-    callout: '[64x HP MILESTONE] TWO Mega Alpha Reynards + 2 Kitsunes + 42 Camo Moths!',
+    title: 'BOSS: Cyber-Reynard MK-X!',
+    callout: '[MECHA FOX BOSS] 11,500 Base HP Titanium Fox + Twin Mega Alpha Reynards!',
     groups: [
-      { enemyType: 'camo_moth', count: 42, intervalSec: 0.2, startDelaySec: 0.2 },
-      { enemyType: 'fox_kitsune', count: 2, intervalSec: 3.0, startDelaySec: 2.0 },
-      { enemyType: 'fox_alpha', count: 2, intervalSec: 5.2, startDelaySec: 4.5 },
+      { enemyType: 'void_scarab', count: 32, intervalSec: 0.2, startDelaySec: 0.2 },
+      { enemyType: 'fox_alpha', count: 2, intervalSec: 3.8, startDelaySec: 2.5 },
+      { enemyType: 'fox_mecha', count: 1, intervalSec: 5.0, startDelaySec: 5.5 },
     ],
   },
   {
     waveNumber: 21,
-    title: 'Relentless Fox Tide',
-    callout: '117x HP! 4 Kitsunes, 8 Timber Foxes & 18 Scout Foxes charging at 1.77x speed!',
+    title: 'Steel & Wraith Blitz',
+    callout: '2 Cyber-Reynard MK-X bosses + 6 high-speed Wraith Camo-Foxes!',
     groups: [
-      { enemyType: 'fox_scout', count: 18, intervalSec: 0.55, startDelaySec: 0.2 },
-      { enemyType: 'fox_timber', count: 8, intervalSec: 1.5, startDelaySec: 1.5 },
-      { enemyType: 'fox_kitsune', count: 4, intervalSec: 2.6, startDelaySec: 3.5 },
+      { enemyType: 'fox_phantom', count: 6, intervalSec: 1.2, startDelaySec: 0.3 },
+      { enemyType: 'fox_frost', count: 4, intervalSec: 2.2, startDelaySec: 2.0 },
+      { enemyType: 'fox_mecha', count: 2, intervalSec: 4.0, startDelaySec: 4.5 },
     ],
   },
   {
     waveNumber: 22,
-    title: 'Triple Crown Cataclysm',
-    callout: '222x HP! 3 Mega Alpha Reynards + 4 Kitsunes! Deploy Star-Cluck & Quasar units!',
+    title: 'BOSS: Solar Phoenix Fox!',
+    callout: '[PHOENIX FOX BOSS] Blazing immortal Fire-Fox streaking toward the Golden Nest!',
     groups: [
-      { enemyType: 'mantis', count: 45, intervalSec: 0.2, startDelaySec: 0.2 },
-      { enemyType: 'fox_kitsune', count: 4, intervalSec: 2.4, startDelaySec: 2.0 },
-      { enemyType: 'fox_alpha', count: 3, intervalSec: 4.4, startDelaySec: 4.0 },
+      { enemyType: 'firefly_wisp', count: 50, intervalSec: 0.14, startDelaySec: 0.2 },
+      { enemyType: 'fox_alpha', count: 3, intervalSec: 2.8, startDelaySec: 2.0 },
+      { enemyType: 'fox_phoenix', count: 1, intervalSec: 5.0, startDelaySec: 5.2 },
     ],
   },
   {
     waveNumber: 23,
-    title: 'Nightmare Menagerie',
-    callout: '435x HP! 3 Mega Alphas, 5 Kitsunes & 10 Timber Foxes in tight formation!',
+    title: 'Twin Phoenix Inferno',
+    callout: '2 Solar Phoenix Foxes + 3 Cyber-Reynards! Deploy Star-Cluck & Quasar units!',
     groups: [
-      { enemyType: 'fox_timber', count: 10, intervalSec: 1.2, startDelaySec: 0.2 },
-      { enemyType: 'fox_kitsune', count: 5, intervalSec: 2.1, startDelaySec: 2.0 },
-      { enemyType: 'fox_alpha', count: 3, intervalSec: 3.8, startDelaySec: 4.5 },
+      { enemyType: 'void_scarab', count: 40, intervalSec: 0.18, startDelaySec: 0.2 },
+      { enemyType: 'fox_mecha', count: 3, intervalSec: 2.6, startDelaySec: 1.8 },
+      { enemyType: 'fox_phoenix', count: 2, intervalSec: 4.2, startDelaySec: 4.5 },
     ],
   },
   {
     waveNumber: 24,
-    title: 'Ragnarok on the Roost',
-    callout: '880x HP! 4 Mega Alphas + 6 Kitsunes! Ascend Omnicluck Prime for Wave 25!',
+    title: 'Supernova Prelude',
+    callout: '3 Solar Phoenix Foxes + 4 Cyber-Reynards + 8 Wraith Camo-Foxes!',
     groups: [
-      { enemyType: 'camo_moth', count: 50, intervalSec: 0.16, startDelaySec: 0.2 },
-      { enemyType: 'fox_kitsune', count: 6, intervalSec: 1.8, startDelaySec: 1.5 },
-      { enemyType: 'fox_alpha', count: 4, intervalSec: 3.4, startDelaySec: 3.5 },
+      { enemyType: 'fox_phantom', count: 8, intervalSec: 0.9, startDelaySec: 0.2 },
+      { enemyType: 'fox_mecha', count: 4, intervalSec: 2.2, startDelaySec: 1.8 },
+      { enemyType: 'fox_phoenix', count: 3, intervalSec: 3.4, startDelaySec: 4.0 },
     ],
   },
   {
     waveNumber: 25,
-    title: 'FINAL BOSS: Omega Reynard Armada!',
-    callout: '[1,835x HP • 2.05x SPD] 5 Mega Alpha Reynards + 8 Kitsunes + 12 Timber Foxes!',
+    title: 'FINAL BOSS: Nebula Cosmic Fox!',
+    callout: '[COSMIC FOX TITAN] Galaxy-eating Nebula Cosmic Fox + 3 Solar Phoenix Foxes!',
     groups: [
-      { enemyType: 'fox_timber', count: 12, intervalSec: 1.0, startDelaySec: 0.2 },
-      { enemyType: 'fox_kitsune', count: 8, intervalSec: 1.6, startDelaySec: 2.0 },
-      { enemyType: 'fox_alpha', count: 5, intervalSec: 3.0, startDelaySec: 4.0 },
-      { enemyType: 'camo_moth', count: 55, intervalSec: 0.15, startDelaySec: 3.0 },
+      { enemyType: 'fox_mecha', count: 4, intervalSec: 1.8, startDelaySec: 0.4 },
+      { enemyType: 'fox_phoenix', count: 3, intervalSec: 2.6, startDelaySec: 2.5 },
+      { enemyType: 'fox_cosmic', count: 2, intervalSec: 5.5, startDelaySec: 5.5 },
+      { enemyType: 'void_scarab', count: 45, intervalSec: 0.15, startDelaySec: 3.0 },
     ],
   },
 ];
@@ -2408,18 +2602,18 @@ const HANDCRAFTED_WAVES: readonly WaveDefinition[] = [
 /**
  * Accelerating exponential enemy HP scaling for all waves after Wave 10!
  * Waves 1-10: 1.0x
- * Waves 11-25: (1.25 + (w-10)*0.026)^(w-10) -> ~1.28x at W11, ~64x at W20, ~1,835x on Wave 25!
- * Freeplay (26+): compounds at 1.75x per wave!
+ * Waves 11-25: (1.19 + (w-10)*0.0172)^(w-10) -> ~233x on Wave 25 (on top of 52,000-HP Cosmic Foxes!)
+ * Freeplay (26+): compounds at 1.70x per wave!
  */
 export function getWaveHpScale(waveNumber: number): number {
   if (waveNumber <= 10) return 1.0;
   if (waveNumber <= CAMPAIGN_WAVES) {
     const d = waveNumber - 10;
-    return Math.pow(1.25 + d * 0.026, d);
+    return Math.pow(1.19 + d * 0.0172, d);
   }
   const dEnd = CAMPAIGN_WAVES - 10;
-  const campaignEndScale = Math.pow(1.25 + dEnd * 0.026, dEnd);
-  return campaignEndScale * Math.pow(1.75, waveNumber - CAMPAIGN_WAVES);
+  const campaignEndScale = Math.pow(1.19 + dEnd * 0.0172, dEnd);
+  return campaignEndScale * Math.pow(1.7, waveNumber - CAMPAIGN_WAVES);
 }
 
 /**
@@ -2440,10 +2634,10 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
     return HANDCRAFTED_WAVES[waveNumber - 1];
   }
   const extra = waveNumber - HANDCRAFTED_WAVES.length;
-  const alphaCount = 5 + extra * 2 + Math.floor(extra * extra * 0.25);
-  const kitsuneCount = 8 + extra * 3;
-  const timberCount = 12 + extra * 4;
-  const camoCount = 45 + extra * 8;
+  const cosmicCount = 2 + extra + Math.floor(extra * extra * 0.18);
+  const phoenixCount = 3 + extra * 2;
+  const mechaCount = 4 + extra * 2;
+  const phantomCount = 6 + extra * 3;
   const hpMult = getWaveHpScale(waveNumber);
   const spdMult = getWaveSpeedScale(waveNumber);
   return {
@@ -2451,31 +2645,31 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
     title: `Freeplay Cataclysm #${waveNumber}`,
     callout: `[${Math.round(hpMult).toLocaleString()}x HP • ${spdMult.toFixed(
       2
-    )}x SPD] ${alphaCount} Mega Alphas, ${kitsuneCount} Kitsunes & ${timberCount} Timbers!`,
+    )}x SPD] ${cosmicCount} Cosmic Foxes, ${phoenixCount} Phoenix Foxes & ${phantomCount} Wraiths!`,
     groups: [
       {
-        enemyType: 'fox_timber',
-        count: timberCount,
-        intervalSec: Math.max(0.35, 0.95 - extra * 0.05),
+        enemyType: 'fox_phantom',
+        count: phantomCount,
+        intervalSec: Math.max(0.3, 0.85 - extra * 0.05),
         startDelaySec: 0.2,
       },
       {
-        enemyType: 'camo_moth',
-        count: camoCount,
-        intervalSec: Math.max(0.08, 0.15 - extra * 0.005),
-        startDelaySec: 0.5,
+        enemyType: 'fox_mecha',
+        count: mechaCount,
+        intervalSec: Math.max(0.45, 1.4 - extra * 0.08),
+        startDelaySec: 1.0,
       },
       {
-        enemyType: 'fox_kitsune',
-        count: kitsuneCount,
-        intervalSec: Math.max(0.5, 1.5 - extra * 0.08),
-        startDelaySec: 1.5,
+        enemyType: 'fox_phoenix',
+        count: phoenixCount,
+        intervalSec: Math.max(0.6, 2.0 - extra * 0.1),
+        startDelaySec: 2.2,
       },
       {
-        enemyType: 'fox_alpha',
-        count: alphaCount,
-        intervalSec: Math.max(0.85, 2.8 - extra * 0.14),
-        startDelaySec: 3.0,
+        enemyType: 'fox_cosmic',
+        count: cosmicCount,
+        intervalSec: Math.max(1.1, 4.2 - extra * 0.2),
+        startDelaySec: 4.0,
       },
     ],
   };

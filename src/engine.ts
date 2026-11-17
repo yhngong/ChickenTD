@@ -3,6 +3,7 @@ import {
   CAMPAIGN_WAVES,
   CHICKEN_DEFS,
   CLICKER_UPGRADES,
+  DIFFICULTY_DEFS,
   ENEMY_DEFS,
   getBaseCornPerClick,
   getCritParams,
@@ -17,7 +18,12 @@ import {
   STARTING_EGGS,
   TD_UPGRADES,
 } from './data';
-import { canPlaceChickenAt, getPointAlongPath, TOTAL_PATH_LENGTH } from './map';
+import {
+  canPlaceChickenAt,
+  getPointAlongPath,
+  getTotalPathLength,
+  setActiveMap,
+} from './map';
 import {
   ActiveEnemy,
   ActiveProjectile,
@@ -25,12 +31,16 @@ import {
   ChickenTypeId,
   ClickResult,
   ClickerUpgradeId,
+  DifficultyDef,
+  DifficultyId,
   EnemyTypeId,
   FloatingMapPopup,
+  MapId,
   PixelParticle,
   PlacedChicken,
   TargetMode,
   TdUpgradeId,
+  UpgradeDef,
   VisualRingEffect,
 } from './types';
 
@@ -49,6 +59,9 @@ export interface EffectiveChickenStats extends ChickenTierStats {
 
 export class ChickenTdEngine {
   public audio = new ChickenAudioEngine();
+
+  public mapId: MapId = 'sunny_meadow';
+  public difficultyId: DifficultyId = 'normal';
 
   public corn = STARTING_CORN;
   public totalCornClicked = 0;
@@ -97,11 +110,38 @@ export class ChickenTdEngine {
 
   public onUiChange: (() => void) | null = null;
 
+  public getDifficulty(): DifficultyDef {
+    return DIFFICULTY_DEFS[this.difficultyId];
+  }
+
+  public getTowerBaseCost(typeId: ChickenTypeId): number {
+    return Math.round(CHICKEN_DEFS[typeId].baseCost * this.getDifficulty().costMult);
+  }
+
+  public getTowerUpgradeCost(typeId: ChickenTypeId, tierIdx: 1 | 2 | 3): number {
+    return Math.round(
+      CHICKEN_DEFS[typeId].tiers[tierIdx].upgradeCost * this.getDifficulty().costMult
+    );
+  }
+
+  public getScaledUpgradeCost<T extends string>(def: UpgradeDef<T>, currentLevel: number): number {
+    return Math.round(getUpgradeCost(def, currentLevel) * this.getDifficulty().costMult);
+  }
+
+  public startNewRun(mapId: MapId, difficultyId: DifficultyId): void {
+    this.mapId = mapId;
+    this.difficultyId = difficultyId;
+    setActiveMap(mapId);
+    this.resetGame();
+  }
+
   public resetGame(): void {
-    this.corn = STARTING_CORN;
+    setActiveMap(this.mapId);
+    const diff = this.getDifficulty();
+    this.corn = diff.startingCorn;
     this.totalCornClicked = 0;
-    this.eggs = STARTING_EGGS;
-    this.maxEggs = STARTING_EGGS;
+    this.eggs = diff.startingEggs;
+    this.maxEggs = diff.startingEggs;
     this.waveNumber = 1;
     this.waveActive = false;
     this.waveElapsedSec = 0;
@@ -282,11 +322,11 @@ export class ChickenTdEngine {
 
   public placeChicken(typeId: ChickenTypeId, x: number, y: number): PlacedChicken | null {
     if (this.status === 'gameover') return null;
-    const def = CHICKEN_DEFS[typeId];
-    if (this.corn < def.baseCost) return null;
+    const cost = this.getTowerBaseCost(typeId);
+    if (this.corn < cost) return null;
     if (!canPlaceChickenAt(x, y, this.towers)) return null;
 
-    this.corn -= def.baseCost;
+    this.corn -= cost;
     const placed: PlacedChicken = {
       id: this.nextEntityId++,
       typeId,
@@ -306,7 +346,7 @@ export class ChickenTdEngine {
       cooldown: 0,
       recoil: 0,
       totalPopDamage: 0,
-      totalSpent: def.baseCost,
+      totalSpent: cost,
     };
     this.towers.push(placed);
     this.spawnRing(x, y, 34, '#FACC15');
@@ -320,12 +360,12 @@ export class ChickenTdEngine {
     const tower = this.towers.find((t) => t.id === towerId);
     if (!tower || tower.tier >= 3) return false;
     const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
-    const nextStats = CHICKEN_DEFS[tower.typeId].tiers[nextTierIdx];
-    if (this.corn < nextStats.upgradeCost) return false;
+    const upgCost = this.getTowerUpgradeCost(tower.typeId, nextTierIdx);
+    if (this.corn < upgCost) return false;
 
-    this.corn -= nextStats.upgradeCost;
+    this.corn -= upgCost;
     tower.tier = nextTierIdx;
-    tower.totalSpent += nextStats.upgradeCost;
+    tower.totalSpent += upgCost;
     this.spawnRing(tower.x, tower.y, 46, '#4ADE80');
     this.spawnPixelBurst(tower.x, tower.y, 12, '#4ADE80');
     this.spawnMapPopup(`TIER ${nextTierIdx + 1}!`, tower.x, tower.y - 24, '#FDE047', 1.0);
@@ -361,7 +401,7 @@ export class ChickenTdEngine {
     if (!def) return false;
     const lvl = this.clickerLevels[id];
     if (lvl >= def.maxLevel) return false;
-    const cost = getUpgradeCost(def, lvl);
+    const cost = this.getScaledUpgradeCost(def, lvl);
     if (this.corn < cost) return false;
 
     this.corn -= cost;
@@ -376,7 +416,7 @@ export class ChickenTdEngine {
     if (!def) return false;
     const lvl = this.tdLevels[id];
     if (lvl >= def.maxLevel) return false;
-    const cost = getUpgradeCost(def, lvl);
+    const cost = this.getScaledUpgradeCost(def, lvl);
     if (this.corn < cost) return false;
 
     this.corn -= cost;
@@ -394,7 +434,7 @@ export class ChickenTdEngine {
 
   private spawnEnemy(typeId: EnemyTypeId, distance: number): void {
     const def = ENEMY_DEFS[typeId];
-    const hpScale = getWaveHpScale(this.waveNumber);
+    const hpScale = getWaveHpScale(this.waveNumber) * this.getDifficulty().enemyHpMult;
     const scaledHp = Math.max(1, Math.round(def.maxHp * hpScale));
     this.enemies.push({
       id: this.nextEntityId++,
@@ -468,14 +508,15 @@ export class ChickenTdEngine {
       }
 
       const effectiveSlow = def.isFoxBoss ? e.slowFactor * 0.55 : e.slowFactor;
-      const speedScale = getWaveSpeedScale(this.waveNumber);
+      const speedScale = getWaveSpeedScale(this.waveNumber) * this.getDifficulty().enemySpeedMult;
       const moveSpeed = def.speed * speedScale * (1 - Math.min(0.72, effectiveSlow));
       e.distance += moveSpeed * dt;
 
-      if (e.distance >= TOTAL_PATH_LENGTH) {
+      const totalPathLen = getTotalPathLength();
+      if (e.distance >= totalPathLen) {
         this.enemies.splice(i, 1);
         this.eggs = Math.max(0, this.eggs - def.eggDamage);
-        const nestPt = getPointAlongPath(TOTAL_PATH_LENGTH);
+        const nestPt = getPointAlongPath(totalPathLen);
         this.spawnMapPopup(`-${def.eggDamage} EGG`, nestPt.x, nestPt.y - 26, '#EF4444', 1.15);
         this.spawnRing(nestPt.x, nestPt.y, 44, '#EF4444');
         this.spawnPixelBurst(nestPt.x, nestPt.y, 12, '#EF4444');
@@ -828,9 +869,21 @@ export class ChickenTdEngine {
     this.audio.playBugPop(def.isFoxBoss);
 
     if (def.isFoxBoss) {
-      this.spawnRing(pos.x, pos.y, def.radius * 2.1, '#F97316');
-      this.spawnPixelBurst(pos.x, pos.y, 18, def.bodyColor);
-      this.spawnMapPopup('FOX POPPED!', pos.x, pos.y - 18, '#FDE047', 1.05);
+      const popCol =
+        popped.typeId === 'fox_cosmic'
+          ? '#22D3EE'
+          : popped.typeId === 'fox_phoenix'
+          ? '#FACC15'
+          : '#F97316';
+      const popLabel =
+        popped.typeId === 'fox_cosmic'
+          ? 'COSMIC POPPED!'
+          : popped.typeId === 'fox_phoenix'
+          ? 'PHOENIX POPPED!'
+          : 'FOX POPPED!';
+      this.spawnRing(pos.x, pos.y, def.radius * 2.2, popCol);
+      this.spawnPixelBurst(pos.x, pos.y, 20, def.bodyColor);
+      this.spawnMapPopup(popLabel, pos.x, pos.y - 18, '#FDE047', 1.05);
     } else {
       this.spawnPixelBurst(pos.x, pos.y, 6, def.bodyColor);
     }

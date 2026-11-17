@@ -54,10 +54,40 @@ export type EnemyTypeId =
   | 'camo_moth'
   | 'beetle'
   | 'mantis'
+  | 'firefly_wisp'
+  | 'scorpion'
+  | 'void_scarab'
   | 'fox_scout'
   | 'fox_timber'
+  | 'fox_phantom'
   | 'fox_kitsune'
-  | 'fox_alpha';
+  | 'fox_frost'
+  | 'fox_alpha'
+  | 'fox_mecha'
+  | 'fox_phoenix'
+  | 'fox_cosmic';
+
+export type DifficultyId = 'easy' | 'normal' | 'hard' | 'nightmare';
+
+export type MapId =
+  | 'sunny_meadow'
+  | 'frostbite_fjord'
+  | 'ember_caldera'
+  | 'whispering_bog'
+  | 'starlight_sanctum';
+
+export interface DifficultyDef {
+  id: DifficultyId;
+  name: string;
+  badge: string;
+  startingCorn: number;
+  startingEggs: number;
+  costMult: number;
+  enemyHpMult: number;
+  enemySpeedMult: number;
+  accentColor: string;
+  description: string;
+}
 
 export type TargetMode = 'first' | 'strong' | 'last' | 'close';
 
@@ -85,7 +115,8 @@ export type PixelIconId =
   | 'speed'
   | 'sound_on'
   | 'sound_off'
-  | 'rules';
+  | 'rules'
+  | 'menu';
 
 export interface ChickenTierStats {
   tierName: string;
