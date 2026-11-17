@@ -6,9 +6,14 @@ import {
   DIFFICULTY_DEFS,
   ENEMY_DEFS,
   getBaseCornPerClick,
+  getCornSiloDividendRate,
+  getCornucopiaWaveMult,
   getCritParams,
+  getFarmhandAutoRate,
+  getForemanMult,
   getHarvestBasketMult,
   getMaxRhythmMult,
+  getTwinBeakChance,
   getUpgradeCost,
   getWaveDefinition,
   getWaveHpScale,
@@ -27,6 +32,7 @@ import {
 import {
   ActiveEnemy,
   ActiveProjectile,
+  ActiveStand,
   ChickenTierStats,
   ChickenTypeId,
   ClickResult,
@@ -78,17 +84,24 @@ export class ChickenTdEngine {
   public totalBugsPopped = 0;
   public totalClicksAccepted = 0;
   public waveClickCounter = 0; // counts toward 12-Peck Mega Cob
+  public waveCornHarvested = 0; // tracks Corn harvested in the active wave for Golden Corn Silo
 
   // Strict 12 CPS sliding 1,000ms window (wall-clock milliseconds)
   private clickTimestampsMs: number[] = [];
-  public frenzyMeter = 0; // 0..1 built by active clicking during waves
+  private autoPeckAccumulator = 0;
+  public frenzyMeter = 0; // 0..1 built by active clicking & Farmhands during waves
   public capHitFlash = 0; // 0..1 visual indicator when clicking > 12 CPS
 
   public clickerLevels: Record<ClickerUpgradeId, number> = {
     beakPower: 0,
+    farmhandChicks: 0,
     goldenLuck: 0,
     peckRhythm: 0,
     harvestBasket: 0,
+    twinBeak: 0,
+    roostForeman: 0,
+    cornSilo: 0,
+    cornucopia: 0,
   };
 
   public tdLevels: Record<TdUpgradeId, number> = {
@@ -99,6 +112,7 @@ export class ChickenTdEngine {
   };
 
   public towers: PlacedChicken[] = [];
+  public stands: ActiveStand[] = [];
   public enemies: ActiveEnemy[] = [];
   public projectiles: ActiveProjectile[] = [];
   public rings: VisualRingEffect[] = [];
@@ -109,6 +123,7 @@ export class ChickenTdEngine {
   private nextEntityId = 1;
 
   public onUiChange: (() => void) | null = null;
+  public onAutoPeck: ((res: ClickResult) => void) | null = null;
 
   public getDifficulty(): DifficultyDef {
     return DIFFICULTY_DEFS[this.difficultyId];
@@ -150,15 +165,22 @@ export class ChickenTdEngine {
     this.totalBugsPopped = 0;
     this.totalClicksAccepted = 0;
     this.waveClickCounter = 0;
+    this.waveCornHarvested = 0;
     this.clickTimestampsMs = [];
+    this.autoPeckAccumulator = 0;
     this.frenzyMeter = 0;
     this.capHitFlash = 0;
 
     this.clickerLevels = {
       beakPower: 0,
+      farmhandChicks: 0,
       goldenLuck: 0,
       peckRhythm: 0,
       harvestBasket: 0,
+      twinBeak: 0,
+      roostForeman: 0,
+      cornSilo: 0,
+      cornucopia: 0,
     };
     this.tdLevels = {
       caffeinatedFeed: 0,
@@ -168,6 +190,7 @@ export class ChickenTdEngine {
     };
 
     this.towers = [];
+    this.stands = [];
     this.enemies = [];
     this.projectiles = [];
     this.rings = [];
@@ -189,6 +212,55 @@ export class ChickenTdEngine {
   public getCurrentFrenzyMultiplier(): number {
     const maxMult = getMaxRhythmMult(this.clickerLevels.peckRhythm);
     return 1 + (maxMult - 1) * this.frenzyMeter;
+  }
+
+  private executePeck(isAuto: boolean, currentCps: number): ClickResult {
+    const twinChance = getTwinBeakChance(this.clickerLevels.twinBeak);
+    const isTwinPeck = twinChance > 0 && Math.random() < twinChance;
+    const strikeCount = isTwinPeck ? 2 : 1;
+
+    const prevCounter = this.waveClickCounter;
+    this.waveClickCounter += strikeCount;
+
+    if (this.clickerLevels.peckRhythm > 0) {
+      const gain = isAuto
+        ? (this.clickerLevels.roostForeman > 0 ? 0.045 : 0.02) * strikeCount
+        : 0.085 * strikeCount;
+      this.frenzyMeter = Math.min(1, this.frenzyMeter + gain);
+    }
+
+    const baseVal = getBaseCornPerClick(this.clickerLevels.beakPower);
+    const rhythmMult = this.getCurrentFrenzyMultiplier();
+
+    const crit = getCritParams(this.clickerLevels.goldenLuck);
+    const isCrit = crit.chance > 0 && Math.random() < crit.chance;
+    const critMult = isCrit ? crit.mult : 1.0;
+
+    const waveMult = getCornucopiaWaveMult(this.clickerLevels.cornucopia, this.waveNumber);
+    const foremanMult = isAuto ? getForemanMult(this.clickerLevels.roostForeman) : 1.0;
+
+    const basketMult = getHarvestBasketMult(this.clickerLevels.harvestBasket);
+    const crossedTwelve = Math.floor(this.waveClickCounter / 12) > Math.floor(prevCounter / 12);
+    const isMegaCob = basketMult > 0 && crossedTwelve;
+    const megaBonus = isMegaCob ? Math.round(baseVal * basketMult * waveMult * foremanMult) : 0;
+
+    const earned = Math.max(
+      1,
+      Math.round(baseVal * strikeCount * rhythmMult * critMult * waveMult * foremanMult) + megaBonus
+    );
+    this.corn += earned;
+    this.totalCornClicked += earned;
+    this.waveCornHarvested += earned;
+
+    return {
+      accepted: true,
+      amountEarned: earned,
+      isCrit,
+      isMegaCob,
+      isTwinPeck,
+      isAuto,
+      currentCps,
+    };
   }
 
   /**
@@ -236,37 +308,11 @@ export class ChickenTdEngine {
 
     this.clickTimestampsMs.push(nowPerfMs);
     this.totalClicksAccepted++;
-    this.waveClickCounter++;
 
-    if (this.clickerLevels.peckRhythm > 0) {
-      this.frenzyMeter = Math.min(1, this.frenzyMeter + 0.085);
-    }
-
-    const baseVal = getBaseCornPerClick(this.clickerLevels.beakPower);
-    const rhythmMult = this.getCurrentFrenzyMultiplier();
-
-    const crit = getCritParams(this.clickerLevels.goldenLuck);
-    const isCrit = crit.chance > 0 && Math.random() < crit.chance;
-    const critMult = isCrit ? crit.mult : 1.0;
-
-    const basketMult = getHarvestBasketMult(this.clickerLevels.harvestBasket);
-    const isMegaCob = basketMult > 0 && this.waveClickCounter % 12 === 0;
-    const megaBonus = isMegaCob ? Math.round(baseVal * basketMult) : 0;
-
-    const earned = Math.max(1, Math.round(baseVal * rhythmMult * critMult) + megaBonus);
-    this.corn += earned;
-    this.totalCornClicked += earned;
-
-    this.audio.playHenClick(isCrit, isMegaCob);
+    const res = this.executePeck(false, this.clickTimestampsMs.length);
+    this.audio.playHenClick(res.isCrit, res.isMegaCob);
     this.notifyUi();
-
-    return {
-      accepted: true,
-      amountEarned: earned,
-      isCrit,
-      isMegaCob,
-      currentCps: this.clickTimestampsMs.length,
-    };
+    return res;
   }
 
   public startNextWave(): boolean {
@@ -290,6 +336,8 @@ export class ChickenTdEngine {
 
     this.pendingSpawns = queue;
     this.waveElapsedSec = 0;
+    this.waveCornHarvested = 0;
+    this.autoPeckAccumulator = 0;
     this.waveActive = true;
     this.clickTimestampsMs = [];
     this.audio.playWaveStart();
@@ -338,6 +386,7 @@ export class ChickenTdEngine {
         typeId === 'pirate' ||
         typeId === 'mecha' ||
         typeId === 'gundam' ||
+        typeId === 'stand_hen' ||
         typeId === 'star_dread' ||
         typeId === 'omega_god'
           ? 'strong'
@@ -349,6 +398,10 @@ export class ChickenTdEngine {
       totalSpent: cost,
     };
     this.towers.push(placed);
+    if (typeId === 'stand_hen') {
+      this.getOrCreateStand(placed);
+      this.spawnRing(x, y, 42, '#C084FC');
+    }
     this.spawnRing(x, y, 34, '#FACC15');
     this.spawnPixelBurst(x, y, 8, '#FACC15');
     this.audio.playPlaceChicken();
@@ -378,6 +431,7 @@ export class ChickenTdEngine {
     const idx = this.towers.findIndex((t) => t.id === towerId);
     if (idx === -1) return 0;
     const [removed] = this.towers.splice(idx, 1);
+    this.stands = this.stands.filter((s) => s.ownerTowerId !== removed.id);
     const refund = Math.round(removed.totalSpent * 0.7);
     this.corn += refund;
     this.spawnPixelBurst(removed.x, removed.y, 8, '#FACC15');
@@ -456,9 +510,13 @@ export class ChickenTdEngine {
     // Decay real-time clicker visual meters
     this.capHitFlash = Math.max(0, this.capHitFlash - realDtSec * 3.2);
     const activeCps = this.getCurrentCps();
+    const foremanHoldingFrenzy =
+      this.waveActive &&
+      this.clickerLevels.farmhandChicks > 0 &&
+      this.clickerLevels.roostForeman > 0;
     if (!this.waveActive) {
       this.frenzyMeter = Math.max(0, this.frenzyMeter - realDtSec * 1.4);
-    } else if (activeCps < 4) {
+    } else if (activeCps < 4 && !foremanHoldingFrenzy) {
       this.frenzyMeter = Math.max(0, this.frenzyMeter - realDtSec * 0.25);
     }
 
@@ -473,6 +531,19 @@ export class ChickenTdEngine {
   }
 
   private simulateStep(dt: number): void {
+    // 0. Farmhand Auto-Peckers harvest Corn passively during active waves (ignores 12 CPS manual cap!)
+    if (this.waveActive) {
+      const autoRate = getFarmhandAutoRate(this.clickerLevels.farmhandChicks);
+      if (autoRate > 0) {
+        this.autoPeckAccumulator += autoRate * dt;
+        while (this.autoPeckAccumulator >= 1) {
+          this.autoPeckAccumulator -= 1;
+          const res = this.executePeck(true, this.getCurrentCps());
+          if (this.onAutoPeck) this.onAutoPeck(res);
+        }
+      }
+    }
+
     // 1. Spawn queued wave enemies
     if (this.waveActive) {
       this.waveElapsedSec += dt;
@@ -533,10 +604,16 @@ export class ChickenTdEngine {
       }
     }
 
-    // 3. Tower targeting & projectile / pulse firing
+    // 3. Tower targeting & projectile / pulse / Stand firing
     for (const tower of this.towers) {
       tower.recoil = Math.max(0, tower.recoil - dt * 5);
       tower.cooldown = Math.max(0, tower.cooldown - dt);
+
+      if (tower.typeId === 'stand_hen') {
+        this.updateStandUserTower(tower, dt);
+        continue;
+      }
+
       if (tower.cooldown > 0 || this.enemies.length === 0) continue;
 
       const stats = this.getEffectiveChickenStats(tower);
@@ -562,7 +639,6 @@ export class ChickenTdEngine {
         tower.typeId === 'tesla' ||
         tower.typeId === 'chrono' ||
         tower.typeId === 'gundam' ||
-        tower.typeId === 'void_hen' ||
         tower.typeId === 'valkyrie' ||
         tower.typeId === 'star_dread' ||
         tower.typeId === 'quasar' ||
@@ -597,6 +673,7 @@ export class ChickenTdEngine {
           burnDps: stats.burnDps,
           foxDamageMult: stats.effectiveFoxMult,
           armorPiercing: true,
+          canHitCamo: stats.effectiveCamo,
           hitEnemyIds: new Set<number>(),
           age: 0,
           maxLifetime: 0.05,
@@ -648,6 +725,7 @@ export class ChickenTdEngine {
           burnDps: stats.burnDps,
           foxDamageMult: stats.effectiveFoxMult,
           armorPiercing,
+          canHitCamo: stats.effectiveCamo,
           hitEnemyIds: new Set<number>(),
           age: 0,
           maxLifetime: maxLife,
@@ -686,6 +764,8 @@ export class ChickenTdEngine {
       for (const e of candidates) {
         if (p.hitEnemyIds.has(e.id) || !this.enemies.includes(e)) continue;
         const eDef = ENEMY_DEFS[e.typeId];
+        // Camo enemies are strictly intangible to projectiles from units without Camo Sight!
+        if (eDef.isCamo && !p.canHitCamo) continue;
         const ePos = getPointAlongPath(e.distance, e.lateralOffset);
         const extraRadius =
           p.style === 'egg_bomb' ||
@@ -695,7 +775,7 @@ export class ChickenTdEngine {
           p.style === 'cannonball' ||
           p.style === 'feather_slash' ||
           p.style === 'chrono_orb' ||
-          p.style === 'void_hole' ||
+          p.style === 'stand_fist' ||
           p.style === 'antimatter' ||
           p.style === 'genesis_beam'
             ? 11
@@ -749,12 +829,166 @@ export class ChickenTdEngine {
     if (this.waveActive && this.pendingSpawns.length === 0 && this.enemies.length === 0) {
       this.waveActive = false;
       this.clickTimestampsMs = [];
+      this.autoPeckAccumulator = 0;
+
+      // Golden Corn Silo wave-clear harvest dividend!
+      const siloRate = getCornSiloDividendRate(this.clickerLevels.cornSilo);
+      if (siloRate > 0 && this.waveCornHarvested > 0) {
+        const dividend = Math.max(1, Math.round(this.waveCornHarvested * siloRate));
+        this.corn += dividend;
+        this.totalCornClicked += dividend;
+        const nestPt = getPointAlongPath(getTotalPathLength());
+        this.spawnMapPopup(`SILO +${dividend} CORN!`, nestPt.x, nestPt.y - 30, '#FACC15', 1.1);
+        this.spawnPixelBurst(nestPt.x, nestPt.y, 10, '#FACC15');
+        this.audio.playUpgrade();
+      }
 
       if (this.waveNumber === CAMPAIGN_WAVES && !this.freeplayUnlocked) {
         this.status = 'victory_prompt';
       }
       this.waveNumber++;
       this.notifyUi();
+    }
+  }
+
+  private getOrCreateStand(tower: PlacedChicken): ActiveStand {
+    let stand = this.stands.find((s) => s.ownerTowerId === tower.id);
+    if (!stand) {
+      stand = {
+        ownerTowerId: tower.id,
+        x: tower.x - 14,
+        y: tower.y - 10,
+        angle: tower.angle,
+        targetEnemyId: null,
+        punchAnim: 0,
+        punchCount: 0,
+        state: 'hover',
+      };
+      this.stands.push(stand);
+    }
+    return stand;
+  }
+
+  private updateStandUserTower(tower: PlacedChicken, dt: number): void {
+    const stand = this.getOrCreateStand(tower);
+    stand.punchAnim = Math.max(0, stand.punchAnim - dt * 6.5);
+
+    const stats = this.getEffectiveChickenStats(tower);
+    const target = this.enemies.length > 0 ? this.pickTargetForTower(tower, stats) : null;
+
+    if (!target) {
+      stand.state = 'hover';
+      stand.targetEnemyId = null;
+      const side = Math.cos(tower.angle) < -0.15 ? 14 : -14;
+      const hoverX = tower.x + side;
+      const hoverY = tower.y - 10 + Math.sin(this.waveElapsedSec * 4.5 + tower.id) * 2.5;
+      const dx = hoverX - stand.x;
+      const dy = hoverY - stand.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0.8) {
+        const move = Math.min(dist, Math.max(380, stats.projectileSpeed * 0.75) * dt);
+        stand.x += (dx / dist) * move;
+        stand.y += (dy / dist) * move;
+      }
+      stand.angle = tower.angle;
+      return;
+    }
+
+    stand.targetEnemyId = target.id;
+    const targetDef = ENEMY_DEFS[target.typeId];
+    const targetPos = getPointAlongPath(target.distance, target.lateralOffset);
+    tower.angle = Math.atan2(targetPos.y - tower.y, targetPos.x - tower.x);
+
+    const dx = targetPos.x - stand.x;
+    const dy = targetPos.y - stand.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0.5) {
+      stand.angle = Math.atan2(dy, dx);
+    }
+
+    const meleeStopDist = Math.max(13, targetDef.radius * 0.65);
+    if (dist > meleeStopDist + 1.5) {
+      const step = Math.min(dist - meleeStopDist, stats.projectileSpeed * dt);
+      stand.x += (dx / dist) * step;
+      stand.y += (dy / dist) * step;
+    }
+
+    const punchReach = targetDef.radius + 32;
+    if (dist > punchReach) {
+      stand.state = 'charging';
+      if (Math.random() < dt * 12) {
+        this.spawnPixelBurst(stand.x, stand.y, 1, tower.tier === 3 ? '#FEF08A' : '#C084FC');
+      }
+      return;
+    }
+
+    // Stand has reached the enemy — unleash rapid Stand Rush punches!
+    stand.state = 'punching';
+    tower.recoil = Math.max(tower.recoil, 0.55);
+
+    if (tower.cooldown > 0) return;
+
+    tower.cooldown = 1 / Math.max(0.2, stats.effectiveFireRate);
+    tower.recoil = 1.0;
+    stand.punchAnim = 1.0;
+    stand.punchCount++;
+
+    const isRequiem = tower.tier === 3;
+    const punchCarrier: ActiveProjectile = {
+      id: this.nextEntityId++,
+      ownerTowerId: tower.id,
+      style: 'stand_fist',
+      x: targetPos.x,
+      y: targetPos.y,
+      vx: 0,
+      vy: 0,
+      curveRate: 0,
+      rotation: stand.angle,
+      damage: stats.damage,
+      pierceLeft: stats.effectivePierce,
+      splashRadius: stats.splashRadius,
+      slowFactor: stats.slowFactor,
+      slowDuration: stats.slowDuration,
+      burnDps: stats.burnDps,
+      foxDamageMult: stats.effectiveFoxMult,
+      armorPiercing: true,
+      canHitCamo: stats.effectiveCamo,
+      hitEnemyIds: new Set<number>(),
+      age: 0,
+      maxLifetime: 0.05,
+      color: isRequiem ? '#FACC15' : '#C084FC',
+    };
+
+    const targetIdBeforeHit = target.id;
+    this.damageEnemy(target, stats.damage, punchCarrier);
+    let hits = 1;
+
+    if (stats.splashRadius > 0 && hits < stats.effectivePierce) {
+      const cleaveCandidates = [...this.enemies];
+      for (const e of cleaveCandidates) {
+        if (hits >= stats.effectivePierce) break;
+        if (e.id === targetIdBeforeHit || !this.enemies.includes(e)) continue;
+        const eDef = ENEMY_DEFS[e.typeId];
+        if (eDef.isCamo && !stats.effectiveCamo) continue;
+        const pos = getPointAlongPath(e.distance, e.lateralOffset);
+        if (Math.hypot(pos.x - targetPos.x, pos.y - targetPos.y) <= stats.splashRadius + eDef.radius) {
+          this.damageEnemy(e, stats.damage, punchCarrier);
+          hits++;
+        }
+      }
+    }
+
+    this.spawnPixelBurst(targetPos.x, targetPos.y, 4, isRequiem ? '#FEF08A' : '#E879F9');
+    if (stand.punchCount % 2 === 0) {
+      this.spawnRing(
+        targetPos.x,
+        targetPos.y,
+        Math.round(stats.splashRadius * 0.65),
+        isRequiem ? '#FACC15' : '#C084FC'
+      );
+    }
+    if (stand.punchCount % 8 === 1) {
+      this.spawnMapPopup('ORA!', stand.x, stand.y - 18, isRequiem ? '#FEF08A' : '#F0ABFC', 1.0);
     }
   }
 
@@ -801,7 +1035,7 @@ export class ChickenTdEngine {
         ? '#2DD4BF'
         : proj.style === 'ion_lance' || proj.style === 'antimatter'
         ? '#FB7185'
-        : proj.style === 'void_hole' || proj.style === 'lightning'
+        : proj.style === 'stand_fist' || proj.style === 'lightning'
         ? '#C084FC'
         : proj.style === 'genesis_beam' || proj.style === 'valkyrie_spear'
         ? '#FEF08A'
@@ -815,6 +1049,8 @@ export class ChickenTdEngine {
     for (const e of splashTargets) {
       if (!this.enemies.includes(e)) continue;
       const def = ENEMY_DEFS[e.typeId];
+      // AoE splash from non-Camo units cannot damage or debuff Camo enemies!
+      if (def.isCamo && !proj.canHitCamo) continue;
       const pos = getPointAlongPath(e.distance, e.lateralOffset);
       if (Math.hypot(pos.x - cx, pos.y - cy) <= proj.splashRadius + def.radius) {
         this.damageEnemy(e, proj.damage, proj);
@@ -826,6 +1062,7 @@ export class ChickenTdEngine {
     const liveIdx = this.enemies.indexOf(e);
     if (liveIdx === -1) return;
     const def = ENEMY_DEFS[e.typeId];
+    if (def.isCamo && !proj.canHitCamo) return;
 
     let dmg = rawDamage;
     if (def.isFoxBoss) {

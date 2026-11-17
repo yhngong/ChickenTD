@@ -16,7 +16,7 @@ export type ChickenTypeId =
   | 'tesla'
   | 'chrono'
   | 'gundam'
-  | 'void_hen'
+  | 'stand_hen'
   | 'valkyrie'
   | 'star_dread'
   | 'quasar'
@@ -40,7 +40,7 @@ export type ProjectileStyle =
   | 'tesla_arc'
   | 'chrono_orb'
   | 'ion_lance'
-  | 'void_hole'
+  | 'stand_fist'
   | 'valkyrie_spear'
   | 'antimatter'
   | 'quasar_pulse'
@@ -91,7 +91,16 @@ export interface DifficultyDef {
 
 export type TargetMode = 'first' | 'strong' | 'last' | 'close';
 
-export type ClickerUpgradeId = 'beakPower' | 'goldenLuck' | 'peckRhythm' | 'harvestBasket';
+export type ClickerUpgradeId =
+  | 'beakPower'
+  | 'farmhandChicks'
+  | 'goldenLuck'
+  | 'peckRhythm'
+  | 'harvestBasket'
+  | 'twinBeak'
+  | 'roostForeman'
+  | 'cornSilo'
+  | 'cornucopia';
 
 export type TdUpgradeId = 'eagleRoost' | 'caffeinatedFeed' | 'razorTalons' | 'fortifiedNest';
 
@@ -105,9 +114,14 @@ export type PixelIconId =
   | 'trophy'
   | 'cracked_egg'
   | 'beak_upg'
+  | 'farmhand_upg'
   | 'sparkle_upg'
   | 'flame_upg'
   | 'basket_upg'
+  | 'twin_beak_upg'
+  | 'foreman_upg'
+  | 'silo_upg'
+  | 'cornucopia_upg'
   | 'bolt_upg'
   | 'scope_upg'
   | 'talon_upg'
@@ -183,6 +197,17 @@ export interface PlacedChicken {
   totalSpent: number;
 }
 
+export interface ActiveStand {
+  ownerTowerId: number;
+  x: number;
+  y: number;
+  angle: number;
+  targetEnemyId: number | null;
+  punchAnim: number; // 0..1 rapid alternating ORA fist flurry animation
+  punchCount: number;
+  state: 'hover' | 'charging' | 'punching';
+}
+
 export interface ActiveEnemy {
   id: number;
   typeId: EnemyTypeId;
@@ -216,6 +241,7 @@ export interface ActiveProjectile {
   burnDps: number;
   foxDamageMult: number;
   armorPiercing: boolean;
+  canHitCamo: boolean;
   hitEnemyIds: Set<number>;
   age: number;
   maxLifetime: number;
@@ -284,5 +310,7 @@ export interface ClickResult {
   amountEarned: number;
   isCrit: boolean;
   isMegaCob: boolean;
+  isTwinPeck?: boolean;
+  isAuto?: boolean;
   currentCps: number;
 }

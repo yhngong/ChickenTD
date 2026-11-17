@@ -9,7 +9,14 @@ import {
   PATH_HALF_WIDTH,
 } from './map';
 import { PIXEL_ATLAS } from './sprites';
-import { ActiveEnemy, ActiveProjectile, ChickenTypeId, MapId, PlacedChicken } from './types';
+import {
+  ActiveEnemy,
+  ActiveProjectile,
+  ActiveStand,
+  ChickenTypeId,
+  MapId,
+  PlacedChicken,
+} from './types';
 
 export interface GhostPlacementState {
   typeId: ChickenTypeId | null;
@@ -461,8 +468,13 @@ export class MeadowRenderer {
       const spr = PIXEL_ATLAS.getChickenSprite(ghost.typeId);
       if (spr) {
         ctx.save();
-        ctx.globalAlpha = 0.8;
-        ctx.drawImage(spr.idle, gx - 10, gy - 11);
+        ctx.globalAlpha = 0.85;
+        if (ghost.typeId === 'stand_hen' && PIXEL_ATLAS.standSprites) {
+          ctx.globalAlpha = 0.62;
+          ctx.drawImage(PIXEL_ATLAS.standSprites.normalIdle, gx - 18, gy - 17);
+          ctx.globalAlpha = 0.88;
+        }
+        ctx.drawImage(spr.idle, gx - 11, gy - 12);
         ctx.restore();
       }
     }
@@ -482,6 +494,14 @@ export class MeadowRenderer {
     for (const e of engine.enemies) {
       if (ENEMY_DEFS[e.typeId].isFoxBoss) {
         this.drawPixelEnemy(ctx, e);
+      }
+    }
+
+    // 6.5. Summoned Astral Stands (fly out from JoJo Cluckstar & ORA-punch enemies!)
+    for (const stand of engine.stands) {
+      const owner = engine.towers.find((t) => t.id === stand.ownerTowerId);
+      if (owner) {
+        this.drawPixelActiveStand(ctx, stand, owner, nowSec);
       }
     }
 
@@ -579,25 +599,109 @@ export class MeadowRenderer {
 
     const frame = tower.recoil > 0.35 ? spr.attack : spr.idle;
     const faceLeft = Math.cos(tower.angle) < -0.15;
+    // Cute gentle staggered 1px idle breathing/bobbing across the coop!
+    const cuteIdleBob =
+      tower.recoil <= 0.05 && Math.sin(nowSec * 3.6 + tower.id * 1.9) > 0.62 ? -1 : 0;
 
     ctx.save();
-    ctx.translate(px, py);
+    ctx.translate(px, py + cuteIdleBob);
     if (faceLeft) {
       ctx.scale(-1, 1);
     }
-    ctx.drawImage(frame, -10, -11);
+    ctx.drawImage(frame, -11, -12);
     ctx.restore();
 
     // Crisp Pixel Tier Pips underneath the Chicken (1..4 golden stars/pips!)
     const pipCount = tower.tier + 1;
     const totalW = pipCount * 3 - 1;
     const startX = px - Math.floor(totalW / 2);
-    const pipY = py + 8;
+    const pipY = py + 9;
     ctx.fillStyle = OUTLINE;
     ctx.fillRect(startX - 1, pipY - 1, totalW + 2, 4);
     for (let p = 0; p < pipCount; p++) {
       ctx.fillStyle = tower.tier === 3 ? '#38BDF8' : '#FACC15';
       ctx.fillRect(startX + p * 3, pipY, 2, 2);
+    }
+  }
+
+  private drawPixelActiveStand(
+    ctx: CanvasRenderingContext2D,
+    stand: ActiveStand,
+    owner: PlacedChicken,
+    nowSec: number
+  ): void {
+    const standSet = PIXEL_ATLAS.standSprites;
+    if (!standSet) return;
+
+    const ox = toPx(owner.x);
+    const oy = toPx(owner.y);
+    const sx = toPx(stand.x);
+    const sy = toPx(stand.y);
+    const isRequiem = owner.tier === 3;
+
+    // 1. Dotted Astral Spirit Tether linking Stand User Chicken -> Summoned Stand!
+    const distPx = Math.hypot(sx - ox, sy - oy);
+    if (distPx > 8) {
+      const steps = Math.min(8, Math.max(2, Math.floor(distPx / 7)));
+      for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        const lx = Math.round(ox + (sx - ox) * t);
+        const ly = Math.round(oy - 3 + (sy - (oy - 3)) * t);
+        ctx.fillStyle = (i + Math.floor(nowSec * 10)) % 2 === 0
+          ? (isRequiem ? '#FEF08A' : '#E879F9')
+          : (isRequiem ? '#38BDF8' : '#A855F7');
+        ctx.fillRect(lx, ly, 1, 1);
+      }
+    }
+
+    // 2. Requiem Golden Aura Ring at Tier 4!
+    if (isRequiem) {
+      drawPixelCircle(ctx, sx, sy, 10 + (Math.floor(nowSec * 6) % 2), '#FACC15', true);
+    }
+
+    // 3. Astral Stand Spirit Sprite (rapidly alternates idle & multi-fist ORA barrage while punching!)
+    const isPunchFlurry =
+      stand.punchAnim > 0.12 ||
+      (stand.state === 'punching' && Math.floor(nowSec * 22) % 2 === 0);
+    const sprite = isRequiem
+      ? isPunchFlurry
+        ? standSet.requiemPunch
+        : standSet.requiemIdle
+      : isPunchFlurry
+      ? standSet.normalPunch
+      : standSet.normalIdle;
+
+    const faceLeft = Math.cos(stand.angle) < -0.15;
+    const hoverBob = stand.state === 'hover' ? Math.round(Math.sin(nowSec * 5 + owner.id)) : 0;
+
+    ctx.save();
+    ctx.globalAlpha = stand.state === 'hover' ? 0.86 : 0.96;
+    ctx.translate(sx, sy + hoverBob);
+    if (faceLeft) {
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(sprite, -11, -11);
+    ctx.restore();
+
+    // 4. Extra Dynamic Directional ORA Fist Streaks right into the enemy when punching!
+    if (stand.punchAnim > 0.2) {
+      const cos = Math.cos(stand.angle);
+      const sin = Math.sin(stand.angle);
+      const perpX = -sin;
+      const perpY = cos;
+      const fistCount = owner.tier >= 2 ? 3 : 2;
+      for (let f = 0; f < fistCount; f++) {
+        const spread = (f - (fistCount - 1) / 2) * 3.5;
+        const reach = 8 + ((Math.floor(nowSec * 30) + f * 3) % 6);
+        const fx = Math.round(sx + cos * reach + perpX * spread);
+        const fy = Math.round(sy + sin * reach + perpY * spread);
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(fx - 2, fy - 2, 4, 4);
+        ctx.fillStyle = isRequiem ? '#FACC15' : '#F0ABFC';
+        ctx.fillRect(fx - 1, fy - 1, 2, 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(fx, fy - 1, 1, 1);
+      }
     }
   }
 
@@ -832,13 +936,13 @@ export class MeadowRenderer {
         ctx.fillRect(px, py, 2, 2);
         break;
       }
-      case 'void_hole': {
-        ctx.fillStyle = '#C084FC';
-        ctx.fillRect(px - 3, py - 3, 7, 7);
-        ctx.fillStyle = '#7E22CE';
+      case 'stand_fist': {
+        ctx.fillStyle = OUTLINE;
         ctx.fillRect(px - 2, py - 2, 5, 5);
-        ctx.fillStyle = '#090D16';
+        ctx.fillStyle = '#F0ABFC';
         ctx.fillRect(px - 1, py - 1, 3, 3);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py - 1, 1, 1);
         break;
       }
       case 'valkyrie_spear': {

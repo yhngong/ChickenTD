@@ -94,7 +94,7 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'tesla',
   'chrono',
   'gundam',
-  'void_hen',
+  'stand_hen',
   'valkyrie',
   'star_dread',
   'quasar',
@@ -856,8 +856,8 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     role: 'Camo Shuriken Master',
     hotkey: '0',
     baseCost: 390,
-    featherColor: '#475569',
-    bellyColor: '#94A3B8',
+    featherColor: '#E2E8F0',
+    bellyColor: '#CBD5E1',
     accentColor: '#DC2626',
     projectileStyle: 'shuriken',
     tiers: [
@@ -1515,85 +1515,85 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 18. VOID AYAM CEMANI (#4 above Cyber-Cluck 9000) — Singularity black-hole caster
-  void_hen: {
-    id: 'void_hen',
-    name: 'Void Ayam Cemani',
-    role: 'Singularity Black-Hole',
+  // 18. JOJO CLUCKSTAR (#4 above Cyber-Cluck 9000) — Summoned Stand Brawler
+  stand_hen: {
+    id: 'stand_hen',
+    name: 'JoJo Cluckstar',
+    role: 'Summoned Stand Brawler',
     hotkey: 'F',
     baseCost: 15000,
-    featherColor: '#1E1B4B',
-    bellyColor: '#312E81',
+    featherColor: '#FEF3C7',
+    bellyColor: '#FDE68A',
     accentColor: '#A855F7',
-    projectileStyle: 'void_hole',
+    projectileStyle: 'stand_fist',
     tiers: [
       {
-        tierName: 'Shadow Cemani',
+        tierName: 'Star Feather',
         upgradeCost: 0,
-        damage: 68,
-        fireRate: 2.1,
+        damage: 52,
+        fireRate: 5.5,
         range: 245,
-        pierce: 1,
+        pierce: 4,
         projectiles: 2,
-        projectileSpeed: 760,
-        splashRadius: 76,
-        slowFactor: 0.42,
-        slowDuration: 2.2,
-        burnDps: 45,
-        foxDamageMult: 2.8,
+        projectileSpeed: 560,
+        splashRadius: 42,
+        slowFactor: 0.35,
+        slowDuration: 1.2,
+        burnDps: 35,
+        foxDamageMult: 2.9,
         camoSight: true,
-        description: 'Hurls dark-matter singularities that implode & snare swarms!',
+        description: 'Manifests Star Feather! Stand dashes to foes and throws rapid punch flurries!',
       },
       {
-        tierName: 'Event Horizon',
+        tierName: 'Platinum Talon',
         upgradeCost: 12500,
-        damage: 120,
-        fireRate: 2.7,
+        damage: 92,
+        fireRate: 6.8,
         range: 270,
-        pierce: 1,
+        pierce: 6,
         projectiles: 2,
-        projectileSpeed: 840,
-        splashRadius: 92,
-        slowFactor: 0.5,
-        slowDuration: 2.6,
-        burnDps: 90,
-        foxDamageMult: 3.4,
+        projectileSpeed: 680,
+        splashRadius: 54,
+        slowFactor: 0.45,
+        slowDuration: 1.6,
+        burnDps: 75,
+        foxDamageMult: 3.5,
         camoSight: true,
-        description: 'Expanding gravity wells rip Fox armor for 90 void DPS!',
+        description: 'Faster Stand dash speed, wider shockwave punches & 3.5x Boss pummeling!',
       },
       {
-        tierName: 'Abyssal Singularity',
+        tierName: 'Za Hen-do: Time-Skip',
         upgradeCost: 26000,
-        damage: 215,
-        fireRate: 3.3,
-        range: 295,
-        pierce: 2,
+        damage: 165,
+        fireRate: 8.2,
+        range: 300,
+        pierce: 8,
         projectiles: 3,
-        projectileSpeed: 920,
-        splashRadius: 108,
+        projectileSpeed: 840,
+        splashRadius: 68,
         slowFactor: 0.58,
-        slowDuration: 3.2,
-        burnDps: 175,
-        foxDamageMult: 4.1,
+        slowDuration: 2.4,
+        burnDps: 150,
+        foxDamageMult: 4.2,
         camoSight: true,
-        description: 'Triple black holes implode waves at 175 Hawking DPS!',
+        description: 'Stand warps to targets at 840 spd with 58% Time-Skip punch barrages!',
       },
       {
-        tierName: 'Oblivion Sovereign',
+        tierName: 'Cluckiem Over-Heaven',
         upgradeCost: 55000,
-        damage: 390,
-        fireRate: 4.1,
-        range: 330,
-        pierce: 2,
+        damage: 310,
+        fireRate: 10.0,
+        range: 340,
+        pierce: 12,
         projectiles: 4,
-        projectileSpeed: 1020,
-        splashRadius: 126,
+        projectileSpeed: 1050,
+        splashRadius: 86,
         slowFactor: 0.65,
-        slowDuration: 3.8,
-        burnDps: 340,
-        foxDamageMult: 4.9,
+        slowDuration: 3.2,
+        burnDps: 300,
+        foxDamageMult: 5.0,
         camoSight: true,
-        description: 'Quad supermassive black holes devour Alpha Reynards!',
+        description: 'Golden Requiem Stand! 10/sec hyper-ORA fist storms pummel Alpha Foxes!',
       },
     ],
   },
@@ -1688,8 +1688,8 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     role: 'Antimatter Fleet Nuke',
     hotkey: 'X',
     baseCost: 60000,
-    featherColor: '#334155',
-    bellyColor: '#64748B',
+    featherColor: '#E0F2FE',
+    bellyColor: '#BAE6FD',
     accentColor: '#F43F5E',
     projectileStyle: 'antimatter',
     tiers: [
@@ -2233,29 +2233,59 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
   },
 };
 
-// ==================== CLICKER UPGRADES ====================
-const BEAK_VALUES = [2, 4, 7, 11, 17, 25, 37, 54, 78, 112, 160];
+// ==================== CLICKER UPGRADES (9 UPGRADES, SCALING TO 250K+ UNITS!) ====================
+const BEAK_VALUES = [
+  2, 4, 7, 11, 17, 25, 37, 54, 78, 112, 160, 205, 260, 330, 415, 520, 650, 810, 1000,
+];
+
+const FARMHAND_RATES = [
+  0, 0.8, 1.5, 2.3, 3.2, 4.2, 5.3, 6.5, 7.8, 9.2, 10.8, 12.4, 14.0,
+];
 
 export function getBaseCornPerClick(beakLevel: number): number {
   return BEAK_VALUES[Math.min(BEAK_VALUES.length - 1, Math.max(0, beakLevel))];
 }
 
+export function getFarmhandAutoRate(farmhandLevel: number): number {
+  return FARMHAND_RATES[Math.min(FARMHAND_RATES.length - 1, Math.max(0, farmhandLevel))];
+}
+
 export function getCritParams(luckLevel: number): { chance: number; mult: number } {
   if (luckLevel <= 0) return { chance: 0, mult: 1 };
   return {
-    chance: Math.min(0.45, 0.05 + luckLevel * 0.06),
-    mult: 2.5 + luckLevel * 0.5,
+    chance: Math.min(0.5, 0.05 + luckLevel * 0.045),
+    mult: 2.5 + luckLevel * 0.35,
   };
 }
 
 export function getMaxRhythmMult(rhythmLevel: number): number {
   if (rhythmLevel <= 0) return 1.0;
-  return 1.0 + rhythmLevel * 0.32;
+  return 1.0 + rhythmLevel * 0.22;
 }
 
 export function getHarvestBasketMult(basketLevel: number): number {
   if (basketLevel <= 0) return 0;
-  return 4 + basketLevel * 6;
+  return 4 + basketLevel * 5;
+}
+
+export function getTwinBeakChance(twinLevel: number): number {
+  if (twinLevel <= 0) return 0;
+  return Math.min(1.0, twinLevel * 0.1);
+}
+
+export function getForemanMult(foremanLevel: number): number {
+  if (foremanLevel <= 0) return 1.0;
+  return 1.0 + foremanLevel * 0.15;
+}
+
+export function getCornSiloDividendRate(siloLevel: number): number {
+  if (siloLevel <= 0) return 0;
+  return siloLevel * 0.05;
+}
+
+export function getCornucopiaWaveMult(cornucopiaLevel: number, waveNumber: number): number {
+  if (cornucopiaLevel <= 0) return 1.0;
+  return 1.0 + Math.max(1, waveNumber) * (cornucopiaLevel * 0.008);
 }
 
 export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
@@ -2263,45 +2293,101 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     id: 'beakPower',
     name: 'Sharper Beak',
     iconId: 'beak_upg',
-    maxLevel: 10,
+    maxLevel: 18,
     baseCost: 75,
-    costMult: 1.88,
-    getEffectLabel: (lvl) => `${getBaseCornPerClick(lvl)} Corn / Click`,
-    description: 'Increases base Corn harvested on every click during waves.',
+    costMult: 1.78,
+    getEffectLabel: (lvl) => `${getBaseCornPerClick(lvl).toLocaleString()} Corn / Peck`,
+    description: 'Increases base Corn harvested on every manual click & Farmhand peck.',
+  },
+  {
+    id: 'farmhandChicks',
+    name: 'Farmhand Chicks',
+    iconId: 'farmhand_upg',
+    maxLevel: 12,
+    baseCost: 110,
+    costMult: 1.85,
+    getEffectLabel: (lvl) =>
+      lvl === 0 ? 'Locked (0/s)' : `${getFarmhandAutoRate(lvl).toFixed(1)} Auto-Pecks/s`,
+    description:
+      'Helper chicks passively peck for Corn during active waves (ignores 12 CPS cap!).',
   },
   {
     id: 'goldenLuck',
     name: 'Golden Egg Luck',
     iconId: 'sparkle_upg',
-    maxLevel: 6,
+    maxLevel: 10,
     baseCost: 115,
-    costMult: 2.05,
+    costMult: 1.98,
     getEffectLabel: (lvl) => {
       if (lvl === 0) return '0% Crit';
       const p = getCritParams(lvl);
       return `${Math.round(p.chance * 100)}% for ${p.mult.toFixed(1)}x`;
     },
-    description: 'Chance per click to crack a Golden Kernel for massive Corn!',
+    description: 'Chance on clicks & auto-pecks to crack a Golden Kernel for huge Corn!',
   },
   {
     id: 'peckRhythm',
     name: 'Frenzy Peck Streak',
     iconId: 'flame_upg',
-    maxLevel: 5,
+    maxLevel: 10,
     baseCost: 135,
-    costMult: 2.1,
+    costMult: 1.98,
     getEffectLabel: (lvl) => `Up to ${getMaxRhythmMult(lvl).toFixed(2)}x`,
-    description: 'Rapid clicking builds a live Frenzy multiplier bar.',
+    description: 'Active pecking builds a live Frenzy multiplier bar across the wave.',
   },
   {
     id: 'harvestBasket',
     name: '12-Peck Mega Cob',
     iconId: 'basket_upg',
-    maxLevel: 5,
+    maxLevel: 10,
     baseCost: 150,
-    costMult: 2.15,
+    costMult: 1.98,
     getEffectLabel: (lvl) => (lvl === 0 ? 'Locked' : `+${getHarvestBasketMult(lvl)}x every 12th`),
-    description: 'Every 12th click in a wave drops a giant bonus Corn Cob!',
+    description: 'Every 12th peck in a wave drops a giant bonus Mega Cob!',
+  },
+  {
+    id: 'twinBeak',
+    name: 'Twin-Peck Multistrike',
+    iconId: 'twin_beak_upg',
+    maxLevel: 10,
+    baseCost: 220,
+    costMult: 2.02,
+    getEffectLabel: (lvl) =>
+      lvl === 0 ? '0% Double' : `${Math.round(getTwinBeakChance(lvl) * 100)}% Double-Peck`,
+    description: 'Chance per click or auto-peck to strike twice (2x Corn & +2 Mega Cob)!',
+  },
+  {
+    id: 'roostForeman',
+    name: 'Roost Foreman',
+    iconId: 'foreman_upg',
+    maxLevel: 8,
+    baseCost: 260,
+    costMult: 2.05,
+    getEffectLabel: (lvl) =>
+      lvl === 0 ? '1.00x Auto' : `${getForemanMult(lvl).toFixed(2)}x Auto + Hold Frenzy`,
+    description: 'Multiplies Farmhand Chick Corn yield & stops Frenzy decay while pecking!',
+  },
+  {
+    id: 'cornSilo',
+    name: 'Golden Corn Silo',
+    iconId: 'silo_upg',
+    maxLevel: 10,
+    baseCost: 300,
+    costMult: 2.05,
+    getEffectLabel: (lvl) =>
+      lvl === 0 ? '0% Wave Bonus' : `+${Math.round(getCornSiloDividendRate(lvl) * 100)}% Wave Bonus`,
+    description: 'Pays a massive bonus % of all Corn pecked that wave when the wave clears!',
+  },
+  {
+    id: 'cornucopia',
+    name: 'Mythic Cornucopia',
+    iconId: 'cornucopia_upg',
+    maxLevel: 10,
+    baseCost: 420,
+    costMult: 2.12,
+    getEffectLabel: (lvl) =>
+      lvl === 0 ? '+0% / Wave' : `+${(lvl * 0.8).toFixed(1)}% Corn / Wave`,
+    description: 'Scales all Henhouse Corn by current Wave # to fund 250K+ Apex Chickens!',
   },
 ];
 

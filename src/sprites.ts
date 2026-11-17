@@ -56,20 +56,29 @@ export function makeFlashSprite(src: HTMLCanvasElement, flashColor = '#FFFFFF'):
 // ==================== 1. UI PIXEL ICONS (ZERO EMOJIS!) ====================
 const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, string> }> = {
   chicken: {
-    pal: { O: OUTLINE, R: '#EF4444', W: '#FFF7ED', S: '#FDE68A', Y: '#F59E0B', E: '#1E293B' },
+    pal: {
+      O: OUTLINE,
+      R: '#FB7185',
+      C: '#EF4444',
+      W: '#FFFBEB',
+      H: '#FFFFFF',
+      S: '#FDE68A',
+      Y: '#FACC15',
+      B: '#F97316',
+    },
     rows: [
       '....OO.OO.....',
-      '...ORRORRO....',
-      '...ORRRRR.....',
-      '...OOWWWWO....',
-      '..OWWWWWWWOO..',
-      '..OWWWEWWWWYYO',
-      '..OWWWWWWWWYYO',
-      '..OWWWSSWWWOO.',
-      '..OOWWSSWWRO..',
-      '...OOWWWWOO...',
-      '....OO..OO....',
-      '...OYY..YYO...',
+      '...OCCOCCO....',
+      '....OCCCO.....',
+      '..OOOWWWWOOO..',
+      '.OWWHHWWWWWW0.'.replace('0', 'O'),
+      '.OWWWWWWHOWWWO',
+      'OWWWWWWWOOYYBO',
+      'OWWSSWWWRRWWBO',
+      '.OWWSSSSWWWWO.',
+      '..OOWWWWWWWOO.',
+      '....OBO.OBO...',
+      '....OO...OO...',
     ],
   },
   corn: {
@@ -259,6 +268,99 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
       '..............',
     ],
   },
+  farmhand_upg: {
+    pal: {
+      O: OUTLINE,
+      H: '#D97706',
+      R: '#EF4444',
+      Y: '#FEF08A',
+      L: '#FFFFFF',
+      P: '#FB7185',
+      B: '#F97316',
+    },
+    rows: [
+      '....OOOOOO....',
+      '...OHHHHHHO...',
+      '.OOOOOOOOOOOO.',
+      '.OHHHHRRHHHHO.',
+      '..OYYYYYYYYO..',
+      '.OYYLLYYLOYYO.',
+      '.OYYYYYYOOYBBO',
+      '.OYYYYPPYYYYO.',
+      '..OYYYYYYYYO..',
+      '...OOOOOOOO...',
+      '....OB..BO....',
+      '..............',
+    ],
+  },
+  twin_beak_upg: {
+    pal: { O: OUTLINE, Y: '#FACC15', H: '#FEF08A', D: '#D97706', S: '#E2E8F0', C: '#38BDF8' },
+    rows: [
+      '......OOOO....',
+      '....OOYYYYOO..',
+      '...OYYHHHHYYO.',
+      '..OSSYYYYDDO..',
+      '.OSSSSOOOOOO..',
+      '..OOOOOOYYYYOO',
+      '....OOYYHHHHYO',
+      '...OCCYYYYDDO.',
+      '..OCCCCYYDDO..',
+      '..OCCCCOO.....',
+      '...OOOO.......',
+      '..............',
+    ],
+  },
+  foreman_upg: {
+    pal: { O: OUTLINE, R: '#EF4444', Y: '#FACC15', H: '#FEF08A', D: '#CA8A04', C: '#38BDF8' },
+    rows: [
+      '...OO.OO.OO...',
+      '..ORRORRORRO..',
+      '..ORRRRRRRRO..',
+      '.OOOOOOOOOOOO.',
+      '.OYYHHHHHHYYO.',
+      '.OYHCCCCCCYHO.',
+      '.OYYYYYYYYYYO.',
+      '..OYYDDDDYYO..',
+      '...OOYYYYOO...',
+      '.....OOOO.....',
+      '..............',
+      '..............',
+    ],
+  },
+  silo_upg: {
+    pal: { O: OUTLINE, S: '#E2E8F0', Y: '#FACC15', R: '#DC2626', D: '#991B1B' },
+    rows: [
+      '....OOOOOO....',
+      '..OOSSSSSSOO..',
+      '.OSSYYYYYYSSO.',
+      '.OOOOOOOOOOOO.',
+      '..ORRRRRRRRO..',
+      '..ORROYYORRO..',
+      '..ORROYYORRO..',
+      '..ORRDRRDRRO..',
+      '..ORRRRRRRRO..',
+      '.OODDDDDDDDOO.',
+      '.OOOOOOOOOOOO.',
+      '..............',
+    ],
+  },
+  cornucopia_upg: {
+    pal: { O: OUTLINE, B: '#D97706', D: '#92400E', Y: '#FACC15', H: '#FEF08A', G: '#4ADE80', C: '#38BDF8' },
+    rows: [
+      '.......OOOO...',
+      '.....OOBBBBOO.',
+      '...OOBBYYYYBBO',
+      '..OBBYYDDDDYBO',
+      '.OBBYDDOOOOBO.',
+      '.OBYDOOGGYYOO.',
+      '..OBOOYHYYGGO.',
+      '...OOYYHHYCYO.',
+      '....OGGYYYYOO.',
+      '.....OOOOOOO..',
+      '..............',
+      '..............',
+    ],
+  },
   bolt_upg: {
     pal: { O: OUTLINE, Y: '#FACC15', H: '#FEF9C3', C: '#38BDF8' },
     rows: [
@@ -414,17 +516,108 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
   },
 };
 
-// ==================== 2. PIXEL CHICKEN GENERATOR (22 DISTINCT UNITS!) ====================
+// ==================== 2. KAWAII PIXEL CHICKEN GENERATOR (22 ULTRA-CUTE BORBS + STAND!) ====================
 export interface ChickenSpritePair {
   idle: HTMLCanvasElement;
   attack: HTMLCanvasElement;
   portraitUrl: string;
 }
 
+export interface StandSpriteSet {
+  normalIdle: HTMLCanvasElement;
+  normalPunch: HTMLCanvasElement;
+  requiemIdle: HTMLCanvasElement;
+  requiemPunch: HTMLCanvasElement;
+}
+
+function drawStandSpiritPixelArt(requiem: boolean, punchFrame: boolean): HTMLCanvasElement {
+  const c = makeCanvas(24, 22);
+  const ctx = c.getContext('2d')!;
+  const px = (x: number, y: number, col: string, pw = 1, ph = 1) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y, pw, ph);
+  };
+
+  const out = requiem ? '#3B0764' : '#2E1065';
+  const body = requiem ? '#FACC15' : '#A855F7';
+  const hi = requiem ? '#FEF9C3' : '#E9D5FF';
+  const core = requiem ? '#38BDF8' : '#22D3EE';
+  const gold = requiem ? '#FFFFFF' : '#FACC15';
+  const fistCol = requiem ? '#FEF08A' : '#F0ABFC';
+
+  // Floating astral aura particles
+  px(2, 5, core, 1, 2);
+  px(4, 2, gold, 1, 1);
+  px(15, 2, core, 1, 1);
+
+  // Wispy Ghostly Stand Tail tapering bottom-left
+  px(3, 17, out, 4, 3);
+  px(4, 15, out, 6, 4);
+  px(4, 17, body, 3, 2);
+  px(5, 15, body, 4, 3);
+  px(6, 13, out, 7, 4);
+  px(7, 13, body, 5, 3);
+
+  // Heroic Astral Rooster-Spirit Torso & Head
+  px(6, 6, out, 9, 8);
+  px(5, 8, out, 11, 5);
+  px(7, 7, body, 7, 6);
+  px(8, 8, hi, 5, 3);
+
+  // Blazing Swept Astral Rooster Crest / Star Crown
+  px(7, 3, out, 7, 4);
+  px(8, 2, core, 2, 4);
+  px(10, 1, gold, 2, 5);
+  px(12, 3, body, 2, 3);
+
+  // Golden Shoulder Pauldrons & Chest Star Emblem
+  px(5, 8, gold, 3, 2);
+  px(13, 8, gold, 3, 2);
+  px(10, 10, core, 2, 2);
+
+  // Fierce Glowing Stand Eye + Forehead Circlet
+  px(8, 6, gold, 6, 1);
+  px(11, 7, out, 3, 2);
+  px(12, 7, '#FFFFFF', 2, 1);
+  px(11, 8, core, 2, 1);
+  // Spirit Beak Crest
+  px(14, 7, gold, 2, 2);
+
+  if (!punchFrame) {
+    // Raised Guarded Stand Fists
+    px(14, 10, out, 4, 4);
+    px(15, 11, fistCol, 2, 2);
+    px(12, 12, out, 3, 3);
+    px(13, 13, gold, 2, 1);
+  } else {
+    // Rapid Multi-Fist "ORA-ORA!" Pixel Barrage + Speed Lines!
+    px(14, 6, '#FFFFFF', 4, 1);
+    px(15, 10, core, 4, 1);
+    px(14, 14, '#FFFFFF', 4, 1);
+
+    // Upper Punch Fist
+    px(18, 4, out, 5, 4);
+    px(19, 5, fistCol, 3, 2);
+    px(21, 5, '#FFFFFF', 1, 1);
+
+    // Mid Main Power Fist (furthest forward!)
+    px(19, 9, out, 5, 4);
+    px(20, 10, gold, 3, 2);
+    px(22, 10, '#FFFFFF', 1, 1);
+
+    // Lower Hook Fist
+    px(17, 14, out, 5, 4);
+    px(18, 15, fistCol, 3, 2);
+    px(20, 15, core, 1, 1);
+  }
+
+  return c;
+}
+
 function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): HTMLCanvasElement {
   const def = CHICKEN_DEFS[typeId];
-  const w = 20;
-  const h = 20;
+  const w = 22;
+  const h = 22;
   const c = makeCanvas(w, h);
   const ctx = c.getContext('2d')!;
 
@@ -434,316 +627,308 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
   };
 
   const shiftX = attackFrame ? 1 : 0;
+  const hopY = attackFrame ? -1 : 0;
+  const bx = 4 + shiftX;
+  const by = 7 + hopY;
 
-  // Ground pixel shadow
-  px(5, 17, 'rgba(15,23,42,0.45)', 10, 2);
+  // 1. Soft Oval Ground Shadow
+  px(5, 19, 'rgba(15,23,42,0.34)', 12, 2);
 
-  // Feet
-  px(7, 16, '#F59E0B', 2, 2);
-  px(11, 16, '#F59E0B', 2, 2);
-
-  // Plump Chicken Body + 1px Pixel Outline
-  px(5 + shiftX, 7, OUTLINE, 9, 9);
-  px(4 + shiftX, 8, OUTLINE, 11, 7);
-  // Tail feathers on left
-  px(2 + shiftX, 7, OUTLINE, 3, 5);
-  px(3 + shiftX, 8, def.accentColor, 2, 3);
-
-  // Fill Feather Body & Belly Shade
-  px(5 + shiftX, 8, def.featherColor, 9, 7);
-  px(6 + shiftX, 7, def.featherColor, 7, 1);
-  px(6 + shiftX, 12, def.bellyColor, 7, 3);
-
-  // Wing (flaps up on attackFrame!)
-  const wingY = attackFrame ? 9 : 10;
-  px(6 + shiftX, wingY, OUTLINE, 5, 4);
-  px(7 + shiftX, wingY + 1, def.bellyColor, 3, 2);
-
-  // Eye & Wattle & Beak (facing right)
-  px(12 + shiftX, 9, OUTLINE, 1, 2);
-  px(12 + shiftX, 9, '#FFFFFF', 1, 1);
-  px(12 + shiftX, 10, OUTLINE, 1, 1);
-
-  // Beak (opens on attackFrame!)
-  px(15 + shiftX, 9, OUTLINE, 3, 3);
-  px(15 + shiftX, 10, '#FACC15', 2, 1);
-  if (attackFrame) {
-    px(15 + shiftX, 11, '#F59E0B', 2, 1);
+  // 2. Back-Layer Capes / Angel Wings (drawn behind the chubby borb body!)
+  if (typeId === 'valkyrie') {
+    px(bx - 2, by + 3, OUTLINE, 4, 7);
+    px(bx - 1, by + 4, '#38BDF8', 2, 5);
+  } else if (typeId === 'omega_god') {
+    px(bx - 3, by + 1, OUTLINE, 5, 8);
+    px(bx - 2, by + 2, '#FEF08A', 3, 6);
+    px(bx - 1, by + 3, '#FFFFFF', 2, 4);
+  } else if (typeId === 'phoenix') {
+    px(bx - 3, by + 2, '#EA580C', 4, 6);
+    px(bx - 2, by + 3, '#FACC15', 2, 4);
   }
-  // Red wattle under beak
-  px(14 + shiftX, 12, '#EF4444', 1, 2);
 
-  // ==================== BESPOKE HEADGEAR & WEAPONS PER UNIT (22 TOTAL) ====================
+  // 3. Tiny Stubby Birdie Feet (hop up happily when attacking!)
+  px(bx + 3, by + 11, '#FB923C', 2, 2);
+  px(bx + 8, by + 11, '#FB923C', 2, 2);
+
+  // 4. Fluffy Bouncy Tail-Poof on Left
+  const tailY = by + (attackFrame ? 3 : 4);
+  px(bx - 2, tailY, OUTLINE, 3, 4);
+  px(bx - 1, tailY + 1, def.accentColor, 2, 2);
+  px(bx - 1, tailY + 1, def.featherColor, 1, 1);
+
+  // 5. Round, Plump, Squishy Mochi-Borb Silhouette (curved pixel corners!)
+  px(bx + 3, by, OUTLINE, 7, 11);
+  px(bx + 1, by + 1, OUTLINE, 11, 9);
+  px(bx, by + 3, OUTLINE, 13, 5);
+
+  // Soft Marshmallow Feather Fill + Top Glossy Highlight + Pastel Tummy Patch
+  px(bx + 3, by + 1, def.featherColor, 7, 9);
+  px(bx + 2, by + 2, def.featherColor, 9, 7);
+  px(bx + 1, by + 3, def.featherColor, 11, 5);
+  px(bx + 4, by + 1, '#FFFFFF', 4, 1); // glossy soft crown sheen!
+  px(bx + 2, by + 7, def.bellyColor, 9, 2);
+  px(bx + 3, by + 9, def.bellyColor, 7, 1);
+
+  // 6. Cute Stubby Wing (flaps up cheerfully on attackFrame!)
+  const wingY = by + (attackFrame ? 4 : 5);
+  px(bx + 1, wingY, OUTLINE, 5, 4);
+  px(bx + 2, wingY + 1, def.bellyColor, 3, 2);
+  px(bx + 2, wingY + 1, '#FFFFFF', 2, 1);
+
+  // ==================== 7. CUTE BESPOKE HATS & PROPS (PERCHED ABOVE EYES!) ====================
   switch (typeId) {
     case 'bantam': {
-      // Crimson martial-arts headband + knot tails + red fist wraps
-      px(5 + shiftX, 6, '#DC2626', 9, 2);
-      px(3 + shiftX, 5, '#EF4444', 2, 2);
-      px(2 + shiftX, 6, '#DC2626', 2, 1);
-      px(9 + shiftX, 4, '#EF4444', 3, 2); // comb peeking above headband
-      px(10 + shiftX, wingY + 1, '#DC2626', 2, 2); // karate glove
+      // Cute bouncy red comb tuft + crimson dojo headband + tiny pom-pom boxing mitts!
+      px(bx + 5, by - 3, '#EF4444', 3, 3);
+      px(bx + 6, by - 4, '#FB7185', 2, 2);
+      px(bx + 2, by + 1, '#DC2626', 9, 2);
+      px(bx - 1, by, '#EF4444', 3, 2);
+      px(bx + 5, wingY + 1, '#EF4444', 2, 2);
       break;
     }
     case 'pecker': {
-      // Tall 3-point classic red rooster comb + golden seed satchel
-      px(7 + shiftX, 4, OUTLINE, 6, 3);
-      px(8 + shiftX, 4, '#EF4444', 1, 3);
-      px(10 + shiftX, 3, '#EF4444', 1, 4);
-      px(12 + shiftX, 5, '#EF4444', 1, 2);
-      px(7 + shiftX, 13, '#CA8A04', 3, 2);
+      // Bouncy ruby heart-comb + cute little golden seed pouch!
+      px(bx + 4, by - 3, OUTLINE, 5, 3);
+      px(bx + 4, by - 3, '#EF4444', 2, 2);
+      px(bx + 7, by - 3, '#EF4444', 2, 2);
+      px(bx + 5, by - 2, '#FB7185', 3, 2);
+      px(bx + 4, by + 8, '#CA8A04', 3, 2);
+      px(bx + 5, by + 8, '#FEF08A', 1, 1);
       break;
     }
     case 'honey': {
-      // Wide golden beekeeper sunhat + dripping honey dipper
-      px(3 + shiftX, 6, OUTLINE, 13, 2);
-      px(4 + shiftX, 6, '#FACC15', 11, 1);
-      px(6 + shiftX, 4, '#FDE047', 7, 2);
-      px(6 + shiftX, 5, '#92400E', 7, 1);
-      // Honey wand in front
-      px(15 + shiftX, 12, '#92400E', 3, 1);
-      px(17 + shiftX, 11, '#F59E0B', 2, 3);
+      // Cozy straw sunbonnet with a pink daisy + cute dripping honey dipper!
+      px(bx + 1, by + 1, OUTLINE, 11, 1);
+      px(bx + 2, by, '#FACC15', 9, 2);
+      px(bx + 4, by - 2, '#FDE047', 5, 2);
+      px(bx + 4, by - 1, '#FB7185', 2, 2); // tiny pink flower on hat!
+      px(bx + 5, by - 1, '#FFFFFF', 1, 1);
+      px(bx + 13, by + 7, '#92400E', 2, 1);
+      px(bx + 14, by + 6, '#F59E0B', 2, 3);
       break;
     }
     case 'boomerang': {
-      // Aussie slouch bush hat + curved wooden pixel boomerang
-      px(3 + shiftX, 6, '#78350F', 12, 1);
-      px(6 + shiftX, 4, '#92400E', 7, 2);
-      px(6 + shiftX, 5, '#FACC15', 7, 1);
-      // Curved boomerang held ready
-      px(15 + shiftX, 6, '#B45309', 2, 3);
-      px(16 + shiftX, 8, '#F59E0B', 2, 2);
+      // Cute tilted Aussie explorer hat + mini wooden boomerang!
+      px(bx + 1, by + 1, '#78350F', 11, 1);
+      px(bx + 3, by - 2, '#92400E', 7, 3);
+      px(bx + 3, by, '#FACC15', 7, 1);
+      px(bx + 13, by + 1, '#B45309', 2, 3);
+      px(bx + 14, by + 3, '#FBBF24', 2, 2);
       break;
     }
     case 'chilly': {
-      // 3-spike icy crystal crown + cozy blue frost scarf
-      px(7 + shiftX, 3, '#38BDF8', 2, 4);
-      px(9 + shiftX, 2, '#E0F2FE', 2, 5);
-      px(11 + shiftX, 4, '#0284C7', 2, 3);
-      px(5 + shiftX, 12, '#0284C7', 9, 2);
-      px(6 + shiftX, 14, '#38BDF8', 2, 2);
+      // Fluffy snow-pom tuft + sky earmuff band + cozy striped winter scarf!
+      px(bx + 4, by - 3, '#FFFFFF', 5, 3);
+      px(bx + 3, by - 1, '#38BDF8', 7, 2);
+      px(bx + 2, by, '#0284C7', 2, 3); // fluffy blue earmuff!
+      px(bx + 2, by + 8, '#0284C7', 9, 2);
+      px(bx + 4, by + 8, '#BAE6FD', 2, 2);
+      px(bx + 5, by + 10, '#38BDF8', 2, 2);
       break;
     }
     case 'alchemist': {
-      // Dark plague hood + glowing emerald acid flask
-      px(5 + shiftX, 4, '#064E3B', 8, 4);
-      px(4 + shiftX, 6, '#065F46', 4, 5);
-      px(11 + shiftX, 9, '#34D399', 2, 2); // glowing alchemist goggles!
-      // Bubbling green potion flask
-      px(15 + shiftX, 12, '#A7F3D0', 3, 4);
-      px(15 + shiftX, 13, '#10B981', 3, 3);
+      // Cute emerald beret + shiny mint lab goggles pushed up on forehead + round potion!
+      px(bx + 2, by - 2, '#065F46', 8, 3);
+      px(bx + 4, by, '#10B981', 2, 2);
+      px(bx + 7, by, '#10B981', 2, 2);
+      px(bx + 4, by, '#A7F3D0', 1, 1);
+      px(bx + 7, by, '#A7F3D0', 1, 1);
+      px(bx + 13, by + 6, '#A7F3D0', 3, 4);
+      px(bx + 13, by + 7, '#10B981', 3, 3);
       break;
     }
     case 'ranger': {
-      // Forest green campaign hat + long sniper rifle barrel + scope
-      px(4 + shiftX, 6, '#14532D', 11, 1);
-      px(6 + shiftX, 3, '#15803D', 7, 3);
-      px(6 + shiftX, 5, '#CA8A04', 7, 1);
-      // Rifle barrel + scope
-      px(10 + shiftX, 11, OUTLINE, 9, 2);
-      px(12 + shiftX, 10, '#475569', 3, 1);
+      // Cute forest-scout cap with gold acorn badge + mini pop-rifle under wing!
+      px(bx + 2, by + 1, '#14532D', 10, 1);
+      px(bx + 3, by - 2, '#15803D', 7, 3);
+      px(bx + 6, by - 1, '#FACC15', 2, 2);
+      px(bx + 8, by + 7, OUTLINE, 8, 2);
+      px(bx + 10, by + 6, '#38BDF8', 2, 1);
       break;
     }
     case 'lobber': {
-      // Olive military Brodie helmet + chunky dark mortar tube
-      px(4 + shiftX, 6, '#365314', 11, 1);
-      px(5 + shiftX, 4, '#4D7C0F', 9, 2);
-      px(7 + shiftX, 4, '#84CC16', 3, 1);
-      // Mortar cannon angled up-right
-      px(14 + shiftX, 10, OUTLINE, 5, 4);
-      px(15 + shiftX, 11, '#334155', 3, 2);
+      // Adorable oversized round olive helmet + stubby egg-popper tube!
+      px(bx + 2, by - 2, '#4D7C0F', 9, 3);
+      px(bx + 1, by + 1, '#365314', 11, 1);
+      px(bx + 4, by - 1, '#BEF264', 3, 1);
+      px(bx + 12, by + 6, OUTLINE, 4, 4);
+      px(bx + 13, by + 7, '#475569', 2, 2);
       break;
     }
     case 'wizard': {
-      // Tall pointed purple arcane wizard hat + gold band + glowing staff
-      px(3 + shiftX, 6, '#581C87', 13, 1);
-      px(5 + shiftX, 4, '#7E22CE', 9, 2);
-      px(6 + shiftX, 5, '#FACC15', 7, 1);
-      px(7 + shiftX, 2, '#9333EA', 5, 2);
-      px(8 + shiftX, 0, '#A855F7', 3, 2);
-      // Arcane lightning orb staff
-      px(16 + shiftX, 8, '#78350F', 1, 8);
-      px(15 + shiftX, 6, '#E879F9', 3, 3);
-      px(16 + shiftX, 7, '#FEF08A', 1, 1);
+      // Crooked starry pastel-purple witch/wizard hat + cute star wand!
+      px(bx + 1, by + 1, '#581C87', 11, 1);
+      px(bx + 3, by - 1, '#7E22CE', 7, 2);
+      px(bx + 3, by, '#FACC15', 7, 1);
+      px(bx + 4, by - 3, '#9333EA', 5, 2);
+      px(bx + 3, by - 5, '#C084FC', 4, 2);
+      px(bx + 14, by + 4, '#92400E', 1, 6);
+      px(bx + 13, by + 2, '#FEF08A', 3, 3);
+      px(bx + 14, by + 3, '#FFFFFF', 1, 1);
       break;
     }
     case 'ninja': {
-      // Slate-black ninja hood/mask + red headband + bright steel shuriken
-      px(5 + shiftX, 5, '#1E293B', 9, 4);
-      px(5 + shiftX, 11, '#1E293B', 9, 3);
-      px(5 + shiftX, 7, '#DC2626', 9, 1);
-      px(2 + shiftX, 6, '#DC2626', 3, 2);
-      // Pixel shuriken star
-      px(16 + shiftX, 11, '#E2E8F0', 1, 3);
-      px(15 + shiftX, 12, '#E2E8F0', 3, 1);
+      // Cute dark shinobi forehead headband + silver leaf plate + fluttering red ribbons!
+      px(bx + 2, by + 1, '#1E293B', 9, 2);
+      px(bx + 6, by + 1, '#E2E8F0', 3, 1);
+      px(bx - 1, by + 1, '#DC2626', 3, 2);
+      px(bx - 2, by + 2, '#EF4444', 2, 1);
+      px(bx + 14, by + 6, '#94A3B8', 1, 3);
+      px(bx + 13, by + 7, '#E2E8F0', 3, 1);
       break;
     }
     case 'pirate': {
-      // Black tricorn pirate hat + gold skull pixel + eyepatch + broadside cannon
-      px(3 + shiftX, 5, OUTLINE, 13, 2);
-      px(4 + shiftX, 3, '#0F172A', 11, 3);
-      px(4 + shiftX, 3, '#FACC15', 11, 1);
-      px(9 + shiftX, 4, '#F8FAFC', 2, 2);
-      px(11 + shiftX, 9, OUTLINE, 3, 2); // Eyepatch
-      // Iron cannon barrel
-      px(14 + shiftX, 12, '#0F172A', 5, 3);
-      px(15 + shiftX, 12, '#475569', 3, 1);
+      // Mini captain tricorn hat with golden trim & tiny heart-skull + toy cannon!
+      px(bx + 1, by + 1, OUTLINE, 11, 1);
+      px(bx + 2, by - 2, '#0F172A', 9, 3);
+      px(bx + 2, by - 2, '#FACC15', 9, 1);
+      px(bx + 6, by - 1, '#FDA4AF', 2, 2);
+      px(bx + 12, by + 7, '#1E293B', 5, 3);
+      px(bx + 13, by + 7, '#94A3B8', 3, 1);
       break;
     }
     case 'bard': {
-      // Wide festive red-and-gold Mexican sombrero + acoustic pixel guitar!
-      px(1 + shiftX, 6, '#E11D48', 17, 2);
-      px(2 + shiftX, 6, '#FACC15', 15, 1);
-      px(6 + shiftX, 3, '#BE123C', 7, 3);
-      px(7 + shiftX, 4, '#FACC15', 5, 1);
-      // Pixel guitar across belly
-      px(8 + shiftX, 11, '#B45309', 5, 4);
-      px(9 + shiftX, 12, '#FDE68A', 2, 2);
-      px(13 + shiftX, 10, '#78350F', 5, 2);
+      // Festive mini red-and-gold fiesta sombrero + cute tiny acoustic guitar!
+      px(bx - 1, by + 1, '#E11D48', 15, 1);
+      px(bx, by, '#FACC15', 13, 1);
+      px(bx + 4, by - 3, '#BE123C', 5, 3);
+      px(bx + 5, by - 2, '#FDE047', 3, 1);
+      px(bx + 6, by + 7, '#D97706', 4, 3);
+      px(bx + 7, by + 8, '#FEF08A', 2, 1);
+      px(bx + 10, by + 6, '#78350F', 5, 2);
       break;
     }
     case 'phoenix': {
-      // Blazing 5-point solar crown + fiery orange/gold wing tips!
-      px(6 + shiftX, 2, '#EA580C', 1, 5);
-      px(8 + shiftX, 1, '#FACC15', 1, 6);
-      px(10 + shiftX, 0, '#FEF9C3', 2, 7);
-      px(13 + shiftX, 2, '#F97316', 1, 5);
-      px(2 + shiftX, 7, '#EA580C', 3, 5);
-      px(6 + shiftX, wingY + 1, '#F97316', 4, 2);
+      // Cute sunny halo & warm flame-tuft crown!
+      px(bx + 4, by - 3, '#F97316', 2, 3);
+      px(bx + 6, by - 5, '#FACC15', 2, 5);
+      px(bx + 7, by - 4, '#FFFFFF', 1, 3);
+      px(bx + 8, by - 3, '#FB923C', 2, 3);
+      px(bx + 2, wingY + 1, '#F97316', 3, 2);
       break;
     }
     case 'mecha': {
-      // Chrome cyber-crest + glowing neon cyan visor + twin shoulder plasma rails!
-      px(7 + shiftX, 3, '#06B6D4', 5, 4);
-      px(8 + shiftX, 4, '#CFFAFE', 3, 2);
-      // Glowing cyan Robo-Visor
-      px(10 + shiftX, 8, '#0891B2', 5, 3);
-      px(11 + shiftX, 9, '#67E8F9', 4, 1);
-      // Twin laser rail barrels
-      px(12 + shiftX, 6, '#334155', 7, 2);
-      px(17 + shiftX, 6, '#22D3EE', 2, 2);
-      px(12 + shiftX, 12, '#334155', 7, 2);
-      px(17 + shiftX, 12, '#22D3EE', 2, 2);
+      // Cute cyber-neko ear headset + glowing cyan forehead visor + mini shoulder blasters!
+      px(bx + 3, by - 3, '#06B6D4', 2, 3);
+      px(bx + 8, by - 3, '#06B6D4', 2, 3);
+      px(bx + 3, by, '#0891B2', 8, 2);
+      px(bx + 4, by + 1, '#67E8F9', 6, 1);
+      px(bx + 11, by + 1, '#334155', 5, 2);
+      px(bx + 15, by + 1, '#22D3EE', 2, 2);
       break;
     }
     case 'tesla': {
-      // Twin copper/indigo Tesla coils on head + crackling yellow-cyan arc + emitter rod!
-      px(6 + shiftX, 2, '#B45309', 2, 5);
-      px(11 + shiftX, 2, '#B45309', 2, 5);
-      px(6 + shiftX, 1, '#38BDF8', 2, 2);
-      px(11 + shiftX, 1, '#38BDF8', 2, 2);
-      px(8 + shiftX, attackFrame ? 1 : 2, '#FEF08A', 3, 1);
-      px(11 + shiftX, 9, '#6366F1', 3, 2);
-      px(12 + shiftX, 9, '#BAE6FD', 2, 1);
-      // Front arc-coil cannon
-      px(13 + shiftX, 11, '#4338CA', 5, 3);
-      px(17 + shiftX, 11, '#FEF08A', 2, 3);
+      // Cute twin blue spark-bobbles on head + tiny yellow lightning zaps!
+      px(bx + 3, by - 3, '#6366F1', 2, 3);
+      px(bx + 8, by - 3, '#6366F1', 2, 3);
+      px(bx + 3, by - 4, '#38BDF8', 2, 2);
+      px(bx + 8, by - 4, '#38BDF8', 2, 2);
+      px(bx + 5, by - (attackFrame ? 4 : 3), '#FEF08A', 3, 1);
+      px(bx + 12, by + 7, '#4F46E5', 4, 2);
+      px(bx + 15, by + 7, '#FEF08A', 2, 2);
       break;
     }
     case 'chrono': {
-      // Bronze/gold chronometer top-hat + teal clockface + floating time hourglass!
-      px(4 + shiftX, 6, '#78350F', 11, 1);
-      px(6 + shiftX, 1, '#92400E', 7, 5);
-      px(6 + shiftX, 5, '#FACC15', 7, 1);
-      px(8 + shiftX, 2, '#2DD4BF', 3, 3);
-      px(9 + shiftX, 2, '#134E4A', 1, 2);
-      // Golden monocle + floating hourglass
-      px(11 + shiftX, 8, '#FACC15', 3, 3);
-      px(12 + shiftX, 9, '#99F6E4', 1, 1);
-      px(15 + shiftX, 10, '#FACC15', 4, 1);
-      px(16 + shiftX, 11, '#2DD4BF', 2, 3);
-      px(15 + shiftX, 14, '#FACC15', 4, 1);
+      // Dapper tiny pocket-watch top hat + cute mini teal hourglass!
+      px(bx + 2, by + 1, '#78350F', 9, 1);
+      px(bx + 4, by - 4, '#92400E', 5, 5);
+      px(bx + 4, by, '#FACC15', 5, 1);
+      px(bx + 5, by - 3, '#5EEAD4', 3, 2);
+      px(bx + 13, by + 6, '#FACC15', 3, 1);
+      px(bx + 14, by + 7, '#2DD4BF', 1, 2);
+      px(bx + 13, by + 9, '#FACC15', 3, 1);
       break;
     }
     case 'gundam': {
-      // Iconic white/blue Mecha helmet + giant golden V-Fin crest + crimson Ion Buster rifle!
-      px(6 + shiftX, 4, '#1D4ED8', 7, 3);
-      px(4 + shiftX, 1, '#FACC15', 3, 2);
-      px(7 + shiftX, 2, '#FEF08A', 5, 2);
-      px(12 + shiftX, 1, '#FACC15', 3, 2);
-      px(9 + shiftX, 3, '#DC2626', 2, 2);
-      // Emerald mecha visor + red chest vent
-      px(11 + shiftX, 9, '#10B981', 3, 2);
-      px(8 + shiftX, 12, '#DC2626', 4, 2);
-      // Long Hyper-Mega Ion Buster barrel
-      px(11 + shiftX, 11, '#1E293B', 7, 2);
-      px(17 + shiftX, 10, '#F43F5E', 2, 3);
+      // Adorable chibi Gundam V-fin forehead crest + mini toy beam blaster!
+      px(bx + 3, by - 1, '#2563EB', 7, 3);
+      px(bx + 1, by - 4, '#FACC15', 3, 2);
+      px(bx + 4, by - 3, '#FEF08A', 5, 2);
+      px(bx + 9, by - 4, '#FACC15', 3, 2);
+      px(bx + 6, by - 2, '#EF4444', 2, 2);
+      px(bx + 11, by + 7, '#334155', 5, 2);
+      px(bx + 15, by + 7, '#FB7185', 2, 2);
       break;
     }
-    case 'void_hen': {
-      // Pitch-black Ayam Cemani + violet obsidian horns + hovering black-hole singularity!
-      px(5 + shiftX, 2, '#581C87', 2, 5);
-      px(12 + shiftX, 2, '#581C87', 2, 5);
-      px(8 + shiftX, 1, '#C084FC', 3, 3);
-      px(9 + shiftX, 2, '#090D16', 1, 1);
-      // Neon-magenta void eye & shadow wing
-      px(12 + shiftX, 9, '#F0ABFC', 2, 1);
-      px(6 + shiftX, wingY + 1, '#7E22CE', 3, 2);
-      // Floating miniature black-hole orb with accretion ring
-      px(15 + shiftX, 6, '#C084FC', 4, 4);
-      px(16 + shiftX, 7, '#090D16', 2, 2);
+    case 'stand_hen': {
+      // JOJO CLUCKSTAR: Iconic dark-indigo Stand-User cap + gold badge + purple/gold Stand aura!
+      px(bx + 2, by - 2, '#1E1B4B', 8, 4);
+      px(bx + 3, by + 1, '#312E81', 10, 1); // cool peaked cap brim above eye!
+      px(bx + 2, by - 2, '#FACC15', 8, 1); // gold cap band
+      px(bx + 7, by - 1, '#FACC15', 2, 2); // gold Jotaro wing-emblem!
+      // Cool purple Stand-User collar & gold chain pixel on chest
+      px(bx + 2, by + 7, '#4C1D95', 5, 2);
+      px(bx + 6, by + 7, '#FACC15', 2, 1);
+      // Floating menacing Stand aura sparkles!
+      px(1, 4, '#C084FC', 2, 2);
+      px(2, 3, '#FEF08A', 1, 1);
+      px(18, 2, '#A855F7', 2, 2);
+      px(19, 1, '#22D3EE', 1, 1);
       break;
     }
     case 'valkyrie': {
-      // Winged golden Norse Valkyrie helm + sky-rune cape + radiant Gungnir spear!
-      px(6 + shiftX, 4, '#F59E0B', 7, 3);
-      px(7 + shiftX, 3, '#FEF08A', 5, 2);
-      // Swept white/sky Valkyrie helmet wings
-      px(3 + shiftX, 2, '#E0F2FE', 3, 3);
-      px(13 + shiftX, 2, '#E0F2FE', 3, 3);
-      px(2 + shiftX, 8, '#0284C7', 3, 6);
-      // Golden shaft + diamond celestial spearhead
-      px(9 + shiftX, 12, '#D97706', 7, 1);
-      px(15 + shiftX, 11, '#38BDF8', 4, 3);
-      px(16 + shiftX, 12, '#FFFFFF', 3, 1);
+      // Tiny white-winged golden Valkyrie circlet + sparkling star-spear!
+      px(bx + 3, by, '#F59E0B', 7, 2);
+      px(bx + 5, by - 1, '#38BDF8', 3, 2);
+      px(bx + 1, by - 3, '#FFFFFF', 3, 3);
+      px(bx + 9, by - 3, '#FFFFFF', 3, 3);
+      px(bx + 9, by + 7, '#D97706', 5, 1);
+      px(bx + 14, by + 6, '#7DD3FC', 3, 3);
+      px(bx + 15, by + 7, '#FFFFFF', 2, 1);
       break;
     }
     case 'star_dread': {
-      // Fleet Admiral peaked cap + tactical red visor + orbital antimatter pod & mini-drone!
-      px(5 + shiftX, 3, '#0F172A', 9, 3);
-      px(5 + shiftX, 5, '#FACC15', 10, 1);
-      px(9 + shiftX, 3, '#F43F5E', 2, 2);
-      px(11 + shiftX, 9, '#F43F5E', 4, 1);
-      // Hovering fleet escort drone on top-left
-      px(1 + shiftX, 2, '#94A3B8', 4, 2);
-      px(2 + shiftX, 1, '#38BDF8', 2, 1);
-      // Twin antimatter torpedo launchers
-      px(12 + shiftX, 6, '#1E293B', 6, 2);
-      px(17 + shiftX, 6, '#FB7185', 2, 2);
-      px(12 + shiftX, 12, '#1E293B', 6, 2);
-      px(17 + shiftX, 12, '#FB7185', 2, 2);
+      // Cute starfleet captain cap + adorable tiny pet UFO drone hovering above!
+      px(bx + 2, by - 2, '#1E293B', 9, 3);
+      px(bx + 2, by, '#FACC15', 10, 1);
+      px(bx + 6, by - 2, '#FB7185', 2, 2);
+      // Tiny cute pet UFO escort!
+      px(1, 3, '#94A3B8', 4, 1);
+      px(2, 2, '#38BDF8', 2, 1);
+      px(13 + shiftX, by + 7, '#F43F5E', 3, 2);
       break;
     }
     case 'quasar': {
-      // Cosmic pulsar halo rings + starfield belly + blazing magenta-cyan quasar core!
-      px(6 + shiftX, 1, '#22D3EE', 7, 1);
-      px(5 + shiftX, 2, '#EC4899', 9, 1);
-      px(8 + shiftX, 0, '#FFFFFF', 3, 2);
-      px(6 + shiftX, 12, '#3B0764', 7, 3);
-      px(9 + shiftX, 13, '#FFFFFF', 1, 1);
-      px(12 + shiftX, 9, '#22D3EE', 2, 2);
-      // Floating dual-color Quasar Supernova star
-      px(15 + shiftX, 7, '#F472B6', 4, 4);
-      px(16 + shiftX, 6, '#22D3EE', 2, 6);
-      px(16 + shiftX, 8, '#FFFFFF', 2, 2);
+      // Pastel pink-and-cyan starry halo + cute galaxy tummy + mini shooting star!
+      px(bx + 3, by - 3, '#22D3EE', 7, 1);
+      px(bx + 2, by - 2, '#F472B6', 9, 1);
+      px(bx + 5, by - 4, '#FFFFFF', 3, 2);
+      px(bx + 13, by + 2, '#F472B6', 3, 3);
+      px(bx + 14, by + 3, '#FFFFFF', 1, 1);
       break;
     }
     case 'omega_god': {
-      // Supreme Cosmic Egg-God: floating golden halo + triple crown + seraphim wings + Sacred Egg!
-      px(6 + shiftX, 0, '#FEF08A', 7, 1);
-      px(5 + shiftX, 1, '#FACC15', 2, 1);
-      px(12 + shiftX, 1, '#FACC15', 2, 1);
-      px(7 + shiftX, 3, '#F59E0B', 5, 3);
-      px(9 + shiftX, 2, '#38BDF8', 2, 3);
-      // Grand multi-feather golden & sky seraphim wings
-      px(1 + shiftX, 5, '#FACC15', 4, 8);
-      px(2 + shiftX, 6, '#FEF9C3', 2, 6);
-      px(12 + shiftX, 9, '#38BDF8', 2, 2);
-      // Hovering Sacred Cosmic Egg scepter
-      px(15 + shiftX, 6, OUTLINE, 4, 6);
-      px(16 + shiftX, 7, '#FACC15', 2, 4);
-      px(16 + shiftX, 7, '#FFFFFF', 1, 2);
+      // Radiant floating golden angel halo + mini crown + hovering cute Golden Egg!
+      px(bx + 3, by - 5, '#FEF08A', 7, 1);
+      px(bx + 2, by - 4, '#FACC15', 2, 1);
+      px(bx + 9, by - 4, '#FACC15', 2, 1);
+      px(bx + 4, by - 2, '#F59E0B', 5, 2);
+      px(bx + 6, by - 3, '#38BDF8', 2, 2);
+      // Cute miniature Sacred Golden Egg floating in front
+      px(bx + 13, by + 1, OUTLINE, 4, 5);
+      px(bx + 14, by + 2, '#FACC15', 2, 3);
+      px(bx + 14, by + 2, '#FFFFFF', 1, 1);
       break;
     }
+  }
+
+  // ==================== 8. PROTECTED KAWAII FACE (SPARKLE EYE + ROSY BLUSH + CHIRP BEAK!) ====================
+  // Big glossy 2x3 dark kawaii eye + crisp 1x1 white catchlight sparkle!
+  px(bx + 9, by + 3, OUTLINE, 2, 3);
+  px(bx + 9, by + 3, '#FFFFFF', 1, 1);
+  px(bx + 10, by + 5, '#64748B', 1, 1);
+
+  // Soft two-tone rosy pink cheek blush!
+  px(bx + 7, by + 6, '#FB7185', 2, 1);
+  px(bx + 7, by + 6, '#FDA4AF', 1, 1);
+
+  // Tiny sweet golden-orange chirp beak (opens into a happy "peep!" on attackFrame!)
+  px(bx + 12, by + 4, OUTLINE, 3, 2);
+  px(bx + 12, by + 4, '#FDE047', 2, 1);
+  px(bx + 12, by + 5, '#F97316', 2, 1);
+  if (attackFrame) {
+    px(bx + 12, by + 6, '#FB7185', 2, 1);
   }
 
   return c;
@@ -1062,7 +1247,7 @@ function buildFoxBossSprite(typeId: EnemyTypeId, frameIdx: 0 | 1): HTMLCanvasEle
   );
 }
 
-// ==================== 4. HENHOUSE CLICKER PIXEL SCENE (36x22, 2 FRAMES) ====================
+// ==================== 4. HENHOUSE CLICKER PIXEL SCENE (40x22, ULTRA-CUTE MAMA BORB!) ====================
 function buildHenhouseScene(pecking: boolean): HTMLCanvasElement {
   const c = makeCanvas(40, 22);
   const ctx = c.getContext('2d')!;
@@ -1071,23 +1256,57 @@ function buildHenhouseScene(pecking: boolean): HTMLCanvasElement {
     ctx.fillRect(x, y, w, h);
   };
 
-  // Straw nest cushion under hen
-  px(3, 16, OUTLINE, 18, 4);
-  px(4, 17, '#D97706', 16, 2);
-  px(6, 16, '#FACC15', 12, 1);
+  // Cozy woven straw nest cushion under Mama Hen
+  px(2, 16, OUTLINE, 20, 4);
+  px(3, 17, '#D97706', 18, 2);
+  px(5, 16, '#FACC15', 14, 1);
 
-  // Plump Mother Hen (leans right & down when pecking!)
-  const hx = pecking ? 7 : 5;
+  // Ultra-plump Round Mama Borb (leans right & squishes happily when pecking!)
+  const hx = pecking ? 7 : 4;
   const hy = pecking ? 6 : 5;
-  px(hx, hy + 2, OUTLINE, 11, 9);
-  px(hx + 1, hy + 3, '#FFF7ED', 9, 7);
-  px(hx + 2, hy + 7, '#FDE68A', 7, 3);
-  // Red comb
-  px(hx + 3, hy, '#EF4444', 5, 3);
-  // Eye & Beak
-  px(hx + 8, hy + 4, OUTLINE, 1, 2);
-  px(hx + 11, hy + 5, '#F59E0B', 3, 2);
-  px(hx + 10, hy + 7, '#EF4444', 1, 2);
+
+  // Fluffy tail poof
+  px(hx - 2, hy + 5, OUTLINE, 3, 4);
+  px(hx - 1, hy + 6, '#FDE68A', 2, 2);
+
+  // Rounded marshmallow borb body
+  px(hx + 3, hy + 1, OUTLINE, 8, 11);
+  px(hx + 1, hy + 2, OUTLINE, 12, 9);
+  px(hx, hy + 4, OUTLINE, 14, 6);
+  px(hx + 3, hy + 2, '#FFFBEB', 8, 9);
+  px(hx + 2, hy + 3, '#FFFBEB', 10, 7);
+  px(hx + 1, hy + 4, '#FFFBEB', 12, 5);
+  px(hx + 4, hy + 2, '#FFFFFF', 5, 1); // glossy crown highlight
+  px(hx + 2, hy + 8, '#FDE68A', 10, 2);
+
+  // Cute stubby wing
+  px(hx + 3, hy + (pecking ? 5 : 6), OUTLINE, 5, 4);
+  px(hx + 4, hy + (pecking ? 6 : 7), '#FEF3C7', 3, 2);
+
+  // Bouncy ruby heart-comb on head
+  px(hx + 4, hy - 1, '#EF4444', 2, 2);
+  px(hx + 7, hy - 1, '#EF4444', 2, 2);
+  px(hx + 5, hy, '#FB7185', 3, 2);
+
+  // Kawaii Eye (sparkly 2x3 idle, happy ^_^ squint + floating pink heart when pecking!)
+  if (pecking) {
+    px(hx + 9, hy + 5, OUTLINE, 3, 1);
+    px(hx + 9, hy + 6, OUTLINE, 1, 1);
+    px(hx + 11, hy + 6, OUTLINE, 1, 1);
+    // Tiny pink pixel heart above Mama Hen!
+    px(hx + 1, hy - 3, '#FB7185', 1, 2);
+    px(hx + 3, hy - 3, '#FB7185', 1, 2);
+    px(hx + 2, hy - 2, '#FB7185', 1, 2);
+  } else {
+    px(hx + 9, hy + 4, OUTLINE, 2, 3);
+    px(hx + 9, hy + 4, '#FFFFFF', 1, 1);
+  }
+
+  // Rosy strawberry cheek blush + cute chirp beak!
+  px(hx + 7, hy + 7, '#FB7185', 2, 1);
+  px(hx + 13, hy + 5, OUTLINE, 3, 2);
+  px(hx + 13, hy + 5, '#FDE047', 2, 1);
+  px(hx + 13, hy + 6, '#F97316', 2, 1);
 
   // Giant Golden Pixel Corn Cob on right!
   const cx = pecking ? 25 : 26;
@@ -1113,6 +1332,7 @@ export class PixelSpriteAtlas {
   private iconUrls = new Map<PixelIconId, string>();
   private chickenSprites = new Map<ChickenTypeId, ChickenSpritePair>();
   private enemySprites = new Map<EnemyTypeId, EnemySpriteSet>();
+  public standSprites: StandSpriteSet | null = null;
   public henhouseIdleUrl = '';
   public henhousePeckUrl = '';
 
@@ -1126,13 +1346,30 @@ export class PixelSpriteAtlas {
       this.iconUrls.set(id, canvas.toDataURL());
     }
 
-    // Bake all 22 Chicken Unit sprites + 2x shop portraits
+    // Bake Astral Stand Spirit sprites (Star Feather & Golden Requiem!)
+    this.standSprites = {
+      normalIdle: drawStandSpiritPixelArt(false, false),
+      normalPunch: drawStandSpiritPixelArt(false, true),
+      requiemIdle: drawStandSpiritPixelArt(true, false),
+      requiemPunch: drawStandSpiritPixelArt(true, true),
+    };
+
+    // Bake all 22 Kawaii Chicken Unit sprites (22x22) + crisp 2x shop portraits (44x44)
     for (const id of Object.keys(CHICKEN_DEFS) as ChickenTypeId[]) {
       const idle = drawChickenUnitPixelArt(id, false);
       const attack = drawChickenUnitPixelArt(id, true);
-      const portraitCanvas = makeCanvas(40, 40);
+      const portraitCanvas = makeCanvas(44, 44);
       const pCtx = portraitCanvas.getContext('2d')!;
-      pCtx.drawImage(idle, 0, 0, 40, 40);
+      if (id === 'stand_hen' && this.standSprites) {
+        // Show JoJo Cluckstar's glowing Stand Spirit hovering behind it in the Shop portrait!
+        pCtx.save();
+        pCtx.globalAlpha = 0.85;
+        pCtx.drawImage(this.standSprites.normalIdle, -2, 0, 36, 33);
+        pCtx.restore();
+        pCtx.drawImage(idle, 6, 4, 40, 40);
+      } else {
+        pCtx.drawImage(idle, 0, 0, 44, 44);
+      }
       this.chickenSprites.set(id, {
         idle,
         attack,

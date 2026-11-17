@@ -12,11 +12,13 @@ A 16-bit pixel-art mashup of an **active Clicker game** and a **Bloons TD-inspir
 - **19 Multi-Layered Pests & Giant Fox Bosses**:
   - **10 Bugs**: Red Ant, Blue Aphid, Spotted Ladybug, Yellow Hornet, Camo Night-Moth, Iron Stag Beetle, Emerald Mantis, Blazing Firefly (`Camo`), Obsidian Scorpion (`Armored`), and Astral Scarab (`Camo + Armored`).
   - **9 Giant Fox Bosses**: Red Scout Fox, Armored Timber Fox, Wraith Camo-Fox (`DDT-class Camo + Armored`), Shadow Kitsune, Glacial Frost-Fox, Mega Alpha Reynard, Cyber-Reynard MK-X, **Solar Phoenix Fox**, and **Nebula Cosmic Fox**.
-- **Zero Enemy Gold — 100% Clicker Economy**:
-  - Popping Bugs and Foxes awards **0 Corn**! Every single kernel of **Corn** is earned by clicking the **Henhouse Clicker**.
-- **Active-Wave Clicking Only (`12 CPS` Hard Cap)**:
-  - The Henhouse Clicker is **locked between waves** — you can only click to harvest Corn while a wave of Bugs and Foxes is actively marching toward your Nest!
-  - Clicking speed is strictly capped at **12 CPS** (clicks per second) in a rolling 1-second window; any clicks beyond 12 CPS do nothing.
+- **Zero Enemy Gold — 100% Henhouse Economy**:
+  - Popping Bugs and Foxes awards **0 Corn**! Every single kernel of **Corn** is earned at the **Henhouse Clicker** via manual clicking and hired **Farmhand Chicks**.
+- **Active-Wave Clicking (`12 CPS` Manual Cap) + Farmhand Auto-Peckers**:
+  - The Henhouse Clicker is **locked between waves** — you can only harvest Corn while a wave of Bugs and Foxes is actively marching toward your Nest!
+  - Manual clicking speed is strictly capped at **12 CPS** (clicks per second) in a rolling 1-second window; hired **Farmhand Chicks** passively auto-peck on top of your manual clicks during active waves!
+- **True Camo Immunity**:
+  - Camo enemies (*Camo Night-Moth*, *Blazing Firefly*, *Astral Scarab*, and *Wraith Camo-Fox*) are strictly immune to projectiles and AoE splash explosions from units without **Camo Sight**!
 - **Post-Wave-10 Overdrive Scaling**:
   - Every wave after Wave 10 ramps steeply in enemy HP, enemy movement speed (`+7%` per wave), and Mythic Fox Boss armada density.
 - **22 Upgradable Chicken Units (4 Tiers Each)**:
@@ -37,13 +39,13 @@ A 16-bit pixel-art mashup of an **active Clicker game** and a **Bloons TD-inspir
   15. `[A]` **Tesla Cochin** — Gigavolt Storm Coil
   16. `[S]` **Chrono Leghorn** — Time-Warp Disruptor
   17. `[D]` **Gund-Hen RX-78** — Mecha Ion Buster
-  18. `[F]` **Void Ayam Cemani** — Singularity Black-Hole
+  18. `[F]` **JoJo Cluckstar** — Summoned Stand Brawler (*Stand flies out to enemies and ORA-punches them!*)
   19. `[Z]` **Valkyrie Brahma** — Celestial Spear Storm
   20. `[X]` **Star-Cluck Armada** — Antimatter Fleet Nuke
   21. `[C]` **Quasar Serama** — 360-Degree Supernova Pulse
   22. `[V]` **Omnicluck Prime** — Apex Cosmic Egg-God
 - **Dual Upgrade Paths**:
-  - Invest Corn into **Clicker Upgrades** (*Sharper Beak*, *Golden Egg Luck*, *Frenzy Peck Streak*, *12-Peck Mega Cob*), **Individual Chicken Unit Tiers (1–4)**, or **Global TD Roost Lab Upgrades** (*Caffeinated Feed*, *Watchtower Roost*, *Fox-Slayer Talons*, *Woven Golden Nest*).
+  - Invest Corn into **9 Clicker Upgrades** (*Sharper Beak*, *Farmhand Chicks*, *Golden Egg Luck*, *Frenzy Peck Streak*, *12-Peck Mega Cob*, *Twin-Peck Multistrike*, *Roost Foreman*, *Golden Corn Silo*, and *Mythic Cornucopia*), **Individual Chicken Unit Tiers (1–4)**, or **Global TD Roost Lab Upgrades** (*Caffeinated Feed*, *Watchtower Roost*, *Fox-Slayer Talons*, *Woven Golden Nest*).
 
 ## Controls
 

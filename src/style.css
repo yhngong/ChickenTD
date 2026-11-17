@@ -987,49 +987,6 @@ button {
   margin-top: 5px;
 }
 
-.menu-boss-showcase {
-  background: #141d26;
-  border: 2px solid #475569;
-  padding: 8px 12px;
-}
-
-.showcase-lbl {
-  display: block;
-  font-size: 9px;
-  color: #facc15;
-  margin-bottom: 6px;
-  letter-spacing: 0.5px;
-}
-
-.showcase-pair {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.showcase-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #2b1810;
-  border: 2px solid #f97316;
-  padding: 5px 9px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fef08a;
-}
-
-.showcase-chip.cosmic {
-  background: #1e1b4b;
-  border-color: #22d3ee;
-  color: #67e8f9;
-}
-
-.showcase-fox-img {
-  height: 26px;
-  width: auto;
-}
-
 .menu-section {
   display: flex;
   flex-direction: column;

@@ -7,6 +7,8 @@ import {
   DIFFICULTY_DEFS,
   DIFFICULTY_ORDER,
   getBaseCornPerClick,
+  getCornucopiaWaveMult,
+  getFarmhandAutoRate,
   getWaveDefinition,
   MAX_CPS_CAP,
   TD_UPGRADES,
@@ -121,8 +123,6 @@ function initStaticPixelIcons(): void {
   setImg('icon-victory-trophy', PIXEL_ATLAS.getIconUrl('trophy'));
   setImg('icon-gameover-egg', PIXEL_ATLAS.getIconUrl('cracked_egg'));
   setImg('menu-hero-chicken', PIXEL_ATLAS.getChickenSprite('omega_god')?.portraitUrl ?? '');
-  setImg('menu-boss-phoenix', PIXEL_ATLAS.getEnemySprite('fox_phoenix')?.portraitUrl ?? '');
-  setImg('menu-boss-cosmic', PIXEL_ATLAS.getEnemySprite('fox_cosmic')?.portraitUrl ?? '');
   henSceneImg.src = PIXEL_ATLAS.henhouseIdleUrl;
 }
 
@@ -286,6 +286,7 @@ function renderTroopCards(): void {
 
     const btn = document.createElement('button');
     btn.type = 'button';
+    btn.dataset.cost = String(cost);
     btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
     btn.title = `${def.name} (${def.role}) — ${cost.toLocaleString()} Corn — Hotkey [${def.hotkey}]`;
     btn.innerHTML = `
@@ -332,11 +333,13 @@ function renderUpgradeLists(): void {
     }</div>
         <div class="upg-desc">${def.description}</div>
       </div>
-      <button type="button" class="upg-buy-btn" ${canBuy ? '' : 'disabled'}>
+      <button type="button" class="upg-buy-btn" data-cost="${cost}" data-maxed="${
+      maxed ? '1' : '0'
+    }" ${canBuy ? '' : 'disabled'}>
         ${
           maxed
             ? 'MAX'
-            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost.toLocaleString()}`
+            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(cost)}`
         }
       </button>
     `;
@@ -367,11 +370,13 @@ function renderUpgradeLists(): void {
     }</div>
         <div class="upg-desc">${def.description}</div>
       </div>
-      <button type="button" class="upg-buy-btn" ${canBuy ? '' : 'disabled'}>
+      <button type="button" class="upg-buy-btn" data-cost="${cost}" data-maxed="${
+      maxed ? '1' : '0'
+    }" ${canBuy ? '' : 'disabled'}>
         ${
           maxed
             ? 'MAX'
-            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${cost.toLocaleString()}`
+            : `<img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(cost)}`
         }
       </button>
     `;
@@ -386,7 +391,7 @@ function formatInspectorStats(towerId: number): string {
   const tower = engine.towers.find((t) => t.id === towerId);
   if (!tower) return '';
   const eff = engine.getEffectiveChickenStats(tower);
-  const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
+  const camoTag = eff.effectiveCamo ? ' | CAMO' : ' | NO CAMO';
   const dmgText = Number.isInteger(eff.damage)
     ? eff.damage.toLocaleString()
     : eff.damage.toFixed(1);
@@ -453,11 +458,20 @@ function refreshFullUi(): void {
   bannerDesc.textContent = waveDef.callout;
 
   const baseClick = getBaseCornPerClick(engine.clickerLevels.beakPower);
-  clickMainLabel.textContent = `+${baseClick} BASE CORN / CLICK`;
+  const waveMult = getCornucopiaWaveMult(engine.clickerLevels.cornucopia, engine.waveNumber);
+  const effectiveBasePeck = Math.max(1, Math.round(baseClick * waveMult));
+  const autoRate = getFarmhandAutoRate(engine.clickerLevels.farmhandChicks);
+  clickMainLabel.textContent =
+    autoRate > 0
+      ? `+${effectiveBasePeck.toLocaleString()} / PECK • AUTO ${autoRate.toFixed(1)}/S`
+      : `+${effectiveBasePeck.toLocaleString()} BASE CORN / CLICK`;
 
   if (engine.waveActive) {
     clickerCard.classList.remove('locked');
-    clickStatusNote.textContent = 'WAVE ACTIVE — CLICK UP TO 12 CPS FOR CORN!';
+    clickStatusNote.textContent =
+      autoRate > 0
+        ? `WAVE ACTIVE — 12 CPS CLICK + ${autoRate.toFixed(1)}/S FARMHANDS!`
+        : 'WAVE ACTIVE — CLICK UP TO 12 CPS FOR CORN!';
     const rem = engine.getPendingWaveEnemyTotal();
     btnStartWave.textContent = `WAVE ${waveDef.waveNumber} ACTIVE (${rem} LEFT)`;
     btnStartWave.classList.add('wave-running');
@@ -491,6 +505,30 @@ function refreshFullUi(): void {
 
 engine.onUiChange = refreshFullUi;
 
+function syncLiveShopAffordability(): void {
+  hudCorn.textContent = engine.corn.toLocaleString();
+  troopGrid.querySelectorAll<HTMLButtonElement>('.troop-btn').forEach((btn) => {
+    const cost = Number(btn.dataset.cost ?? '0');
+    btn.classList.toggle('unaffordable', engine.corn < cost);
+  });
+  document.querySelectorAll<HTMLButtonElement>('.upg-buy-btn').forEach((btn) => {
+    if (btn.dataset.maxed === '1') {
+      btn.disabled = true;
+    } else {
+      const cost = Number(btn.dataset.cost ?? '0');
+      btn.disabled = engine.corn < cost;
+    }
+  });
+  if (selectedTowerId !== null) {
+    const tower = engine.towers.find((t) => t.id === selectedTowerId);
+    if (tower && tower.tier < 3) {
+      const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
+      const upgCost = engine.getTowerUpgradeCost(tower.typeId, nextTierIdx);
+      btnInspUpgrade.disabled = engine.corn < upgCost;
+    }
+  }
+}
+
 // ==================== REAL-TIME PIXEL METER HUD ====================
 function updateLiveClickerMeters(): void {
   const cps = engine.getCurrentCps();
@@ -514,6 +552,7 @@ function updateLiveClickerMeters(): void {
 
   hudPops.textContent = engine.totalBugsPopped.toLocaleString();
   if (engine.waveActive) {
+    syncLiveShopAffordability();
     const rem = engine.getPendingWaveEnemyTotal();
     btnStartWave.textContent = `WAVE ${engine.waveNumber} ACTIVE (${rem} LEFT)`;
     if (selectedTowerId !== null) {
@@ -552,6 +591,30 @@ function spawnClickFloat(text: string, color: string, clientX?: number, clientY?
   setTimeout(() => el.remove(), 630);
 }
 
+// Batch rapid Farmhand Chick auto-peck floaters cleanly so 20/s auto-pecks look crisp!
+let pendingAutoFloatCorn = 0;
+let pendingAutoFloatMega = false;
+let lastAutoFloatPerfMs = 0;
+
+engine.onAutoPeck = (res) => {
+  pendingAutoFloatCorn += res.amountEarned;
+  if (res.isMegaCob) pendingAutoFloatMega = true;
+  const now = performance.now();
+  if (now - lastAutoFloatPerfMs >= 240) {
+    lastAutoFloatPerfMs = now;
+    if (peckAnimTimeout === null) {
+      triggerPixelHenPeckFrame();
+    }
+    const label = pendingAutoFloatMega
+      ? `+${pendingAutoFloatCorn.toLocaleString()} AUTO COB!`
+      : `+${pendingAutoFloatCorn.toLocaleString()} AUTO`;
+    const color = pendingAutoFloatMega ? '#4ADE80' : '#7DD3FC';
+    spawnClickFloat(label, color);
+    pendingAutoFloatCorn = 0;
+    pendingAutoFloatMega = false;
+  }
+};
+
 // ==================== INPUT LISTENERS ====================
 btnHenClick.addEventListener('pointerdown', (e) => {
   e.preventDefault();
@@ -568,11 +631,15 @@ btnHenClick.addEventListener('pointerdown', (e) => {
   triggerPixelHenPeckFrame();
 
   if (res.isMegaCob) {
-    spawnClickFloat(`+${res.amountEarned} MEGA COB!`, '#4ADE80', e.clientX, e.clientY);
+    spawnClickFloat(`+${res.amountEarned.toLocaleString()} MEGA COB!`, '#4ADE80', e.clientX, e.clientY);
+  } else if (res.isCrit && res.isTwinPeck) {
+    spawnClickFloat(`+${res.amountEarned.toLocaleString()} TWIN CRIT!`, '#F472B6', e.clientX, e.clientY);
   } else if (res.isCrit) {
-    spawnClickFloat(`+${res.amountEarned} CRIT!`, '#FEF08A', e.clientX, e.clientY);
+    spawnClickFloat(`+${res.amountEarned.toLocaleString()} CRIT!`, '#FEF08A', e.clientX, e.clientY);
+  } else if (res.isTwinPeck) {
+    spawnClickFloat(`+${res.amountEarned.toLocaleString()} TWIN!`, '#38BDF8', e.clientX, e.clientY);
   } else {
-    spawnClickFloat(`+${res.amountEarned} CORN`, '#FFFFFF', e.clientX, e.clientY);
+    spawnClickFloat(`+${res.amountEarned.toLocaleString()} CORN`, '#FFFFFF', e.clientX, e.clientY);
   }
   updateLiveClickerMeters();
 });
