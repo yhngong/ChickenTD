@@ -132,7 +132,7 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
   if (typeId) {
     selectedTowerId = null;
     const def = CHICKEN_DEFS[typeId];
-    placementText.textContent = `DEPLOYING ${def.name.toUpperCase()} (${def.baseCost} CORN) — CLICK GRASS`;
+    placementText.textContent = `DEPLOYING ${def.name.toUpperCase()} (${def.baseCost.toLocaleString()} CORN) — CLICK GRASS`;
     placementBanner.classList.remove('hidden');
   } else {
     placementBanner.classList.add('hidden');
@@ -140,8 +140,13 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
   refreshFullUi();
 }
 
-// ==================== 14-UNIT PIXEL SHOP RENDERING ====================
+// ==================== 22-UNIT PIXEL SHOP RENDERING ====================
 const cornIconUrl = PIXEL_ATLAS.getIconUrl('corn');
+
+function formatCompactCost(n: number): string {
+  if (n >= 100000) return `${(n / 1000).toFixed(0)}K`;
+  return n.toLocaleString();
+}
 
 function renderTroopCards(): void {
   troopGrid.innerHTML = '';
@@ -154,13 +159,13 @@ function renderTroopCards(): void {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
-    btn.title = `${def.name} (${def.role}) — Hotkey [${def.hotkey}]`;
+    btn.title = `${def.name} (${def.role}) — ${def.baseCost.toLocaleString()} Corn — Hotkey [${def.hotkey}]`;
     btn.innerHTML = `
       <img class="troop-portrait" src="${spr?.portraitUrl ?? ''}" alt="" />
       <div class="troop-meta">
         <div class="troop-top">
           <span class="troop-key">[${def.hotkey}]</span>
-          <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${def.baseCost}</span>
+          <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(def.baseCost)}</span>
         </div>
         <span class="troop-name">${def.name}</span>
         <span class="troop-role">${def.role}</span>
@@ -254,7 +259,10 @@ function formatInspectorStats(towerId: number): string {
   if (!tower) return '';
   const eff = engine.getEffectiveChickenStats(tower);
   const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
-  return `DMG ${eff.damage} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
+  const dmgText = Number.isInteger(eff.damage)
+    ? eff.damage.toLocaleString()
+    : eff.damage.toFixed(1);
+  return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
     eff.effectiveRange
   } | DEALT ${Math.round(tower.totalPopDamage).toLocaleString()}${camoTag}`;
 }
@@ -285,7 +293,7 @@ function renderInspector(): void {
   if (tower.tier < 3) {
     const nextTier = def.tiers[(tower.tier + 1) as 1 | 2 | 3];
     inspNextDesc.textContent = `NEXT (${nextTier.tierName}): ${nextTier.description}`;
-    btnInspUpgrade.textContent = `TIER ${tierNum + 1} (${nextTier.upgradeCost} CORN)`;
+    btnInspUpgrade.textContent = `TIER ${tierNum + 1} (${nextTier.upgradeCost.toLocaleString()} CORN)`;
     btnInspUpgrade.disabled = engine.corn < nextTier.upgradeCost;
   } else {
     inspNextDesc.textContent = 'MAXIMUM CHICKEN EVOLUTION ACHIEVED!';
@@ -294,7 +302,7 @@ function renderInspector(): void {
   }
 
   const refund = Math.round(tower.totalSpent * 0.7);
-  btnInspSell.textContent = `SELL (+${refund})`;
+  btnInspSell.textContent = `SELL (+${refund.toLocaleString()})`;
   inspectorCard.classList.remove('hidden');
 }
 
@@ -333,7 +341,7 @@ function refreshFullUi(): void {
   renderInspector();
 
   if (engine.status === 'victory_prompt') {
-    victorySummary.textContent = `You crushed Mega Alpha Reynard on Wave 25! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
+    victorySummary.textContent = `You crushed the Omega Reynard Armada on Wave 25! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
     victoryModal.classList.remove('hidden');
   } else {
     victoryModal.classList.add('hidden');
@@ -567,7 +575,7 @@ btnRestartGameover.addEventListener('click', () => {
   engine.resetGame();
 });
 
-// Hotkey map for all 14 Chicken Units!
+// Hotkey map for all 22 Chicken Units!
 const HOTKEY_TO_CHICKEN = new Map<string, ChickenTypeId>();
 for (const id of CHICKEN_ORDER) {
   HOTKEY_TO_CHICKEN.set(CHICKEN_DEFS[id].hotkey.toUpperCase(), id);

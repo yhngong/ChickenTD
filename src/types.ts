@@ -12,7 +12,15 @@ export type ChickenTypeId =
   | 'pirate'
   | 'bard'
   | 'phoenix'
-  | 'mecha';
+  | 'mecha'
+  | 'tesla'
+  | 'chrono'
+  | 'gundam'
+  | 'void_hen'
+  | 'valkyrie'
+  | 'star_dread'
+  | 'quasar'
+  | 'omega_god';
 
 export type ProjectileStyle =
   | 'feather_slash'
@@ -28,7 +36,15 @@ export type ProjectileStyle =
   | 'cannonball'
   | 'sonic'
   | 'solar'
-  | 'plasma';
+  | 'plasma'
+  | 'tesla_arc'
+  | 'chrono_orb'
+  | 'ion_lance'
+  | 'void_hole'
+  | 'valkyrie_spear'
+  | 'antimatter'
+  | 'quasar_pulse'
+  | 'genesis_beam';
 
 export type EnemyTypeId =
   | 'ant'

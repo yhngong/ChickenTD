@@ -731,6 +731,81 @@ export class MeadowRenderer {
         ctx.fillRect(px, py, 2, 2);
         break;
       }
+      case 'tesla_arc': {
+        const dx = Math.round(Math.cos(p.rotation) * 3);
+        const dy = Math.round(Math.sin(p.rotation) * 3);
+        ctx.fillStyle = '#6366F1';
+        ctx.fillRect(px - dx - 2, py - dy - 2, 5, 5);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'chrono_orb': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#0D9488';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#99F6E4';
+        ctx.fillRect(px - 1, py - 2, 3, 2);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px, py, 1, 2);
+        break;
+      }
+      case 'ion_lance': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#DC2626';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py, 2, 2);
+        break;
+      }
+      case 'void_hole': {
+        ctx.fillStyle = '#C084FC';
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#7E22CE';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#090D16';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'valkyrie_spear': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 3, 3);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(px - 1, py - 1, 4, 4);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py, 2, 2);
+        break;
+      }
+      case 'antimatter': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#F43F5E';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py, 1, 1);
+        break;
+      }
+      case 'genesis_beam': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(px - dx - 2, py - dy - 2, 5, 5);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
       default:
         break;
     }

@@ -10,6 +10,8 @@ import {
   getMaxRhythmMult,
   getUpgradeCost,
   getWaveDefinition,
+  getWaveHpScale,
+  getWaveSpeedScale,
   MAX_CPS_CAP,
   STARTING_CORN,
   STARTING_EGGS,
@@ -291,7 +293,15 @@ export class ChickenTdEngine {
       x,
       y,
       tier: 0,
-      targetMode: typeId === 'ranger' || typeId === 'pirate' || typeId === 'mecha' ? 'strong' : 'first',
+      targetMode:
+        typeId === 'ranger' ||
+        typeId === 'pirate' ||
+        typeId === 'mecha' ||
+        typeId === 'gundam' ||
+        typeId === 'star_dread' ||
+        typeId === 'omega_god'
+          ? 'strong'
+          : 'first',
       angle: 0,
       cooldown: 0,
       recoil: 0,
@@ -382,14 +392,9 @@ export class ChickenTdEngine {
     return true;
   }
 
-  private getFreeplayHpScale(): number {
-    if (this.waveNumber <= CAMPAIGN_WAVES) return 1.0;
-    return 1 + (this.waveNumber - CAMPAIGN_WAVES) * 0.18;
-  }
-
   private spawnEnemy(typeId: EnemyTypeId, distance: number): void {
     const def = ENEMY_DEFS[typeId];
-    const hpScale = this.getFreeplayHpScale();
+    const hpScale = getWaveHpScale(this.waveNumber);
     const scaledHp = Math.max(1, Math.round(def.maxHp * hpScale));
     this.enemies.push({
       id: this.nextEntityId++,
@@ -463,7 +468,8 @@ export class ChickenTdEngine {
       }
 
       const effectiveSlow = def.isFoxBoss ? e.slowFactor * 0.55 : e.slowFactor;
-      const moveSpeed = def.speed * (1 - Math.min(0.72, effectiveSlow));
+      const speedScale = getWaveSpeedScale(this.waveNumber);
+      const moveSpeed = def.speed * speedScale * (1 - Math.min(0.72, effectiveSlow));
       e.distance += moveSpeed * dt;
 
       if (e.distance >= TOTAL_PATH_LENGTH) {
@@ -512,16 +518,30 @@ export class ChickenTdEngine {
         tower.typeId === 'bard' ||
         tower.typeId === 'phoenix' ||
         tower.typeId === 'mecha' ||
+        tower.typeId === 'tesla' ||
+        tower.typeId === 'chrono' ||
+        tower.typeId === 'gundam' ||
+        tower.typeId === 'void_hen' ||
+        tower.typeId === 'valkyrie' ||
+        tower.typeId === 'star_dread' ||
+        tower.typeId === 'quasar' ||
+        tower.typeId === 'omega_god' ||
         tower.tier >= 2;
 
-      // Special 360-degree AoE Sonic Pulse for Mariachi Rooster ('bard')!
-      if (def.projectileStyle === 'sonic') {
-        this.spawnRing(tower.x, tower.y, stats.effectiveRange, '#FB7185');
-        this.spawnPixelBurst(tower.x, tower.y, 8, '#FDE047');
+      // Special 360-degree AoE Pulse for Mariachi Rooster ('sonic') & Quasar Serama ('quasar_pulse')!
+      if (def.projectileStyle === 'sonic' || def.projectileStyle === 'quasar_pulse') {
+        const isQuasar = def.projectileStyle === 'quasar_pulse';
+        this.spawnRing(tower.x, tower.y, stats.effectiveRange, isQuasar ? '#F472B6' : '#FB7185');
+        if (isQuasar) {
+          this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.65), '#22D3EE');
+          this.spawnPixelBurst(tower.x, tower.y, 12, '#22D3EE');
+        } else {
+          this.spawnPixelBurst(tower.x, tower.y, 8, '#FDE047');
+        }
         const pulseCarrier: ActiveProjectile = {
           id: this.nextEntityId++,
           ownerTowerId: tower.id,
-          style: 'sonic',
+          style: def.projectileStyle,
           x: tower.x,
           y: tower.y,
           vx: 0,
@@ -632,7 +652,11 @@ export class ChickenTdEngine {
           p.style === 'acid' ||
           p.style === 'honey' ||
           p.style === 'cannonball' ||
-          p.style === 'feather_slash'
+          p.style === 'feather_slash' ||
+          p.style === 'chrono_orb' ||
+          p.style === 'void_hole' ||
+          p.style === 'antimatter' ||
+          p.style === 'genesis_beam'
             ? 11
             : 8;
         const hitDist = eDef.radius + extraRadius;
@@ -730,10 +754,16 @@ export class ChickenTdEngine {
         ? '#34D399'
         : proj.style === 'honey'
         ? '#FBBF24'
-        : proj.style === 'plasma'
+        : proj.style === 'plasma' || proj.style === 'tesla_arc'
         ? '#22D3EE'
-        : proj.style === 'lightning'
+        : proj.style === 'chrono_orb'
+        ? '#2DD4BF'
+        : proj.style === 'ion_lance' || proj.style === 'antimatter'
+        ? '#FB7185'
+        : proj.style === 'void_hole' || proj.style === 'lightning'
         ? '#C084FC'
+        : proj.style === 'genesis_beam' || proj.style === 'valkyrie_spear'
+        ? '#FEF08A'
         : proj.burnDps > 0
         ? '#F97316'
         : '#FDE047';
@@ -761,7 +791,7 @@ export class ChickenTdEngine {
       dmg *= proj.foxDamageMult;
     }
     if (def.isArmored && !proj.armorPiercing) {
-      dmg = Math.max(0.5, dmg * 0.45);
+      dmg = Math.max(0.25, dmg * 0.45);
     }
 
     const dealt = Math.min(Math.max(0, e.hp), dmg);

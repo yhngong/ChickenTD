@@ -397,7 +397,7 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
   },
 };
 
-// ==================== 2. PIXEL CHICKEN GENERATOR (14 DISTINCT UNITS!) ====================
+// ==================== 2. PIXEL CHICKEN GENERATOR (22 DISTINCT UNITS!) ====================
 export interface ChickenSpritePair {
   idle: HTMLCanvasElement;
   attack: HTMLCanvasElement;
@@ -456,7 +456,7 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
   // Red wattle under beak
   px(14 + shiftX, 12, '#EF4444', 1, 2);
 
-  // ==================== BESPOKE HEADGEAR & WEAPONS PER UNIT (14 TOTAL) ====================
+  // ==================== BESPOKE HEADGEAR & WEAPONS PER UNIT (22 TOTAL) ====================
   switch (typeId) {
     case 'bantam': {
       // Crimson martial-arts headband + knot tails + red fist wraps
@@ -606,6 +606,125 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       px(17 + shiftX, 6, '#22D3EE', 2, 2);
       px(12 + shiftX, 12, '#334155', 7, 2);
       px(17 + shiftX, 12, '#22D3EE', 2, 2);
+      break;
+    }
+    case 'tesla': {
+      // Twin copper/indigo Tesla coils on head + crackling yellow-cyan arc + emitter rod!
+      px(6 + shiftX, 2, '#B45309', 2, 5);
+      px(11 + shiftX, 2, '#B45309', 2, 5);
+      px(6 + shiftX, 1, '#38BDF8', 2, 2);
+      px(11 + shiftX, 1, '#38BDF8', 2, 2);
+      px(8 + shiftX, attackFrame ? 1 : 2, '#FEF08A', 3, 1);
+      px(11 + shiftX, 9, '#6366F1', 3, 2);
+      px(12 + shiftX, 9, '#BAE6FD', 2, 1);
+      // Front arc-coil cannon
+      px(13 + shiftX, 11, '#4338CA', 5, 3);
+      px(17 + shiftX, 11, '#FEF08A', 2, 3);
+      break;
+    }
+    case 'chrono': {
+      // Bronze/gold chronometer top-hat + teal clockface + floating time hourglass!
+      px(4 + shiftX, 6, '#78350F', 11, 1);
+      px(6 + shiftX, 1, '#92400E', 7, 5);
+      px(6 + shiftX, 5, '#FACC15', 7, 1);
+      px(8 + shiftX, 2, '#2DD4BF', 3, 3);
+      px(9 + shiftX, 2, '#134E4A', 1, 2);
+      // Golden monocle + floating hourglass
+      px(11 + shiftX, 8, '#FACC15', 3, 3);
+      px(12 + shiftX, 9, '#99F6E4', 1, 1);
+      px(15 + shiftX, 10, '#FACC15', 4, 1);
+      px(16 + shiftX, 11, '#2DD4BF', 2, 3);
+      px(15 + shiftX, 14, '#FACC15', 4, 1);
+      break;
+    }
+    case 'gundam': {
+      // Iconic white/blue Mecha helmet + giant golden V-Fin crest + crimson Ion Buster rifle!
+      px(6 + shiftX, 4, '#1D4ED8', 7, 3);
+      px(4 + shiftX, 1, '#FACC15', 3, 2);
+      px(7 + shiftX, 2, '#FEF08A', 5, 2);
+      px(12 + shiftX, 1, '#FACC15', 3, 2);
+      px(9 + shiftX, 3, '#DC2626', 2, 2);
+      // Emerald mecha visor + red chest vent
+      px(11 + shiftX, 9, '#10B981', 3, 2);
+      px(8 + shiftX, 12, '#DC2626', 4, 2);
+      // Long Hyper-Mega Ion Buster barrel
+      px(11 + shiftX, 11, '#1E293B', 7, 2);
+      px(17 + shiftX, 10, '#F43F5E', 2, 3);
+      break;
+    }
+    case 'void_hen': {
+      // Pitch-black Ayam Cemani + violet obsidian horns + hovering black-hole singularity!
+      px(5 + shiftX, 2, '#581C87', 2, 5);
+      px(12 + shiftX, 2, '#581C87', 2, 5);
+      px(8 + shiftX, 1, '#C084FC', 3, 3);
+      px(9 + shiftX, 2, '#090D16', 1, 1);
+      // Neon-magenta void eye & shadow wing
+      px(12 + shiftX, 9, '#F0ABFC', 2, 1);
+      px(6 + shiftX, wingY + 1, '#7E22CE', 3, 2);
+      // Floating miniature black-hole orb with accretion ring
+      px(15 + shiftX, 6, '#C084FC', 4, 4);
+      px(16 + shiftX, 7, '#090D16', 2, 2);
+      break;
+    }
+    case 'valkyrie': {
+      // Winged golden Norse Valkyrie helm + sky-rune cape + radiant Gungnir spear!
+      px(6 + shiftX, 4, '#F59E0B', 7, 3);
+      px(7 + shiftX, 3, '#FEF08A', 5, 2);
+      // Swept white/sky Valkyrie helmet wings
+      px(3 + shiftX, 2, '#E0F2FE', 3, 3);
+      px(13 + shiftX, 2, '#E0F2FE', 3, 3);
+      px(2 + shiftX, 8, '#0284C7', 3, 6);
+      // Golden shaft + diamond celestial spearhead
+      px(9 + shiftX, 12, '#D97706', 7, 1);
+      px(15 + shiftX, 11, '#38BDF8', 4, 3);
+      px(16 + shiftX, 12, '#FFFFFF', 3, 1);
+      break;
+    }
+    case 'star_dread': {
+      // Fleet Admiral peaked cap + tactical red visor + orbital antimatter pod & mini-drone!
+      px(5 + shiftX, 3, '#0F172A', 9, 3);
+      px(5 + shiftX, 5, '#FACC15', 10, 1);
+      px(9 + shiftX, 3, '#F43F5E', 2, 2);
+      px(11 + shiftX, 9, '#F43F5E', 4, 1);
+      // Hovering fleet escort drone on top-left
+      px(1 + shiftX, 2, '#94A3B8', 4, 2);
+      px(2 + shiftX, 1, '#38BDF8', 2, 1);
+      // Twin antimatter torpedo launchers
+      px(12 + shiftX, 6, '#1E293B', 6, 2);
+      px(17 + shiftX, 6, '#FB7185', 2, 2);
+      px(12 + shiftX, 12, '#1E293B', 6, 2);
+      px(17 + shiftX, 12, '#FB7185', 2, 2);
+      break;
+    }
+    case 'quasar': {
+      // Cosmic pulsar halo rings + starfield belly + blazing magenta-cyan quasar core!
+      px(6 + shiftX, 1, '#22D3EE', 7, 1);
+      px(5 + shiftX, 2, '#EC4899', 9, 1);
+      px(8 + shiftX, 0, '#FFFFFF', 3, 2);
+      px(6 + shiftX, 12, '#3B0764', 7, 3);
+      px(9 + shiftX, 13, '#FFFFFF', 1, 1);
+      px(12 + shiftX, 9, '#22D3EE', 2, 2);
+      // Floating dual-color Quasar Supernova star
+      px(15 + shiftX, 7, '#F472B6', 4, 4);
+      px(16 + shiftX, 6, '#22D3EE', 2, 6);
+      px(16 + shiftX, 8, '#FFFFFF', 2, 2);
+      break;
+    }
+    case 'omega_god': {
+      // Supreme Cosmic Egg-God: floating golden halo + triple crown + seraphim wings + Sacred Egg!
+      px(6 + shiftX, 0, '#FEF08A', 7, 1);
+      px(5 + shiftX, 1, '#FACC15', 2, 1);
+      px(12 + shiftX, 1, '#FACC15', 2, 1);
+      px(7 + shiftX, 3, '#F59E0B', 5, 3);
+      px(9 + shiftX, 2, '#38BDF8', 2, 3);
+      // Grand multi-feather golden & sky seraphim wings
+      px(1 + shiftX, 5, '#FACC15', 4, 8);
+      px(2 + shiftX, 6, '#FEF9C3', 2, 6);
+      px(12 + shiftX, 9, '#38BDF8', 2, 2);
+      // Hovering Sacred Cosmic Egg scepter
+      px(15 + shiftX, 6, OUTLINE, 4, 6);
+      px(16 + shiftX, 7, '#FACC15', 2, 4);
+      px(16 + shiftX, 7, '#FFFFFF', 1, 2);
       break;
     }
   }
@@ -848,7 +967,7 @@ export class PixelSpriteAtlas {
       this.iconUrls.set(id, canvas.toDataURL());
     }
 
-    // Bake all 14 Chicken Unit sprites + 2x shop portraits
+    // Bake all 22 Chicken Unit sprites + 2x shop portraits
     for (const id of Object.keys(CHICKEN_DEFS) as ChickenTypeId[]) {
       const idle = drawChickenUnitPixelArt(id, false);
       const attack = drawChickenUnitPixelArt(id, true);
