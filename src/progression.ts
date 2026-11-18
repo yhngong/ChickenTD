@@ -321,6 +321,11 @@ export class ProgressionStore {
         pendingMapId,
         pendingDifficultyId,
         isMuted: Boolean(parsed.isMuted),
+        inIdleMode: Boolean(parsed.inIdleMode),
+        lastIdleSyncMs:
+          typeof parsed.lastIdleSyncMs === 'number' && Number.isFinite(parsed.lastIdleSyncMs)
+            ? parsed.lastIdleSyncMs
+            : undefined,
       };
     } catch {
       return null;

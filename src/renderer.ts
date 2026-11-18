@@ -436,20 +436,35 @@ export class MeadowRenderer {
     // 2. Pixel Golden Egg Nest
     this.drawPixelGoldenNest(ctx, engine.eggs, nowSec);
 
-    // 3. Selected Chicken Pixel Range Circle
+    // 3. Selected Chicken Pixel Range Circle (+ Highlighted Buffed Allies for Support Units!)
     if (selectedTowerId !== null) {
       const sel = engine.towers.find((t) => t.id === selectedTowerId);
       if (sel) {
+        const selDef = CHICKEN_DEFS[sel.typeId];
         const eff = engine.getEffectiveChickenStats(sel);
         const cx = toPx(sel.x);
         const cy = toPx(sel.y);
         const r = toPx(eff.effectiveRange);
-        drawFilledPixelDisk(ctx, cx, cy, r, r, 'rgba(250, 204, 21, 0.10)');
-        drawPixelCircle(ctx, cx, cy, r, '#FEF08A', true);
+        drawFilledPixelDisk(
+          ctx,
+          cx,
+          cy,
+          r,
+          r,
+          selDef.isSupport ? 'rgba(56, 189, 248, 0.12)' : 'rgba(250, 204, 21, 0.10)'
+        );
+        drawPixelCircle(ctx, cx, cy, r, selDef.isSupport ? '#67E8F9' : '#FEF08A', true);
+
+        if (selDef.isSupport) {
+          const buffedAllies = engine.getTowersBuffedBy(sel);
+          for (const ally of buffedAllies) {
+            drawPixelCircle(ctx, toPx(ally.x), toPx(ally.y) + 2, 12, '#4ADE80', false);
+          }
+        }
       }
     }
 
-    // 4. Ghost Placement Preview (Pixel Sprite + Pixel Range Ring)
+    // 4. Ghost Placement Preview (Pixel Sprite + Pixel Range Ring + Bloons-style Support Preview!)
     if (ghost.typeId && ghost.insideCanvas) {
       const def = CHICKEN_DEFS[ghost.typeId];
       const cost = engine.getTowerBaseCost(ghost.typeId);
@@ -457,11 +472,7 @@ export class MeadowRenderer {
         engine.isChickenUnlocked(ghost.typeId) &&
         canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) &&
         engine.corn >= cost;
-      const mut = PROGRESSION.getMutation(ghost.typeId);
-      const mutRangeMult = mut ? MUTATION_DEFS[mut].rangeMult : 1.0;
-      const range = Math.round(
-        def.tiers[0].range * (1 + engine.tdLevels.eagleRoost * 0.08) * mutRangeMult
-      );
+      const range = engine.getPreviewRange(ghost.typeId);
       const gx = toPx(ghost.mouseX);
       const gy = toPx(ghost.mouseY);
       const gr = toPx(range);
@@ -475,6 +486,17 @@ export class MeadowRenderer {
         valid ? 'rgba(74, 222, 128, 0.13)' : 'rgba(239, 68, 68, 0.16)'
       );
       drawPixelCircle(ctx, gx, gy, gr, valid ? '#4ADE80' : '#EF4444', true);
+
+      if (def.isSupport) {
+        const previewBuffed = engine.getTowersInPreviewSupportAura(
+          ghost.typeId,
+          ghost.mouseX,
+          ghost.mouseY
+        );
+        for (const ally of previewBuffed) {
+          drawPixelCircle(ctx, toPx(ally.x), toPx(ally.y) + 2, 12, '#67E8F9', false);
+        }
+      }
 
       const spr = PIXEL_ATLAS.getChickenSprite(ghost.typeId);
       if (spr) {
@@ -493,7 +515,7 @@ export class MeadowRenderer {
     // 5. Placed Chicken Troops (depth-sorted by Y for authentic 2D pixel overlap!)
     const sortedTowers = [...engine.towers].sort((a, b) => a.y - b.y);
     for (const tower of sortedTowers) {
-      this.drawPixelPlacedChicken(ctx, tower, tower.id === selectedTowerId, nowSec);
+      this.drawPixelPlacedChicken(ctx, engine, tower, tower.id === selectedTowerId, nowSec);
     }
 
     // 6. Bugs & Giant Fox Bosses (regular bugs first, Giant Foxes on top)
@@ -590,6 +612,7 @@ export class MeadowRenderer {
 
   private drawPixelPlacedChicken(
     ctx: CanvasRenderingContext2D,
+    engine: ChickenTdEngine,
     tower: PlacedChicken,
     isSelected: boolean,
     nowSec: number
@@ -599,24 +622,29 @@ export class MeadowRenderer {
 
     const px = toPx(tower.x);
     const py = toPx(tower.y);
+    const def = CHICKEN_DEFS[tower.typeId];
+    const eff = engine.getEffectiveChickenStats(tower);
     const mutTier = PROGRESSION.getMutation(tower.typeId);
     const mutColor = mutTier ? MUTATION_DEFS[mutTier].color : null;
+
+    if (def.isSupport && !isSelected) {
+      // Subtle ambient support beacon ring under Support Chickens!
+      const supR = 11 + (Math.floor(nowSec * 3) % 2);
+      drawPixelCircle(ctx, px, py + 2, supR, '#67E8F9', true);
+    }
 
     if (isSelected) {
       drawPixelCircle(ctx, px, py + 2, 10, '#FACC15', false);
     } else if (mutColor) {
-      // Mutated Chicken Aura Ring!
       const auraR = (mutTier === 'legendary' ? 10 : 9) + (Math.floor(nowSec * 5) % 2);
       drawPixelCircle(ctx, px, py + 2, auraR, mutColor, true);
     } else if (tower.tier === 3) {
-      // Tier 4 MAX golden pixel aura!
       const auraR = 9 + (Math.floor(nowSec * 4) % 2);
       drawPixelCircle(ctx, px, py + 2, auraR, '#FDE047', true);
     }
 
     const frame = tower.recoil > 0.35 ? spr.attack : spr.idle;
     const faceLeft = Math.cos(tower.angle) < -0.15;
-    // Cute gentle staggered 1px idle breathing/bobbing across the coop!
     const cuteIdleBob =
       tower.recoil <= 0.05 && Math.sin(nowSec * 3.6 + tower.id * 1.9) > 0.62 ? -1 : 0;
 
@@ -627,6 +655,16 @@ export class MeadowRenderer {
     }
     ctx.drawImage(frame, -11, -12);
     ctx.restore();
+
+    // Crisp Pixel Buff Indicator Arrow above Chicken if buffed by a nearby Support Chicken!
+    if (eff.supportBuffCount > 0 && !def.isSupport) {
+      const by = py - 14 + (Math.floor(nowSec * 4 + tower.id) % 2);
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(px + 6, by - 1, 5, 5);
+      ctx.fillStyle = '#4ADE80';
+      ctx.fillRect(px + 8, by, 1, 3);
+      ctx.fillRect(px + 7, by + 1, 3, 1);
+    }
 
     // Crisp Pixel Tier Pips underneath the Chicken (1..4 golden stars/pips + Mutation Crystal!)
     const pipCount = tower.tier + 1;
@@ -1107,6 +1145,44 @@ export class MeadowRenderer {
         ctx.fillRect(px - 3, py - 3, 6, 6);
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'beacon_flare': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FEF9C3';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'espresso_splash': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#92400E';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FDBA74';
+        ctx.fillRect(px - 1, py - 2, 2, 2);
+        break;
+      }
+      case 'overclock_bolt': {
+        const dx = Math.round(Math.cos(p.rotation) * 3);
+        const dy = Math.round(Math.sin(p.rotation) * 3);
+        ctx.fillStyle = '#0284C7';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'idol_note': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#EC4899';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#67E8F9';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
         break;
       }
       default:

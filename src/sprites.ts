@@ -643,6 +643,31 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
       '..............',
     ],
   },
+  idle_chick: {
+    pal: {
+      O: OUTLINE,
+      Y: '#FACC15',
+      H: '#FEF08A',
+      D: '#D97706',
+      B: '#F97316',
+      R: '#EF4444',
+      C: '#38BDF8',
+    },
+    rows: [
+      '..........OO..',
+      '...OO....OCCO.',
+      '..ORRO....OO..',
+      '.OOYYOOO......',
+      'OYHHYYYYO.....',
+      'OYYYYOHYOOBO..',
+      'OYYYYYYYYOBBO.',
+      '.OYYDDDDYYOO..',
+      '..OOYYYYOO....',
+      '...OBO.OBO....',
+      '...OO...OO....',
+      '..............',
+    ],
+  },
 };
 
 // ==================== 2. KAWAII PIXEL CHICKEN GENERATOR (34 ULTRA-CUTE BORBS + STAND!) ====================
@@ -1191,6 +1216,54 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       px(bx + 13, by + 1, OUTLINE, 4, 6);
       px(bx + 14, by + 2, '#EC4899', 2, 2);
       px(bx + 14, by + 4, '#FACC15', 2, 2);
+      break;
+    }
+    case 'roost_beacon': {
+      // Roost Beacon (Bloons Village homage): thatched wooden watchtower roof + radar beacon + war-drum!
+      px(bx + 1, by, '#78350F', 11, 2);
+      px(bx + 3, by - 2, '#D97706', 7, 2);
+      px(bx + 5, by - 5, '#94A3B8', 2, 3);
+      px(bx + 5, by - 6, '#38BDF8', 2, 2); // spinning cyan radar beacon tip!
+      // Cute red & gold Jungle Drum in front!
+      px(bx + 12, by + 6, OUTLINE, 5, 5);
+      px(bx + 13, by + 7, '#DC2626', 3, 3);
+      px(bx + 13, by + 7, '#FEF08A', 3, 1);
+      break;
+    }
+    case 'brew_hen': {
+      // Espresso Brew-Hen (Bloons Alch-Buff homage): cozy brown barista beret + steaming golden buff mug!
+      px(bx + 2, by - 2, '#78350F', 8, 3);
+      px(bx + 4, by - 3, '#B45309', 4, 1);
+      px(bx + 3, by + 8, '#FFFFFF', 6, 2); // crisp white barista apron!
+      // Glowing Berserker Espresso Mug + rising steam!
+      px(bx + 12, by + 6, OUTLINE, 5, 5);
+      px(bx + 13, by + 7, '#F59E0B', 3, 3);
+      px(bx + 13, by + 7, '#FEF08A', 2, 1);
+      px(bx + 14, by + 3, '#FFFFFF', 1, 2);
+      break;
+    }
+    case 'overclock_engie': {
+      // Overclock Engie-Hen (Bloons Engineer homage): yellow hard-hat + blue overclock coil + silver wrench!
+      px(bx + 1, by, '#CA8A04', 11, 1);
+      px(bx + 2, by - 3, '#FACC15', 9, 3);
+      px(bx + 5, by - 2, '#0284C7', 3, 2);
+      px(bx + 6, by - 4, '#38BDF8', 2, 2); // glowing blue overclock spark!
+      // Heavy silver mechanic wrench
+      px(bx + 13, by + 4, '#94A3B8', 2, 6);
+      px(bx + 12, by + 3, '#E2E8F0', 4, 2);
+      break;
+    }
+    case 'idol_diva': {
+      // Shrine Idol-Hen: twin pink idol ribbons + starlight tiara + golden bell microphone + floating notes!
+      px(bx + 1, by - 3, '#EC4899', 3, 3);
+      px(bx + 9, by - 3, '#EC4899', 3, 3);
+      px(bx + 4, by - 4, '#FACC15', 5, 2);
+      px(bx + 6, by - 4, '#FFFFFF', 1, 1);
+      // Golden Idol Microphone + floating cyan musical note!
+      px(bx + 13, by + 6, '#CA8A04', 2, 4);
+      px(bx + 12, by + 4, '#F472B6', 4, 2);
+      px(17, 2, '#38BDF8', 2, 3);
+      px(18, 1, '#FEF08A', 2, 1);
       break;
     }
   }

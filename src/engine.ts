@@ -49,6 +49,7 @@ import {
   PlacedChicken,
   RoundEndSummary,
   SavedRunState,
+  SupportAuraSpec,
   TargetMode,
   TdUpgradeId,
   UpgradeDef,
@@ -69,10 +70,12 @@ export interface EffectiveChickenStats extends ChickenTierStats {
   effectiveProjectiles: number;
   effectiveFoxMult: number;
   effectiveCamo: boolean;
+  effectiveArmorPierce: boolean;
   effectiveKnockback: number;
   effectiveCritChance: number;
   mutationTier: MutationTier | null;
   plusLevel: number;
+  supportBuffCount: number;
 }
 
 export const CLUCK_CANNON_CHARGE_SEC = 22;
@@ -564,11 +567,16 @@ export class ChickenTdEngine {
     }
 
     const def = getWaveDefinition(this.waveNumber);
+    const countMult = this.getDifficulty().enemyCountMult;
     const queue: PendingSpawn[] = [];
     for (const grp of def.groups) {
-      for (let i = 0; i < grp.count; i++) {
+      const scaledCount = Math.max(1, Math.round(grp.count * countMult));
+      const baseInterval = grp.intervalSec > 0.05 ? grp.intervalSec : 0.85;
+      const scaledInterval =
+        scaledCount <= 1 ? 0 : Math.max(0.05, baseInterval / Math.max(0.8, countMult));
+      for (let i = 0; i < scaledCount; i++) {
         queue.push({
-          spawnAtWaveTime: grp.startDelaySec + i * grp.intervalSec,
+          spawnAtWaveTime: grp.startDelaySec + i * scaledInterval,
           enemyType: grp.enemyType,
         });
       }
@@ -652,12 +660,138 @@ export class ChickenTdEngine {
     return this.pendingSpawns.length + this.enemies.length;
   }
 
+  /**
+   * Non-recursive aura radius of a Support Chicken (base * Watchtower Roost * Mutation range).
+   */
+  public getSupportAuraRadius(supportTower: PlacedChicken): number {
+    const baseRange = CHICKEN_DEFS[supportTower.typeId].tiers[supportTower.tier].range;
+    const mut = PROGRESSION.getMutation(supportTower.typeId);
+    const mutRange = mut ? MUTATION_DEFS[mut].rangeMult : 1.0;
+    return Math.round(baseRange * (1 + this.tdLevels.eagleRoost * 0.08) * mutRange);
+  }
+
+  public getPreviewRange(typeId: ChickenTypeId): number {
+    const baseRange = CHICKEN_DEFS[typeId].tiers[0].range;
+    const mut = PROGRESSION.getMutation(typeId);
+    const mutRange = mut ? MUTATION_DEFS[mut].rangeMult : 1.0;
+    return Math.round(baseRange * (1 + this.tdLevels.eagleRoost * 0.08) * mutRange);
+  }
+
+  public getTowersBuffedBy(supportTower: PlacedChicken): PlacedChicken[] {
+    const auraSpec = CHICKEN_DEFS[supportTower.typeId].tiers[supportTower.tier].supportAura;
+    if (!auraSpec) return [];
+    const radius = this.getSupportAuraRadius(supportTower);
+    return this.towers.filter(
+      (t) => t.id !== supportTower.id && Math.hypot(t.x - supportTower.x, t.y - supportTower.y) <= radius
+    );
+  }
+
+  public getTowersInPreviewSupportAura(
+    typeId: ChickenTypeId,
+    x: number,
+    y: number
+  ): PlacedChicken[] {
+    if (!CHICKEN_DEFS[typeId].tiers[0].supportAura) return [];
+    const radius = this.getPreviewRange(typeId);
+    return this.towers.filter((t) => Math.hypot(t.x - x, t.y - y) <= radius);
+  }
+
+  /**
+   * Computes combined Bloons-style nearby Support Aura buffs for a placed tower.
+   * Same support typeId does NOT stack with copies of itself (uses best tier in range);
+   * distinct support types combine additively so positioning multiple support classes is rewarding & balanced!
+   */
+  private computeSupportBuffsForTower(target: PlacedChicken): SupportAuraSpec & { count: number } {
+    const bestByType = new Map<ChickenTypeId, SupportAuraSpec>();
+
+    for (const other of this.towers) {
+      if (other.id === target.id) continue;
+      const aura = CHICKEN_DEFS[other.typeId].tiers[other.tier].supportAura;
+      if (!aura) continue;
+      const radius = this.getSupportAuraRadius(other);
+      if (Math.hypot(target.x - other.x, target.y - other.y) > radius) continue;
+
+      const mut = PROGRESSION.getMutation(other.typeId);
+      const potency =
+        mut === 'legendary'
+          ? 1.4
+          : mut === 'epic'
+          ? 1.25
+          : mut === 'rare'
+          ? 1.15
+          : mut === 'common'
+          ? 1.08
+          : 1.0;
+
+      const scaled: SupportAuraSpec = {
+        damageBonus: aura.damageBonus * potency,
+        fireRateBonus: aura.fireRateBonus * potency,
+        rangeBonus: aura.rangeBonus * potency,
+        bonusPierce: aura.bonusPierce,
+        bonusProjectiles: aura.bonusProjectiles,
+        foxDamageBonus: aura.foxDamageBonus * potency,
+        grantsCamo: aura.grantsCamo,
+        grantsArmorPierce: aura.grantsArmorPierce,
+        bonusCritChance: aura.bonusCritChance * potency,
+        bonusKnockback: Math.round(aura.bonusKnockback * potency),
+      };
+
+      const prev = bestByType.get(other.typeId);
+      if (!prev) {
+        bestByType.set(other.typeId, scaled);
+      } else {
+        bestByType.set(other.typeId, {
+          damageBonus: Math.max(prev.damageBonus, scaled.damageBonus),
+          fireRateBonus: Math.max(prev.fireRateBonus, scaled.fireRateBonus),
+          rangeBonus: Math.max(prev.rangeBonus, scaled.rangeBonus),
+          bonusPierce: Math.max(prev.bonusPierce, scaled.bonusPierce),
+          bonusProjectiles: Math.max(prev.bonusProjectiles, scaled.bonusProjectiles),
+          foxDamageBonus: Math.max(prev.foxDamageBonus, scaled.foxDamageBonus),
+          grantsCamo: prev.grantsCamo || scaled.grantsCamo,
+          grantsArmorPierce: prev.grantsArmorPierce || scaled.grantsArmorPierce,
+          bonusCritChance: Math.max(prev.bonusCritChance, scaled.bonusCritChance),
+          bonusKnockback: Math.max(prev.bonusKnockback, scaled.bonusKnockback),
+        });
+      }
+    }
+
+    const total: SupportAuraSpec & { count: number } = {
+      damageBonus: 0,
+      fireRateBonus: 0,
+      rangeBonus: 0,
+      bonusPierce: 0,
+      bonusProjectiles: 0,
+      foxDamageBonus: 0,
+      grantsCamo: false,
+      grantsArmorPierce: false,
+      bonusCritChance: 0,
+      bonusKnockback: 0,
+      count: bestByType.size,
+    };
+
+    for (const s of bestByType.values()) {
+      total.damageBonus += s.damageBonus;
+      total.fireRateBonus += s.fireRateBonus;
+      total.rangeBonus += s.rangeBonus;
+      total.bonusPierce += s.bonusPierce;
+      total.bonusProjectiles += s.bonusProjectiles;
+      total.foxDamageBonus += s.foxDamageBonus;
+      total.grantsCamo = total.grantsCamo || s.grantsCamo;
+      total.grantsArmorPierce = total.grantsArmorPierce || s.grantsArmorPierce;
+      total.bonusCritChance += s.bonusCritChance;
+      total.bonusKnockback += s.bonusKnockback;
+    }
+
+    return total;
+  }
+
   public getEffectiveChickenStats(tower: PlacedChicken): EffectiveChickenStats {
     const def = CHICKEN_DEFS[tower.typeId];
     const base = def.tiers[tower.tier];
     const mutTier = PROGRESSION.getMutation(tower.typeId);
     const mutDef = mutTier ? MUTATION_DEFS[mutTier] : null;
     const plusLv = PROGRESSION.getPlusLevel(tower.typeId);
+    const sup = this.computeSupportBuffsForTower(tower);
 
     const plusDmgMult = 1 + plusLv * 0.04;
     const plusRateMult = 1 + Math.min(0.6, plusLv * 0.015);
@@ -672,14 +806,38 @@ export class ChickenTdEngine {
     const mutCrit = mutDef ? mutDef.bonusCritChance : 0;
     const mutKb = mutDef ? mutDef.bonusKnockback : 0;
 
-    const rangeMult = (1 + this.tdLevels.eagleRoost * 0.08) * mutRange;
-    const rateMult = (1 + this.tdLevels.caffeinatedFeed * 0.11) * mutRate * plusRateMult;
-    const bonusPierce = Math.ceil(this.tdLevels.razorTalons / 2) + mutPierce;
-    const foxMult = base.foxDamageMult * (1 + this.tdLevels.razorTalons * 0.22) * mutFox;
-    const hasCamo = base.camoSight || mutCamo || this.tdLevels.eagleRoost >= 3;
-    const rawDamage = base.damage * mutDmg * plusDmgMult;
-    const effectiveDamage = rawDamage >= 10 ? Math.round(rawDamage * 10) / 10 : Math.round(rawDamage * 100) / 100;
-    const effectiveBurnDps = Math.round(base.burnDps * mutDmg * plusDmgMult * 10) / 10;
+    // Support towers use their own non-recursive aura range so two support towers don't loop infinitely
+    const supRangeMult = def.isSupport ? 1.0 : 1 + sup.rangeBonus;
+    const rangeMult = (1 + this.tdLevels.eagleRoost * 0.08) * mutRange * supRangeMult;
+    const rateMult =
+      (1 + this.tdLevels.caffeinatedFeed * 0.11) * mutRate * plusRateMult * (1 + sup.fireRateBonus);
+    const bonusPierce = Math.ceil(this.tdLevels.razorTalons / 2) + mutPierce + sup.bonusPierce;
+    const foxMult =
+      base.foxDamageMult *
+      (1 + this.tdLevels.razorTalons * 0.22) *
+      mutFox *
+      (1 + sup.foxDamageBonus);
+    const hasCamo = base.camoSight || mutCamo || sup.grantsCamo || this.tdLevels.eagleRoost >= 3;
+    const basicPeckSet = new Set<ChickenTypeId>([
+      'bantam',
+      'pecker',
+      'honey',
+      'boomerang',
+      'chilly',
+      'ninja',
+    ]);
+    const hasArmorPierce =
+      sup.grantsArmorPierce || !basicPeckSet.has(tower.typeId) || tower.tier >= 2;
+
+    const rawDamage = base.damage * mutDmg * plusDmgMult * (1 + sup.damageBonus);
+    const effectiveDamage =
+      base.damage <= 0
+        ? 0
+        : rawDamage >= 10
+        ? Math.round(rawDamage * 10) / 10
+        : Math.round(rawDamage * 100) / 100;
+    const effectiveBurnDps =
+      Math.round(base.burnDps * mutDmg * plusDmgMult * (1 + sup.damageBonus) * 10) / 10;
 
     return {
       ...base,
@@ -687,14 +845,16 @@ export class ChickenTdEngine {
       effectiveBurnDps,
       effectiveRange: Math.round(base.range * rangeMult),
       effectiveFireRate: base.fireRate * rateMult,
-      effectivePierce: base.pierce + bonusPierce,
-      effectiveProjectiles: base.projectiles + mutProj,
+      effectivePierce: base.pierce > 0 ? base.pierce + bonusPierce : 0,
+      effectiveProjectiles: base.projectiles > 0 ? base.projectiles + mutProj + sup.bonusProjectiles : 0,
       effectiveFoxMult: foxMult,
       effectiveCamo: hasCamo,
-      effectiveKnockback: (base.knockback ?? 0) + mutKb,
-      effectiveCritChance: Math.min(0.75, (base.savageCritChance ?? 0) + mutCrit),
+      effectiveArmorPierce: hasArmorPierce,
+      effectiveKnockback: (base.knockback ?? 0) + mutKb + sup.bonusKnockback,
+      effectiveCritChance: Math.min(0.8, (base.savageCritChance ?? 0) + mutCrit + sup.bonusCritChance),
       mutationTier: mutTier,
       plusLevel: plusLv,
+      supportBuffCount: sup.count,
     };
   }
 
@@ -1029,6 +1189,19 @@ export class ChickenTdEngine {
         continue;
       }
 
+      const def = CHICKEN_DEFS[tower.typeId];
+      const baseTier = def.tiers[tower.tier];
+
+      // Pure Support Aura Towers (e.g. Roost Beacon Tiers 1-3): drum & broadcast warm aura pulses!
+      if (baseTier.damage <= 0 || baseTier.projectiles <= 0) {
+        if (this.waveActive && tower.cooldown <= 0) {
+          tower.cooldown = 2.4;
+          tower.recoil = 0.75;
+          this.spawnRing(tower.x, tower.y, Math.min(64, Math.round(this.getSupportAuraRadius(tower) * 0.42)), '#FDE047');
+        }
+        continue;
+      }
+
       if (tower.cooldown > 0 || this.enemies.length === 0) continue;
 
       const stats = this.getEffectiveChickenStats(tower);
@@ -1041,16 +1214,7 @@ export class ChickenTdEngine {
       tower.cooldown = 1 / Math.max(0.2, stats.effectiveFireRate);
       tower.recoil = 1.0;
 
-      const def = CHICKEN_DEFS[tower.typeId];
-      const basicPeckSet = new Set<ChickenTypeId>([
-        'bantam',
-        'pecker',
-        'honey',
-        'boomerang',
-        'chilly',
-        'ninja',
-      ]);
-      const armorPiercing = !basicPeckSet.has(tower.typeId) || tower.tier >= 2;
+      const armorPiercing = stats.effectiveArmorPierce;
 
       // Special 360-degree AoE Pulse for Mariachi ('sonic'), Eraser ('tremor_slam'), & Quasar ('quasar_pulse')!
       if (
@@ -1442,8 +1606,13 @@ export class ChickenTdEngine {
         : proj.style === 'plasma' ||
           proj.style === 'tesla_arc' ||
           proj.style === 'surge_pillar' ||
-          proj.style === 'bahamut_orb'
+          proj.style === 'bahamut_orb' ||
+          proj.style === 'overclock_bolt'
         ? '#22D3EE'
+        : proj.style === 'idol_note'
+        ? '#F472B6'
+        : proj.style === 'espresso_splash' || proj.style === 'beacon_flare'
+        ? '#F59E0B'
         : proj.style === 'chrono_orb'
         ? '#2DD4BF'
         : proj.style === 'ion_lance' ||

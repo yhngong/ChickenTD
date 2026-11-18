@@ -2313,6 +2313,227 @@ button {
   width: auto;
 }
 
+/* ==================== SMALL CHICKEN IDLE MODE SCREEN ==================== */
+.idle-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: linear-gradient(180deg, #164e63 0%, #0f172a 100%);
+  border: 3px solid #38bdf8;
+  box-shadow: 0 4px 0 var(--pixel-shadow);
+  color: #fef08a;
+  font-family: var(--font-px-head);
+  font-size: 10px;
+  padding: 10px 14px;
+  transition: transform 0.08s steps(2), filter 0.08s;
+}
+
+.idle-cta-btn:hover {
+  filter: brightness(1.15);
+  border-color: #facc15;
+}
+
+.idle-cta-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--pixel-shadow);
+}
+
+.shop-idle-btn {
+  padding: 8px 12px;
+}
+
+.idle-hud-btn {
+  border-color: #38bdf8 !important;
+  color: #bae6fd !important;
+}
+
+.idle-hud-btn:hover {
+  border-color: #facc15 !important;
+  color: #fef08a !important;
+}
+
+.idle-mode-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background:
+    linear-gradient(rgba(9, 15, 26, 0.94), rgba(15, 28, 22, 0.96)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(15, 23, 42, 0.4) 0px,
+      rgba(15, 23, 42, 0.4) 16px,
+      rgba(30, 41, 59, 0.4) 16px,
+      rgba(30, 41, 59, 0.4) 32px
+    );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.idle-mode-box {
+  width: 100%;
+  max-width: 680px;
+  background: #14211b;
+  border: 4px solid #38bdf8;
+  box-shadow: 0 8px 0 var(--pixel-shadow);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.idle-mode-header {
+  background: #0f172a;
+  border: 3px solid #1e3a5f;
+  padding: 10px 14px;
+}
+
+.idle-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.idle-kicker {
+  font-size: 9px;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.5px;
+}
+
+.idle-mode-header h2 {
+  font-family: var(--font-px-head);
+  font-size: 14px;
+  color: #fef08a;
+  text-shadow: 2px 2px 0 var(--pixel-shadow);
+  margin-top: 4px;
+}
+
+.idle-mode-header p {
+  font-size: 11px;
+  color: #cbd5e1;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.idle-mode-header strong {
+  color: #f472b6;
+}
+
+.idle-canvas-wrap {
+  background: #0b111e;
+  border: 4px solid #486b4f;
+  box-shadow: 0 4px 0 var(--pixel-shadow);
+  overflow: hidden;
+}
+
+#idle-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 380 / 144;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.idle-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .idle-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.idle-stat-card {
+  background: #0f172a;
+  border: 2px solid #334155;
+  padding: 8px 10px;
+}
+
+.idle-stat-card.highlight-egg {
+  border-color: #f472b6;
+  background: #1f1430;
+}
+
+.idle-stat-card strong {
+  display: block;
+  font-family: var(--font-px-head);
+  font-size: 12px;
+  color: #ffffff;
+  margin-top: 4px;
+}
+
+.idle-stat-card.highlight-egg strong {
+  color: #facc15;
+}
+
+.idle-progress-panel {
+  background: #0f172a;
+  border: 3px solid #38bdf8;
+  padding: 10px 12px;
+}
+
+.idle-prog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: #bae6fd;
+  margin-bottom: 6px;
+}
+
+.idle-prog-head strong {
+  font-family: var(--font-px-head);
+  font-size: 10px;
+  color: #fef08a;
+}
+
+.idle-meter-track {
+  height: 12px;
+  border-color: #475569;
+}
+
+.idle-meter-fill {
+  background: linear-gradient(90deg, #38bdf8 0%, #f472b6 65%, #facc15 100%);
+}
+
+.idle-rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 9px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+.idle-rate-row strong {
+  color: #4ade80;
+}
+
+.idle-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.idle-action-btn {
+  flex: 1;
+  min-width: 200px;
+  width: auto;
+}
+
 .hidden {
   display: none !important;
 }

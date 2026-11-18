@@ -8,23 +8,27 @@ export type ChickenTypeId =
   | 'ranger'
   | 'lobber'
   | 'wizard'
+  | 'roost_beacon'
   | 'ninja'
   | 'pirate'
   | 'bard'
+  | 'brew_hen'
   | 'phoenix'
   | 'mecha'
-  // === 20 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
+  // === 22 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
   | 'macho_cat'
   | 'eraser_tank'
   | 'tesla'
   | 'kasli_oracle'
   | 'chrono'
+  | 'overclock_engie'
   | 'cyber_sniper'
   | 'gundam'
   | 'samurai_shogun'
   | 'stand_hen'
   | 'necro_lich'
   | 'valkyrie'
+  | 'idol_diva'
   | 'yukimura_shadow'
   | 'star_dread'
   | 'bahamut_wyrm'
@@ -69,7 +73,11 @@ export type ProjectileStyle =
   | 'genesis_beam'
   | 'nature_prism'
   | 'black_hole'
-  | 'god_wrath';
+  | 'god_wrath'
+  | 'beacon_flare'
+  | 'espresso_splash'
+  | 'overclock_bolt'
+  | 'idol_note';
 
 export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary';
 
@@ -132,6 +140,7 @@ export interface DifficultyDef {
   startingEggs: number;
   costMult: number;
   enemyHpMult: number;
+  enemyCountMult: number;
   enemySpeedMult: number;
   accentColor: string;
   description: string;
@@ -184,7 +193,21 @@ export type PixelIconId =
   | 'sound_on'
   | 'sound_off'
   | 'rules'
-  | 'menu';
+  | 'menu'
+  | 'idle_chick';
+
+export interface SupportAuraSpec {
+  damageBonus: number; // e.g. 0.25 = +25% ally damage
+  fireRateBonus: number; // e.g. 0.20 = +20% ally attack speed
+  rangeBonus: number; // e.g. 0.15 = +15% ally range
+  bonusPierce: number; // flat extra pierce to nearby allies
+  bonusProjectiles: number; // extra multishot to nearby allies
+  foxDamageBonus: number; // e.g. 0.25 = +25% bonus vs Giant Foxes
+  grantsCamo: boolean; // Radar Scanner style Camo Sight
+  grantsArmorPierce: boolean; // MIB style Armor-Piercing
+  bonusCritChance: number; // extra Savage Blow crit chance
+  bonusKnockback: number; // extra path knockback
+}
 
 export interface ChickenTierStats {
   tierName: string;
@@ -203,6 +226,7 @@ export interface ChickenTierStats {
   camoSight: boolean;
   knockback?: number; // Battle Cats style path knockback distance
   savageCritChance?: number; // Battle Cats Savage Blow (3x damage) probability
+  supportAura?: SupportAuraSpec; // Bloons Village / Alch style nearby-tower buff!
   description: string;
 }
 
@@ -216,6 +240,7 @@ export interface ChickenTowerDef {
   bellyColor: string;
   accentColor: string;
   projectileStyle: ProjectileStyle;
+  isSupport?: boolean;
   tiers: readonly [ChickenTierStats, ChickenTierStats, ChickenTierStats, ChickenTierStats];
 }
 
@@ -459,4 +484,6 @@ export interface UserPreferences {
   pendingMapId: MapId;
   pendingDifficultyId: DifficultyId;
   isMuted: boolean;
+  inIdleMode?: boolean;
+  lastIdleSyncMs?: number;
 }

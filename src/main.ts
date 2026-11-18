@@ -17,6 +17,12 @@ import {
   TD_UPGRADES,
 } from './data';
 import { ChickenTdEngine } from './engine';
+import {
+  IDLE_CANVAS_H,
+  IDLE_CANVAS_W,
+  IDLE_KILLS_PER_SEC,
+  IdlePastureSimulation,
+} from './idle';
 import { MAP_DEFS, MAP_HEIGHT, MAP_ORDER, MAP_WIDTH } from './map';
 import { BUGS_PER_EGG, GEM_EGG_COST_EACH, MUTATION_DEFS, PROGRESSION } from './progression';
 import {
@@ -43,11 +49,13 @@ const btnMenuGemShopCta = document.getElementById('btn-menu-gem-shop-cta') as HT
 const btnMenuStart = document.getElementById('btn-menu-start') as HTMLButtonElement;
 const btnMenuResume = document.getElementById('btn-menu-resume') as HTMLButtonElement;
 const btnMenuEndRun = document.getElementById('btn-menu-end-run') as HTMLButtonElement;
+const btnMenuIdle = document.getElementById('btn-menu-idle') as HTMLButtonElement;
 const btnMenuRules = document.getElementById('btn-menu-rules') as HTMLButtonElement;
 
 // Gem Egg Capsule Shop Elements
 const gemShopScreen = document.getElementById('gem-shop-screen') as HTMLDivElement;
 const btnCloseGemShop = document.getElementById('btn-close-gem-shop') as HTMLButtonElement;
+const btnShopIdle = document.getElementById('btn-shop-idle') as HTMLButtonElement;
 const shopEggsCount = document.getElementById('shop-eggs-count') as HTMLElement;
 const shopBugProgress = document.getElementById('shop-bug-progress') as HTMLElement;
 const shopShowcaseEgg = document.getElementById('shop-showcase-egg') as HTMLImageElement;
@@ -83,8 +91,23 @@ const btnSpeed = document.getElementById('btn-speed') as HTMLButtonElement;
 const lblSpeed = document.getElementById('lbl-speed') as HTMLElement;
 const btnMute = document.getElementById('btn-mute') as HTMLButtonElement;
 const iconBtnSound = document.getElementById('icon-btn-sound') as HTMLImageElement;
+const btnHudIdle = document.getElementById('btn-hud-idle') as HTMLButtonElement;
 const btnRules = document.getElementById('btn-rules') as HTMLButtonElement;
 const btnMenu = document.getElementById('btn-menu') as HTMLButtonElement;
+
+// Idle Mode Screen Elements
+const idleModeScreen = document.getElementById('idle-mode-screen') as HTMLDivElement;
+const idleCanvas = document.getElementById('idle-canvas') as HTMLCanvasElement;
+const idleStatTime = document.getElementById('idle-stat-time') as HTMLElement;
+const idleStatKills = document.getElementById('idle-stat-kills') as HTMLElement;
+const idleStatEarned = document.getElementById('idle-stat-earned') as HTMLElement;
+const idleStatBank = document.getElementById('idle-stat-bank') as HTMLElement;
+const idleProgressText = document.getElementById('idle-progress-text') as HTMLElement;
+const idleProgressFill = document.getElementById('idle-progress-fill') as HTMLDivElement;
+const idleEtaText = document.getElementById('idle-eta-text') as HTMLElement;
+const lblIdleOpenEggs = document.getElementById('lbl-idle-open-eggs') as HTMLElement;
+const btnIdleOpenEggs = document.getElementById('btn-idle-open-eggs') as HTMLButtonElement;
+const btnIdleExit = document.getElementById('btn-idle-exit') as HTMLButtonElement;
 
 const bannerTitle = document.getElementById('banner-title') as HTMLElement;
 const bannerDesc = document.getElementById('banner-desc') as HTMLElement;
@@ -176,8 +199,13 @@ function initStaticPixelIcons(): void {
   setImg('icon-hud-battle-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-btn-speed', PIXEL_ATLAS.getIconUrl('speed'));
   setImg('icon-btn-sound', PIXEL_ATLAS.getIconUrl('sound_on'));
+  setImg('icon-btn-idle', PIXEL_ATLAS.getIconUrl('idle_chick'));
   setImg('icon-btn-rules', PIXEL_ATLAS.getIconUrl('rules'));
   setImg('icon-btn-menu', PIXEL_ATLAS.getIconUrl('menu'));
+  setImg('icon-menu-idle', PIXEL_ATLAS.getIconUrl('idle_chick'));
+  setImg('icon-shop-idle', PIXEL_ATLAS.getIconUrl('idle_chick'));
+  setImg('icon-idle-title-chick', PIXEL_ATLAS.getIconUrl('idle_chick'));
+  setImg('icon-idle-gem-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-clicker-corn', PIXEL_ATLAS.getIconUrl('corn'));
   setImg('icon-tab-troops', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-tab-clicker', PIXEL_ATLAS.getIconUrl('corn'));
@@ -213,15 +241,21 @@ canvas.width = PIXEL_CANVAS_W;
 canvas.height = PIXEL_CANVAS_H;
 const renderer = new MeadowRenderer(canvas);
 
+idleCanvas.width = IDLE_CANVAS_W;
+idleCanvas.height = IDLE_CANVAS_H;
+const idleSim = new IdlePastureSimulation();
+
 let selectedTowerId: number | null = null;
 let peckAnimTimeout: number | null = null;
 let inMainMenu = true;
 let inGemShop = false;
 let inCutscene = false;
+let inIdleMode = false;
+let idleReturnDestination: 'menu' | 'shop' | 'game' = 'menu';
 let hasStartedRun = false;
 let pendingMapId: MapId = 'sunny_meadow';
 let pendingDifficultyId: DifficultyId = 'normal';
-let activeCollectionFilter: 'all' | 'gacha' | 'starter' | 'mutated' = 'all';
+let activeCollectionFilter: 'all' | 'gacha' | 'starter' | 'support' | 'mutated' = 'all';
 
 const MAP_THUMB_URLS = new Map<MapId, string>();
 for (const mId of MAP_ORDER) {
@@ -335,6 +369,8 @@ function renderGemEggShop(): void {
     filteredIds = GEM_EGG_CHICKEN_IDS;
   } else if (activeCollectionFilter === 'starter') {
     filteredIds = STARTER_CHICKEN_IDS;
+  } else if (activeCollectionFilter === 'support') {
+    filteredIds = CHICKEN_ORDER.filter((id) => CHICKEN_DEFS[id].isSupport);
   } else if (activeCollectionFilter === 'mutated') {
     filteredIds = CHICKEN_ORDER.filter((id) => PROGRESSION.getMutation(id) !== null);
   }
@@ -411,6 +447,8 @@ function persistFullGameState(): void {
     pendingMapId,
     pendingDifficultyId,
     isMuted: engine.audio.getMuted(),
+    inIdleMode,
+    lastIdleSyncMs: inIdleMode ? idleSim.getLastWallMs() : undefined,
   });
   if (hasStartedRun && engine.status !== 'gameover') {
     const snap = engine.serializeRun(inMainMenu);
@@ -421,12 +459,94 @@ function persistFullGameState(): void {
 }
 
 function flushAllSavesBeforeExit(): void {
+  if (inIdleMode) {
+    idleSim.syncWallClock(Date.now());
+  }
   if (hasStartedRun && engine.status !== 'gameover' && engine.totalBugsPopped > engine.bugsBankedThisRun) {
     engine.bankPendingRunBugs();
   }
   PROGRESSION.save();
   persistFullGameState();
 }
+
+function formatIdleDuration(totalSec: number): string {
+  const sec = Math.max(0, Math.floor(totalSec));
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  const rem = sec % 60;
+  if (hrs > 0) {
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+}
+
+function renderIdleModeUi(): void {
+  const savedEggs = PROGRESSION.getEggs();
+  const rem = PROGRESSION.getBugKillRemainder();
+  const pct = Math.min(100, (rem / BUGS_PER_EGG) * 100);
+  const killsLeft = Math.max(1, BUGS_PER_EGG - rem);
+  const secLeft = Math.ceil(killsLeft / IDLE_KILLS_PER_SEC);
+  const etaMins = Math.floor(secLeft / 60);
+  const etaSecs = secLeft % 60;
+
+  idleStatTime.textContent = formatIdleDuration(idleSim.sessionElapsedSec);
+  idleStatKills.textContent = idleSim.sessionKills.toLocaleString();
+  idleStatEarned.textContent = `+${idleSim.sessionGemEggsEarned.toLocaleString()}`;
+  idleStatBank.textContent = savedEggs.toLocaleString();
+  idleProgressText.textContent = `${rem.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} KILLS`;
+  idleProgressFill.style.width = `${pct.toFixed(1)}%`;
+  idleEtaText.textContent = `~${etaMins}M ${String(etaSecs).padStart(2, '0')}S TO NEXT EGG`;
+  lblIdleOpenEggs.textContent =
+    savedEggs > 0 ? `OPEN GEM EGGS (${savedEggs} READY)` : 'OPEN GEM EGGS';
+}
+
+function openIdleMode(resumeFromWallMs?: number): void {
+  if (inCutscene) return;
+  if (!inIdleMode) {
+    if (inGemShop) idleReturnDestination = 'shop';
+    else if (inMainMenu) idleReturnDestination = 'menu';
+    else idleReturnDestination = 'game';
+  }
+
+  // Bank any unbanked active-run kills first so progress meter is 100% accurate
+  if (hasStartedRun && engine.status !== 'gameover' && engine.totalBugsPopped > engine.bugsBankedThisRun) {
+    engine.bankPendingRunBugs();
+  }
+
+  inIdleMode = true;
+  rulesModal.classList.add('hidden');
+  idleModeScreen.classList.remove('hidden');
+  idleSim.start(Date.now(), resumeFromWallMs);
+  renderIdleModeUi();
+  persistFullGameState();
+}
+
+function closeIdleMode(goToGemShop = false): void {
+  if (!inIdleMode) return;
+  idleSim.stop(Date.now());
+  inIdleMode = false;
+  idleModeScreen.classList.add('hidden');
+  persistFullGameState();
+
+  if (goToGemShop || idleReturnDestination === 'shop') {
+    openGemEggShop();
+  } else if (idleReturnDestination === 'game' && hasStartedRun && engine.status !== 'gameover') {
+    resumeActiveRun();
+  } else {
+    openMainMenu();
+  }
+}
+
+idleSim.onStatsUpdated = () => {
+  if (!inIdleMode) return;
+  renderIdleModeUi();
+  persistFullGameState();
+};
+
+idleSim.onEggEarned = () => {
+  engine.audio.playUpgrade();
+  refreshFullUi();
+};
 
 function openMainMenu(): void {
   inMainMenu = true;
@@ -845,7 +965,7 @@ function renderTroopCards(): void {
             <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(cost)}</span>
           </div>
           <span class="troop-name">${def.name}</span>
-          <span class="troop-role">${def.role}</span>
+          <span class="troop-role" style="${def.isSupport ? 'color:#67e8f9; font-weight:700' : ''}">${def.role}</span>
         </div>
       `;
       btn.addEventListener('click', () => {
@@ -939,7 +1059,25 @@ function renderUpgradeLists(): void {
 function formatInspectorStats(towerId: number): string {
   const tower = engine.towers.find((t) => t.id === towerId);
   if (!tower) return '';
+  const def = CHICKEN_DEFS[tower.typeId];
   const eff = engine.getEffectiveChickenStats(tower);
+
+  if (def.isSupport) {
+    const buffedCount = engine.getTowersBuffedBy(tower).length;
+    if (eff.effectiveDamage <= 0) {
+      return `SUPPORT AURA | RNG ${eff.effectiveRange} | BUFFING ${buffedCount} ${
+        buffedCount === 1 ? 'UNIT' : 'UNITS'
+      }`;
+    }
+    const dmgText = Number.isInteger(eff.effectiveDamage)
+      ? eff.effectiveDamage.toLocaleString()
+      : eff.effectiveDamage.toFixed(1);
+    return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
+      eff.effectiveRange
+    } | BUFFING ${buffedCount}`;
+  }
+
+  const buffTag = eff.supportBuffCount > 0 ? ` | BUFFED x${eff.supportBuffCount}` : '';
   const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
   const kbTag = eff.effectiveKnockback > 0 ? ' | KB' : '';
   const critTag =
@@ -949,7 +1087,7 @@ function formatInspectorStats(towerId: number): string {
     : eff.effectiveDamage.toFixed(1);
   return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
     eff.effectiveRange
-  } | DEALT ${Math.round(tower.totalPopDamage).toLocaleString()}${camoTag}${kbTag}${critTag}`;
+  } | DEALT ${Math.round(tower.totalPopDamage).toLocaleString()}${buffTag}${camoTag}${kbTag}${critTag}`;
 }
 
 function renderInspector(): void {
@@ -982,6 +1120,7 @@ function renderInspector(): void {
 
   inspStats.textContent = formatInspectorStats(tower.id);
   btnInspTarget.textContent = `AIM: ${tower.targetMode.toUpperCase()}`;
+  btnInspTarget.classList.toggle('hidden', eff.effectiveDamage <= 0);
 
   if (tower.tier < 3) {
     const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
@@ -1317,7 +1456,7 @@ document.querySelectorAll<HTMLButtonElement>('.coll-filter-btn').forEach((btn) =
     document.querySelectorAll('.coll-filter-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     activeCollectionFilter =
-      (btn.dataset.filter as 'all' | 'gacha' | 'starter' | 'mutated') ?? 'all';
+      (btn.dataset.filter as 'all' | 'gacha' | 'starter' | 'support' | 'mutated') ?? 'all';
     engine.audio.playUpgrade();
     renderGemEggShop();
   });
@@ -1479,7 +1618,31 @@ btnRestartGameover.addEventListener('click', () => {
 btnShopGameover.addEventListener('click', () => openGemEggShop());
 btnMenuGameover.addEventListener('click', () => openMainMenu());
 
-// Hotkey map for all 34 Chicken Units!
+btnMenuIdle.addEventListener('click', () => {
+  btnMenuIdle.blur();
+  engine.audio.playUpgrade();
+  openIdleMode();
+});
+btnShopIdle.addEventListener('click', () => {
+  btnShopIdle.blur();
+  engine.audio.playUpgrade();
+  openIdleMode();
+});
+btnHudIdle.addEventListener('click', () => {
+  btnHudIdle.blur();
+  engine.audio.playUpgrade();
+  openIdleMode();
+});
+btnIdleOpenEggs.addEventListener('click', () => {
+  engine.audio.playUpgrade();
+  closeIdleMode(true);
+});
+btnIdleExit.addEventListener('click', () => {
+  engine.audio.playUpgrade();
+  closeIdleMode(false);
+});
+
+// Hotkey map for all 38 Chicken Units!
 const HOTKEY_TO_CHICKEN = new Map<string, ChickenTypeId>();
 for (const id of CHICKEN_ORDER) {
   HOTKEY_TO_CHICKEN.set(CHICKEN_DEFS[id].hotkey.toUpperCase(), id);
@@ -1496,6 +1659,15 @@ window.addEventListener('keydown', (e) => {
       } else {
         closeCutsceneModal();
       }
+    }
+    return;
+  }
+
+  if (inIdleMode) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      engine.audio.playUpgrade();
+      closeIdleMode(false);
     }
     return;
   }
@@ -1546,6 +1718,8 @@ window.addEventListener('beforeunload', () => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     flushAllSavesBeforeExit();
+  } else if (document.visibilityState === 'visible' && inIdleMode) {
+    idleSim.syncWallClock(Date.now());
   }
 });
 
@@ -1576,6 +1750,10 @@ function restoreSavedSessionOnBoot(): void {
       mainMenuScreen.classList.remove('hidden');
     }
   }
+
+  if (prefs?.inIdleMode) {
+    openIdleMode(prefs.lastIdleSyncMs);
+  }
 }
 
 restoreSavedSessionOnBoot();
@@ -1590,6 +1768,12 @@ function loop(nowMs: number): void {
   try {
     const dt = Math.max(0.001, Math.min(0.08, (nowMs - lastPerfMs) / 1000));
     lastPerfMs = nowMs;
+
+    if (inIdleMode) {
+      idleSim.syncWallClock(Date.now());
+      idleSim.render(idleCanvas, dt, nowMs / 1000);
+      return;
+    }
 
     if (!inMainMenu && !inGemShop && !inCutscene) {
       engine.tick(dt);
