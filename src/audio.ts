@@ -1,8 +1,11 @@
+import { MutationTier } from './types';
+
 export class ChickenAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private isMuted = false;
   private lastPopPerfMs = 0;
+  private lastCritPerfMs = 0;
 
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -80,7 +83,6 @@ export class ChickenAudioEngine {
   }
 
   public playPlaceChicken(): void {
-    // Cheerful 2-note cluck!
     this.tone('triangle', 380, 540, 0.08, 0.18, 0);
     this.tone('triangle', 520, 780, 0.11, 0.2, 0.065);
   }
@@ -104,6 +106,20 @@ export class ChickenAudioEngine {
     }
   }
 
+  public playSavageCrit(): void {
+    const now = performance.now();
+    if (now - this.lastCritPerfMs < 85) return;
+    this.lastCritPerfMs = now;
+    this.tone('square', 740, 1320, 0.09, 0.16, 0);
+    this.tone('triangle', 1046, 1568, 0.11, 0.18, 0.035);
+  }
+
+  public playCluckCannon(): void {
+    this.tone('sawtooth', 880, 110, 0.42, 0.28, 0);
+    this.tone('square', 520, 65, 0.48, 0.22, 0.04);
+    this.tone('triangle', 1320, 440, 0.3, 0.22, 0.08);
+  }
+
   public playWaveStart(): void {
     this.tone('triangle', 330, 440, 0.12, 0.18, 0);
     this.tone('triangle', 440, 659, 0.2, 0.22, 0.1);
@@ -111,5 +127,44 @@ export class ChickenAudioEngine {
 
   public playEggLeak(): void {
     this.tone('sawtooth', 240, 90, 0.2, 0.24, 0);
+  }
+
+  public playDefeatJingle(): void {
+    this.tone('sawtooth', 392, 349.23, 0.22, 0.22, 0.0);
+    this.tone('sawtooth', 349.23, 311.13, 0.22, 0.22, 0.2);
+    this.tone('sawtooth', 311.13, 261.63, 0.24, 0.24, 0.4);
+    this.tone('triangle', 196, 98, 0.55, 0.28, 0.62);
+  }
+
+  public playEggWobble(): void {
+    this.tone('triangle', 290, 420, 0.09, 0.18, 0);
+    this.tone('sine', 420, 310, 0.09, 0.14, 0.07);
+  }
+
+  public playEggCrack(stage: 1 | 2): void {
+    const base = stage === 1 ? 620 : 880;
+    this.tone('square', base, base * 0.45, 0.08, 0.2, 0);
+    this.tone('triangle', base * 1.35, base * 1.8, 0.1, 0.18, 0.04);
+  }
+
+  public playEggReveal(kind: 'new' | MutationTier): void {
+    if (kind === 'new' || kind === 'legendary') {
+      // Grand triumphant 4-note Battle-Cats Uber/Legend fanfare!
+      this.tone('triangle', 523.25, 523.25, 0.12, 0.24, 0.0);
+      this.tone('triangle', 659.25, 659.25, 0.12, 0.24, 0.1);
+      this.tone('triangle', 783.99, 783.99, 0.14, 0.25, 0.2);
+      this.tone('triangle', 1046.5, 1318.5, 0.36, 0.28, 0.31);
+      this.tone('square', 523.25, 1046.5, 0.32, 0.14, 0.31);
+    } else if (kind === 'epic') {
+      this.tone('triangle', 440, 587.33, 0.12, 0.22, 0.0);
+      this.tone('triangle', 659.25, 880, 0.16, 0.24, 0.1);
+      this.tone('triangle', 880, 1174.66, 0.26, 0.24, 0.21);
+    } else if (kind === 'rare') {
+      this.tone('triangle', 440, 659.25, 0.12, 0.2, 0.0);
+      this.tone('triangle', 659.25, 880, 0.2, 0.22, 0.11);
+    } else {
+      this.tone('triangle', 392, 523.25, 0.11, 0.18, 0.0);
+      this.tone('triangle', 523.25, 659.25, 0.16, 0.2, 0.09);
+    }
   }
 }

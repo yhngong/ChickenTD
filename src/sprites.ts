@@ -115,6 +115,135 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
       '..............',
     ],
   },
+  battle_egg: {
+    pal: {
+      O: OUTLINE,
+      Y: '#FACC15',
+      H: '#FFFFFF',
+      L: '#FEF08A',
+      D: '#D97706',
+      C: '#38BDF8',
+    },
+    rows: [
+      '.....OOOO.....',
+      '...OOLLLLOO...',
+      '..OLHHYYYYLO..',
+      '..OLHYYCCYYLO.',
+      '.OYYYYYCCYYYDO',
+      '.OYYCCYYYYYYDO',
+      '.OYYYYYYYYCCDO',
+      '.OYYYYDDDDYYDO',
+      '..OYYDDDDDDYO.',
+      '...OOYYYYYYOO.',
+      '.....OOOOOO...',
+      '..............',
+    ],
+  },
+  gem_egg: {
+    pal: {
+      O: OUTLINE,
+      P: '#EC4899',
+      M: '#A855F7',
+      C: '#22D3EE',
+      H: '#FFFFFF',
+      Y: '#FACC15',
+    },
+    rows: [
+      '.....OOOO.....',
+      '...OOPPPPOO...',
+      '..OPHPPCCMMO..',
+      '.OPHHPPCCMMMO.',
+      '.OPPYYYYYYMMO.',
+      '.OPCCMHHMMCCO.',
+      '.OPCCMMMMMCCO.',
+      '.OMMPPPPPPMMO.',
+      '..OMMYYYYMMO..',
+      '...OOMMMMOO...',
+      '.....OOOO.....',
+      '..............',
+    ],
+  },
+  cannon: {
+    pal: {
+      O: OUTLINE,
+      S: '#475569',
+      L: '#CBD5E1',
+      Y: '#FACC15',
+      C: '#22D3EE',
+      R: '#EF4444',
+    },
+    rows: [
+      '.......OOOOOO.',
+      '.....OOLLLLCCO',
+      '...OOSSSSSSCCO',
+      '..OSSYYYYSSCCO',
+      '.OSSSSSSSSOO..',
+      '.OSSOOOOOO....',
+      '..OO.OYYO.....',
+      '....OYRRYO....',
+      '....OYYYYO....',
+      '.....OOOO.....',
+      '..............',
+      '..............',
+    ],
+  },
+  mutation_star: {
+    pal: {
+      O: OUTLINE,
+      P: '#C084FC',
+      C: '#38BDF8',
+      Y: '#FACC15',
+      H: '#FFFFFF',
+    },
+    rows: [
+      '......OO......',
+      '.....OCCO.....',
+      '..OO.OHHO.OO..',
+      '.OPPHOHHHOPPO.',
+      '.OPHYHHHHYHPO.',
+      'OCHHHYYYYHHHCO',
+      '.OPHYHHHHYHPO.',
+      '.OPPHOHHHOPPO.',
+      '..OO.OHHO.OO..',
+      '.....OCCO.....',
+      '......OO......',
+      '..............',
+    ],
+  },
+  lock: {
+    pal: { O: OUTLINE, S: '#CBD5E1', Y: '#FACC15', D: '#CA8A04', H: '#FEF08A' },
+    rows: [
+      '....OOOOOO....',
+      '...OSSSSSSO...',
+      '...OSSOOSSO...',
+      '...OSSOOSSO...',
+      '..OOOOOOOOOO..',
+      '..OYYHHHHYYO..',
+      '..OYYYYYYYYO..',
+      '..OYYYOYYDYO..',
+      '..OYYYOYYDYO..',
+      '..OYYDDDDDYO..',
+      '...OOOOOOOO...',
+      '..............',
+    ],
+  },
+  skull_defeat: {
+    pal: { O: OUTLINE, W: '#F1F5F9', S: '#94A3B8', R: '#EF4444' },
+    rows: [
+      '....OOOOOO....',
+      '..OOWWWWWWOO..',
+      '.OWWWWWWWWWWO.',
+      '.OWWROWWORWWO.',
+      '.OWWROWWORWWO.',
+      '.OWWWWOOWWWWO.',
+      '..OWWWWWWWWO..',
+      '...OWOOWOOWO..',
+      '...OOOOOOOOO..',
+      '..............',
+      '..............',
+      '..............',
+    ],
+  },
   fox: {
     pal: { O: OUTLINE, F: '#EA580C', L: '#FB923C', W: '#FFF7ED', E: '#181425', N: '#0F172A' },
     rows: [
@@ -516,11 +645,12 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
   },
 };
 
-// ==================== 2. KAWAII PIXEL CHICKEN GENERATOR (22 ULTRA-CUTE BORBS + STAND!) ====================
+// ==================== 2. KAWAII PIXEL CHICKEN GENERATOR (34 ULTRA-CUTE BORBS + STAND!) ====================
 export interface ChickenSpritePair {
   idle: HTMLCanvasElement;
   attack: HTMLCanvasElement;
   portraitUrl: string;
+  lockedPortraitUrl: string;
 }
 
 export interface StandSpriteSet {
@@ -634,17 +764,30 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
   // 1. Soft Oval Ground Shadow
   px(5, 19, 'rgba(15,23,42,0.34)', 12, 2);
 
-  // 2. Back-Layer Capes / Angel Wings (drawn behind the chubby borb body!)
+  // 2. Back-Layer Capes / Angel Wings / Dragon Wings (drawn behind the chubby borb body!)
   if (typeId === 'valkyrie') {
     px(bx - 2, by + 3, OUTLINE, 4, 7);
     px(bx - 1, by + 4, '#38BDF8', 2, 5);
-  } else if (typeId === 'omega_god') {
+  } else if (typeId === 'omega_god' || typeId === 'chronos_empress') {
     px(bx - 3, by + 1, OUTLINE, 5, 8);
     px(bx - 2, by + 2, '#FEF08A', 3, 6);
     px(bx - 1, by + 3, '#FFFFFF', 2, 4);
   } else if (typeId === 'phoenix') {
     px(bx - 3, by + 2, '#EA580C', 4, 6);
     px(bx - 2, by + 3, '#FACC15', 2, 4);
+  } else if (typeId === 'yukimura_shadow') {
+    px(bx - 3, by + 1, OUTLINE, 5, 8);
+    px(bx - 2, by + 2, '#DC2626', 3, 6);
+    px(bx - 1, by + 3, '#FCA5A5', 2, 3);
+  } else if (typeId === 'bahamut_wyrm') {
+    px(bx - 4, by, OUTLINE, 6, 9);
+    px(bx - 3, by + 1, '#0F172A', 4, 7);
+    px(bx - 2, by + 2, '#22D3EE', 2, 5);
+  } else if (typeId === 'cat_god_supreme') {
+    px(bx - 4, by, OUTLINE, 6, 10);
+    px(bx - 3, by + 1, '#FACC15', 4, 8);
+    px(bx - 2, by + 2, '#FFFFFF', 3, 5);
+    px(bx - 3, by - 1, '#F43F5E', 2, 2);
   }
 
   // 3. Tiny Stubby Birdie Feet (hop up happily when attacking!)
@@ -909,6 +1052,145 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       px(bx + 13, by + 1, OUTLINE, 4, 5);
       px(bx + 14, by + 2, '#FACC15', 2, 3);
       px(bx + 14, by + 2, '#FFFFFF', 1, 1);
+      break;
+    }
+    case 'macho_cat': {
+      // Battle Cats Macho Cat-Hen: pointy white cat ears + pink inner ears + macho crimson headband + paw mitt!
+      px(bx + 2, by - 3, OUTLINE, 3, 3);
+      px(bx + 8, by - 3, OUTLINE, 3, 3);
+      px(bx + 3, by - 2, '#FFFFFF', 2, 2);
+      px(bx + 8, by - 2, '#FFFFFF', 2, 2);
+      px(bx + 3, by - 1, '#FDA4AF', 1, 1);
+      px(bx + 9, by - 1, '#FDA4AF', 1, 1);
+      px(bx + 2, by + 1, '#F43F5E', 9, 1);
+      // Cute Battle-Cat paw glove in front!
+      px(bx + 12, by + 6, OUTLINE, 4, 4);
+      px(bx + 13, by + 7, '#FFFFFF', 2, 2);
+      px(bx + 14, by + 7, '#FB7185', 1, 1);
+      break;
+    }
+    case 'eraser_tank': {
+      // Battle Cats Eraser Wall-Hen: tall rectangular white/blue eraser block crest + heavy tower shield!
+      px(bx + 3, by - 4, OUTLINE, 7, 5);
+      px(bx + 4, by - 3, '#FFFFFF', 5, 2);
+      px(bx + 4, by - 1, '#3B82F6', 5, 2);
+      // Sturdy Eraser Monolith Shield held out front
+      px(bx + 12, by + 5, OUTLINE, 5, 6);
+      px(bx + 13, by + 6, '#E2E8F0', 3, 2);
+      px(bx + 13, by + 8, '#2563EB', 3, 2);
+      break;
+    }
+    case 'kasli_oracle': {
+      // Surge Priestess (Kasli homage): twin cyan-tipped ritual horns + dark cowl + cursed Surge staff!
+      px(bx + 2, by - 4, '#0F172A', 2, 4);
+      px(bx + 9, by - 4, '#0F172A', 2, 4);
+      px(bx + 2, by - 5, '#22D3EE', 2, 2);
+      px(bx + 9, by - 5, '#22D3EE', 2, 2);
+      px(bx + 2, by, '#1E293B', 9, 2);
+      // Ritual staff with glowing turquoise surge orb
+      px(bx + 14, by + 2, '#1E293B', 1, 9);
+      px(bx + 13, by + 1, '#06B6D4', 3, 3);
+      px(bx + 14, by + 2, '#FFFFFF', 1, 1);
+      break;
+    }
+    case 'cyber_sniper': {
+      // Hacker Nerd-Hen (Cyberpunk Cat homage): neon green matrix visor + headset + floating holo-screen!
+      px(bx + 2, by - 2, '#334155', 9, 2);
+      px(bx + 1, by - 1, '#10B981', 2, 3);
+      px(bx + 6, by + 2, '#064E3B', 6, 2);
+      px(bx + 7, by + 2, '#4ADE80', 4, 1);
+      // Floating translucent green Matrix terminal
+      px(bx + 13, by + 5, '#065F46', 4, 4);
+      px(bx + 14, by + 6, '#4ADE80', 2, 2);
+      break;
+    }
+    case 'samurai_shogun': {
+      // Musashi Blade-Hen: crimson samurai kabuto + golden crescent-moon crest + twin katanas!
+      px(bx + 1, by, '#991B1B', 11, 2);
+      px(bx + 3, by - 2, '#DC2626', 7, 2);
+      px(bx + 4, by - 4, '#FACC15', 5, 2);
+      px(bx + 5, by - 4, '#FEF9C3', 3, 1);
+      // Gleaming silver katana blade forward
+      px(bx + 12, by + 6, '#94A3B8', 5, 2);
+      px(bx + 13, by + 6, '#FFFFFF', 4, 1);
+      break;
+    }
+    case 'necro_lich': {
+      // Necro-Cluck Lich: bone skull crown + emerald soul-flame eyes on crown + floating soul lantern!
+      px(bx + 2, by - 3, OUTLINE, 9, 4);
+      px(bx + 3, by - 2, '#F8FAFC', 7, 3);
+      px(bx + 4, by - 1, '#10B981', 2, 1);
+      px(bx + 8, by - 1, '#10B981', 2, 1);
+      // Floating emerald wisp flame
+      px(bx + 13, by + 1, '#059669', 4, 4);
+      px(bx + 14, by + 2, '#6EE7B7', 2, 2);
+      px(bx + 14, by, '#A7F3D0', 1, 2);
+      break;
+    }
+    case 'yukimura_shadow': {
+      // Shadow Yukimura: dark tengu war-crest + blazing scarlet sanada coins + crimson blade!
+      px(bx + 2, by - 2, '#0F172A', 9, 3);
+      px(bx + 4, by - 4, '#EF4444', 5, 2);
+      px(bx + 5, by - 1, '#FACC15', 3, 1);
+      px(bx + 12, by + 6, '#DC2626', 5, 2);
+      px(bx + 13, by + 6, '#FCA5A5', 3, 1);
+      break;
+    }
+    case 'bahamut_wyrm': {
+      // Awakened Baha-Cluck: swept abyssal dragon horns + glowing cyan chest reactor + energy orb!
+      px(bx + 1, by - 4, '#0F172A', 3, 4);
+      px(bx + 9, by - 4, '#0F172A', 3, 4);
+      px(bx + 1, by - 5, '#22D3EE', 2, 2);
+      px(bx + 10, by - 5, '#22D3EE', 2, 2);
+      px(bx + 5, by + 6, '#06B6D4', 3, 3);
+      px(bx + 6, by + 7, '#FFFFFF', 1, 1);
+      px(bx + 13, by + 5, '#22D3EE', 4, 4);
+      px(bx + 14, by + 6, '#FFFFFF', 2, 2);
+      break;
+    }
+    case 'chronos_empress': {
+      // Empress Chronos: golden celestial clockwork halo + sapphire diadem + golden spear!
+      px(bx + 2, by - 5, '#FACC15', 9, 1);
+      px(bx + 4, by - 3, '#FEF08A', 5, 2);
+      px(bx + 6, by - 3, '#38BDF8', 2, 2);
+      px(bx + 14, by + 1, '#CA8A04', 2, 9);
+      px(bx + 13, by, '#FEF08A', 4, 3);
+      break;
+    }
+    case 'gaia_creator': {
+      // Gaia Mother-Hen: emerald crystal antlers + pink/gold blossoms + floating rainbow prism!
+      px(bx + 1, by - 4, '#16A34A', 2, 4);
+      px(bx + 10, by - 4, '#16A34A', 2, 4);
+      px(bx + 3, by - 2, '#F472B6', 2, 2);
+      px(bx + 8, by - 2, '#FACC15', 2, 2);
+      px(bx + 5, by - 3, '#38BDF8', 3, 2);
+      // Floating rainbow nature prism
+      px(bx + 13, by + 1, '#F43F5E', 4, 4);
+      px(bx + 14, by + 2, '#38BDF8', 2, 2);
+      px(bx + 14, by + 2, '#FEF08A', 1, 1);
+      break;
+    }
+    case 'void_singularity': {
+      // Singularity Hen: glowing magenta/cyan accretion ring + dark-star crown + mini black hole!
+      px(bx + 1, by - 3, '#F472B6', 11, 1);
+      px(bx + 3, by - 4, '#22D3EE', 7, 1);
+      px(bx + 5, by - 2, '#0F172A', 3, 2);
+      // Mini orbiting black hole in front
+      px(bx + 13, by + 5, '#F472B6', 4, 4);
+      px(bx + 14, by + 6, '#0F172A', 2, 2);
+      break;
+    }
+    case 'cat_god_supreme': {
+      // Golden Cluck-God (1,000,000 Corn): golden Battle-Cat ears crown + ruby jewel + divine sun-bolt!
+      px(bx + 2, by - 5, '#FACC15', 3, 4);
+      px(bx + 8, by - 5, '#FACC15', 3, 4);
+      px(bx + 3, by - 3, '#FEF9C3', 7, 3);
+      px(bx + 6, by - 3, '#F43F5E', 2, 2);
+      px(bx + 1, by - 6, '#FFFFFF', 11, 1); // divine halo above crown!
+      // Floating Golden Gem Egg Scepter
+      px(bx + 13, by + 1, OUTLINE, 4, 6);
+      px(bx + 14, by + 2, '#EC4899', 2, 2);
+      px(bx + 14, by + 4, '#FACC15', 2, 2);
       break;
     }
   }
@@ -1327,6 +1609,112 @@ function buildHenhouseScene(pecking: boolean): HTMLCanvasElement {
   return c;
 }
 
+// ==================== 4.5. GEM EGG CUTSCENE PIXEL SPRITES (4 STAGES: WHOLE -> CRACK 1 -> CRACK 2 -> BURST!) ====================
+function buildGemEggStageSprite(stage: 0 | 1 | 2 | 3): HTMLCanvasElement {
+  const c = makeCanvas(36, 40);
+  const ctx = c.getContext('2d')!;
+  const px = (x: number, y: number, col: string, w = 1, h = 1) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y, w, h);
+  };
+
+  // Ambient sparkles around the Gem Egg
+  px(5, 8, '#22D3EE', 2, 2);
+  px(29, 7, '#FACC15', 2, 2);
+  px(4, 28, '#F472B6', 2, 2);
+  px(30, 26, '#4ADE80', 2, 2);
+
+  if (stage === 3) {
+    // Stage 3: SHATTERED SHELL BURST! Top & bottom crystal shell halves blown apart + radiant starburst!
+    // Blinding central light core
+    px(11, 12, '#FEF9C3', 14, 14);
+    px(8, 15, '#FACC15', 20, 8);
+    px(14, 9, '#38BDF8', 8, 20);
+    px(13, 14, '#FFFFFF', 10, 10);
+
+    // Top shattered shell cap flying up-left/right
+    px(11, 2, OUTLINE, 14, 8);
+    px(12, 3, '#EC4899', 6, 6);
+    px(18, 3, '#A855F7', 6, 6);
+    px(14, 4, '#FFFFFF', 3, 2);
+    px(13, 8, '#FACC15', 10, 2);
+
+    // Bottom shattered shell bowl with jagged rim
+    px(9, 28, OUTLINE, 18, 9);
+    px(10, 29, '#7E22CE', 16, 7);
+    px(11, 29, '#22D3EE', 5, 4);
+    px(20, 30, '#EC4899', 5, 4);
+    px(12, 34, '#FACC15', 12, 2);
+
+    // Flying crystal shards
+    px(3, 14, OUTLINE, 4, 4);
+    px(4, 15, '#22D3EE', 2, 2);
+    px(29, 13, OUTLINE, 4, 4);
+    px(30, 14, '#EC4899', 2, 2);
+    px(5, 22, '#FACC15', 3, 2);
+    px(28, 21, '#A855F7', 3, 2);
+    return c;
+  }
+
+  // Pedestal shadow
+  px(10, 36, 'rgba(15,23,42,0.55)', 16, 3);
+
+  // Intact / Cracking Faceted Crystal Gem Egg Silhouette (ovoid 22x30 centered at x=7..28, y=5..34)
+  px(14, 5, OUTLINE, 8, 31);
+  px(11, 7, OUTLINE, 14, 27);
+  px(9, 10, OUTLINE, 18, 22);
+  px(8, 14, OUTLINE, 20, 15);
+
+  // Faceted Crystal Shell Base Colors (Magenta -> Amethyst -> Cyan facets)
+  px(14, 6, '#EC4899', 8, 29);
+  px(12, 8, '#D946EF', 12, 25);
+  px(10, 11, '#A855F7', 16, 20);
+  px(9, 15, '#7E22CE', 18, 13);
+
+  // Upper-left specular crystal shine
+  px(12, 9, '#F9A8D4', 5, 7);
+  px(13, 10, '#FFFFFF', 3, 4);
+
+  // Ornate Golden Filigree Belt & Embedded Gems!
+  px(9, 19, '#CA8A04', 18, 4);
+  px(10, 20, '#FACC15', 16, 2);
+  // Center Diamond Gem
+  px(16, 17, OUTLINE, 4, 8);
+  px(17, 18, '#22D3EE', 2, 6);
+  px(17, 19, '#FFFFFF', 1, 2);
+  // Side Emerald & Ruby Studs
+  px(11, 19, '#4ADE80', 2, 3);
+  px(23, 19, '#F43F5E', 2, 3);
+
+  if (stage >= 1) {
+    // Stage 1+: Jagged Hairline Cracks spiderwebbing across shell!
+    px(15, 11, OUTLINE, 2, 3);
+    px(17, 13, OUTLINE, 2, 3);
+    px(14, 15, OUTLINE, 3, 2);
+    px(19, 23, OUTLINE, 2, 4);
+    px(16, 26, OUTLINE, 3, 3);
+    px(15, 12, '#FEF08A', 1, 2);
+    px(17, 14, '#FEF08A', 1, 2);
+    px(19, 24, '#22D3EE', 1, 3);
+  }
+
+  if (stage >= 2) {
+    // Stage 2: Deep Blazing Energy Fissures + Escaping Light Rays!
+    px(13, 11, '#FFFFFF', 2, 4);
+    px(15, 14, '#FEF08A', 4, 3);
+    px(18, 16, '#22D3EE', 4, 3);
+    px(12, 23, '#FEF08A', 4, 3);
+    px(16, 25, '#FFFFFF', 4, 4);
+    // Light rays shooting outward from cracks!
+    px(4, 12, '#FEF08A', 5, 2);
+    px(27, 15, '#22D3EE', 6, 2);
+    px(5, 24, '#F472B6', 5, 2);
+    px(26, 25, '#FEF08A', 6, 2);
+  }
+
+  return c;
+}
+
 // ==================== 5. SINGLETON PIXEL ATLAS ====================
 export class PixelSpriteAtlas {
   private iconUrls = new Map<PixelIconId, string>();
@@ -1335,6 +1723,7 @@ export class PixelSpriteAtlas {
   public standSprites: StandSpriteSet | null = null;
   public henhouseIdleUrl = '';
   public henhousePeckUrl = '';
+  public gemEggStageUrls: [string, string, string, string] = ['', '', '', ''];
 
   constructor() {
     if (typeof document === 'undefined') return;
@@ -1354,7 +1743,7 @@ export class PixelSpriteAtlas {
       requiemPunch: drawStandSpiritPixelArt(true, true),
     };
 
-    // Bake all 22 Kawaii Chicken Unit sprites (22x22) + crisp 2x shop portraits (44x44)
+    // Bake all 34 Kawaii Chicken Unit sprites (22x22) + crisp 2x shop portraits (44x44) + locked silhouettes!
     for (const id of Object.keys(CHICKEN_DEFS) as ChickenTypeId[]) {
       const idle = drawChickenUnitPixelArt(id, false);
       const attack = drawChickenUnitPixelArt(id, true);
@@ -1370,10 +1759,13 @@ export class PixelSpriteAtlas {
       } else {
         pCtx.drawImage(idle, 0, 0, 44, 44);
       }
+
+      const lockedCanvas = makeFlashSprite(portraitCanvas, '#0F172A');
       this.chickenSprites.set(id, {
         idle,
         attack,
         portraitUrl: portraitCanvas.toDataURL(),
+        lockedPortraitUrl: lockedCanvas.toDataURL(),
       });
     }
 
@@ -1434,6 +1826,16 @@ export class PixelSpriteAtlas {
     peckUp.getContext('2d')!.drawImage(peckRaw, 0, 0, 120, 66);
     this.henhouseIdleUrl = idleUp.toDataURL();
     this.henhousePeckUrl = peckUp.toDataURL();
+
+    // Bake 4 Gem Egg Cutscene Stage Sprites (upscaled 3x -> 108x120 crisp PNGs)
+    const stages: [string, string, string, string] = ['', '', '', ''];
+    for (const s of [0, 1, 2, 3] as const) {
+      const raw = buildGemEggStageSprite(s);
+      const up = makeCanvas(raw.width * 3, raw.height * 3);
+      up.getContext('2d')!.drawImage(raw, 0, 0, up.width, up.height);
+      stages[s] = up.toDataURL();
+    }
+    this.gemEggStageUrls = stages;
   }
 
   public getIconUrl(id: PixelIconId): string {

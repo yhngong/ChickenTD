@@ -29,6 +29,7 @@ import {
   getTotalPathLength,
   setActiveMap,
 } from './map';
+import { MUTATION_DEFS, PROGRESSION } from './progression';
 import {
   ActiveEnemy,
   ActiveProjectile,
@@ -39,11 +40,14 @@ import {
   ClickerUpgradeId,
   DifficultyDef,
   DifficultyId,
+  EggBankResult,
   EnemyTypeId,
   FloatingMapPopup,
   MapId,
+  MutationTier,
   PixelParticle,
   PlacedChicken,
+  RoundEndSummary,
   TargetMode,
   TdUpgradeId,
   UpgradeDef,
@@ -56,12 +60,21 @@ interface PendingSpawn {
 }
 
 export interface EffectiveChickenStats extends ChickenTierStats {
+  effectiveDamage: number;
+  effectiveBurnDps: number;
   effectiveRange: number;
   effectiveFireRate: number;
   effectivePierce: number;
+  effectiveProjectiles: number;
   effectiveFoxMult: number;
   effectiveCamo: boolean;
+  effectiveKnockback: number;
+  effectiveCritChance: number;
+  mutationTier: MutationTier | null;
+  plusLevel: number;
 }
+
+export const CLUCK_CANNON_CHARGE_SEC = 22;
 
 export class ChickenTdEngine {
   public audio = new ChickenAudioEngine();
@@ -77,14 +90,24 @@ export class ChickenTdEngine {
   public waveNumber = 1;
   public waveActive = false;
   public waveElapsedSec = 0;
+  public waveInitialSpawnCount = 1;
   public status: 'playing' | 'victory_prompt' | 'gameover' = 'playing';
   public freeplayUnlocked = false;
   public speedMultiplier: 1 | 2 = 1;
 
   public totalBugsPopped = 0;
+  public bugsBankedThisRun = 0;
+  public eggsEarnedThisRun = 0;
+  public lastVictoryEggsEarned = 0;
+  public lastDefeatSummary: RoundEndSummary | null = null;
+
   public totalClicksAccepted = 0;
   public waveClickCounter = 0; // counts toward 12-Peck Mega Cob
   public waveCornHarvested = 0; // tracks Corn harvested in the active wave for Golden Corn Silo
+
+  // Battle Cats style rechargeable Cluck Cannon (0..1)
+  public cannonCharge = 0.5;
+  public cannonFlash = 0;
 
   // Strict 12 CPS sliding 1,000ms window (wall-clock milliseconds)
   private clickTimestampsMs: number[] = [];
@@ -129,13 +152,29 @@ export class ChickenTdEngine {
     return DIFFICULTY_DEFS[this.difficultyId];
   }
 
+  public isChickenUnlocked(typeId: ChickenTypeId): boolean {
+    return PROGRESSION.isUnlocked(typeId);
+  }
+
   public getTowerBaseCost(typeId: ChickenTypeId): number {
-    return Math.round(CHICKEN_DEFS[typeId].baseCost * this.getDifficulty().costMult);
+    const mut = PROGRESSION.getMutation(typeId);
+    const mutCostMult = mut ? MUTATION_DEFS[mut].costMult : 1.0;
+    return Math.max(
+      10,
+      Math.round(CHICKEN_DEFS[typeId].baseCost * this.getDifficulty().costMult * mutCostMult)
+    );
   }
 
   public getTowerUpgradeCost(typeId: ChickenTypeId, tierIdx: 1 | 2 | 3): number {
-    return Math.round(
-      CHICKEN_DEFS[typeId].tiers[tierIdx].upgradeCost * this.getDifficulty().costMult
+    const mut = PROGRESSION.getMutation(typeId);
+    const mutCostMult = mut ? MUTATION_DEFS[mut].costMult : 1.0;
+    return Math.max(
+      10,
+      Math.round(
+        CHICKEN_DEFS[typeId].tiers[tierIdx].upgradeCost *
+          this.getDifficulty().costMult *
+          mutCostMult
+      )
     );
   }
 
@@ -143,7 +182,35 @@ export class ChickenTdEngine {
     return Math.round(getUpgradeCost(def, currentLevel) * this.getDifficulty().costMult);
   }
 
+  /**
+   * Saves any unbanked bug kills from the current round into persistent Eggs storage!
+   */
+  public bankPendingRunBugs(): EggBankResult {
+    const delta = Math.max(0, this.totalBugsPopped - this.bugsBankedThisRun);
+    this.bugsBankedThisRun = this.totalBugsPopped;
+    const res = PROGRESSION.bankBugsAfterRound(delta);
+    this.eggsEarnedThisRun += res.eggsEarned;
+    return res;
+  }
+
+  /**
+   * Voluntarily ends the current active run, triggering the Defeat/Round-End report & saving Eggs!
+   */
+  public endRunEarly(): void {
+    if (this.status === 'gameover') return;
+    this.eggs = 0;
+    this.waveActive = false;
+    this.status = 'gameover';
+    const topEnemy = this.enemies[0]?.typeId ?? 'ant';
+    this.lastDefeatSummary = this.buildDefeatSummary(topEnemy);
+    this.audio.playDefeatJingle();
+    this.notifyUi();
+  }
+
   public startNewRun(mapId: MapId, difficultyId: DifficultyId): void {
+    if (this.totalBugsPopped > this.bugsBankedThisRun) {
+      this.bankPendingRunBugs();
+    }
     this.mapId = mapId;
     this.difficultyId = difficultyId;
     setActiveMap(mapId);
@@ -151,6 +218,9 @@ export class ChickenTdEngine {
   }
 
   public resetGame(): void {
+    if (this.totalBugsPopped > this.bugsBankedThisRun) {
+      this.bankPendingRunBugs();
+    }
     setActiveMap(this.mapId);
     const diff = this.getDifficulty();
     this.corn = diff.startingCorn;
@@ -160,12 +230,19 @@ export class ChickenTdEngine {
     this.waveNumber = 1;
     this.waveActive = false;
     this.waveElapsedSec = 0;
+    this.waveInitialSpawnCount = 1;
     this.status = 'playing';
     this.freeplayUnlocked = false;
     this.totalBugsPopped = 0;
+    this.bugsBankedThisRun = 0;
+    this.eggsEarnedThisRun = 0;
+    this.lastVictoryEggsEarned = 0;
+    this.lastDefeatSummary = null;
     this.totalClicksAccepted = 0;
     this.waveClickCounter = 0;
     this.waveCornHarvested = 0;
+    this.cannonCharge = 0.5;
+    this.cannonFlash = 0;
     this.clickTimestampsMs = [];
     this.autoPeckAccumulator = 0;
     this.frenzyMeter = 0;
@@ -294,7 +371,6 @@ export class ChickenTdEngine {
 
     const activeCps = this.getCurrentCps(nowPerfMs);
     if (activeCps >= MAX_CPS_CAP) {
-      // Strictly ignore clicks beyond 12 CPS!
       this.capHitFlash = 1.0;
       return {
         accepted: false,
@@ -335,12 +411,74 @@ export class ChickenTdEngine {
     queue.sort((a, b) => a.spawnAtWaveTime - b.spawnAtWaveTime);
 
     this.pendingSpawns = queue;
+    this.waveInitialSpawnCount = Math.max(1, queue.length);
     this.waveElapsedSec = 0;
     this.waveCornHarvested = 0;
     this.autoPeckAccumulator = 0;
     this.waveActive = true;
     this.clickTimestampsMs = [];
     this.audio.playWaveStart();
+    this.notifyUi();
+    return true;
+  }
+
+  /**
+   * Battle Cats-style Cluck Cannon! Fires a sweeping shockwave beam down the whole path,
+   * knocking back and damaging all active Bugs & Fox Bosses!
+   */
+  public fireCluckCannon(): boolean {
+    if (this.status === 'gameover' || this.cannonCharge < 1) return false;
+    if (!this.waveActive && this.enemies.length === 0) return false;
+
+    this.cannonCharge = 0;
+    this.cannonFlash = 1.0;
+    this.audio.playCluckCannon();
+
+    const totalLen = getTotalPathLength();
+    for (let d = 0; d <= totalLen; d += 110) {
+      const pt = getPointAlongPath(d);
+      this.spawnRing(pt.x, pt.y, 48, d % 220 === 0 ? '#22D3EE' : '#FACC15');
+      this.spawnPixelBurst(pt.x, pt.y, 4, '#FEF08A');
+    }
+
+    const nestPt = getPointAlongPath(totalLen);
+    this.spawnMapPopup('CLUCK CANNON!', nestPt.x, nestPt.y - 34, '#22D3EE', 1.2);
+
+    const waveDmg = Math.max(18, Math.round(24 * getWaveHpScale(this.waveNumber)));
+    const cannonCarrier: ActiveProjectile = {
+      id: this.nextEntityId++,
+      ownerTowerId: -1,
+      style: 'genesis_beam',
+      x: nestPt.x,
+      y: nestPt.y,
+      vx: 0,
+      vy: 0,
+      curveRate: 0,
+      rotation: 0,
+      damage: waveDmg,
+      pierceLeft: 9999,
+      splashRadius: 9999,
+      slowFactor: 0.58,
+      slowDuration: 2.2,
+      burnDps: 0,
+      foxDamageMult: 1.5,
+      knockback: 68,
+      savageCritChance: 0,
+      armorPiercing: true,
+      canHitCamo: true,
+      hitEnemyIds: new Set<number>(),
+      age: 0,
+      maxLifetime: 0.05,
+      color: '#22D3EE',
+    };
+
+    const snapshot = [...this.enemies];
+    for (const e of snapshot) {
+      if (!this.enemies.includes(e)) continue;
+      e.kbCooldown = 0; // Cannon always overrides knockback cooldown!
+      this.damageEnemy(e, waveDmg, cannonCarrier);
+    }
+
     this.notifyUi();
     return true;
   }
@@ -352,45 +490,81 @@ export class ChickenTdEngine {
   public getEffectiveChickenStats(tower: PlacedChicken): EffectiveChickenStats {
     const def = CHICKEN_DEFS[tower.typeId];
     const base = def.tiers[tower.tier];
-    const rangeMult = 1 + this.tdLevels.eagleRoost * 0.08;
-    const rateMult = 1 + this.tdLevels.caffeinatedFeed * 0.11;
-    const bonusPierce = Math.ceil(this.tdLevels.razorTalons / 2);
-    const foxMult = base.foxDamageMult * (1 + this.tdLevels.razorTalons * 0.22);
-    const hasCamo = base.camoSight || this.tdLevels.eagleRoost >= 3;
+    const mutTier = PROGRESSION.getMutation(tower.typeId);
+    const mutDef = mutTier ? MUTATION_DEFS[mutTier] : null;
+    const plusLv = PROGRESSION.getPlusLevel(tower.typeId);
+
+    const plusDmgMult = 1 + plusLv * 0.04;
+    const plusRateMult = 1 + Math.min(0.6, plusLv * 0.015);
+
+    const mutDmg = mutDef ? mutDef.damageMult : 1.0;
+    const mutRate = mutDef ? mutDef.fireRateMult : 1.0;
+    const mutRange = mutDef ? mutDef.rangeMult : 1.0;
+    const mutPierce = mutDef ? mutDef.bonusPierce : 0;
+    const mutProj = mutDef ? mutDef.bonusProjectiles : 0;
+    const mutFox = mutDef ? mutDef.foxMult : 1.0;
+    const mutCamo = mutDef ? mutDef.grantsCamo : false;
+    const mutCrit = mutDef ? mutDef.bonusCritChance : 0;
+    const mutKb = mutDef ? mutDef.bonusKnockback : 0;
+
+    const rangeMult = (1 + this.tdLevels.eagleRoost * 0.08) * mutRange;
+    const rateMult = (1 + this.tdLevels.caffeinatedFeed * 0.11) * mutRate * plusRateMult;
+    const bonusPierce = Math.ceil(this.tdLevels.razorTalons / 2) + mutPierce;
+    const foxMult = base.foxDamageMult * (1 + this.tdLevels.razorTalons * 0.22) * mutFox;
+    const hasCamo = base.camoSight || mutCamo || this.tdLevels.eagleRoost >= 3;
+    const rawDamage = base.damage * mutDmg * plusDmgMult;
+    const effectiveDamage = rawDamage >= 10 ? Math.round(rawDamage * 10) / 10 : Math.round(rawDamage * 100) / 100;
+    const effectiveBurnDps = Math.round(base.burnDps * mutDmg * plusDmgMult * 10) / 10;
 
     return {
       ...base,
+      effectiveDamage,
+      effectiveBurnDps,
       effectiveRange: Math.round(base.range * rangeMult),
       effectiveFireRate: base.fireRate * rateMult,
       effectivePierce: base.pierce + bonusPierce,
+      effectiveProjectiles: base.projectiles + mutProj,
       effectiveFoxMult: foxMult,
       effectiveCamo: hasCamo,
+      effectiveKnockback: (base.knockback ?? 0) + mutKb,
+      effectiveCritChance: Math.min(0.75, (base.savageCritChance ?? 0) + mutCrit),
+      mutationTier: mutTier,
+      plusLevel: plusLv,
     };
   }
 
   public placeChicken(typeId: ChickenTypeId, x: number, y: number): PlacedChicken | null {
     if (this.status === 'gameover') return null;
+    if (!this.isChickenUnlocked(typeId)) return null;
     const cost = this.getTowerBaseCost(typeId);
     if (this.corn < cost) return null;
     if (!canPlaceChickenAt(x, y, this.towers)) return null;
 
     this.corn -= cost;
+    const strongDefaults = new Set<ChickenTypeId>([
+      'ranger',
+      'pirate',
+      'mecha',
+      'cyber_sniper',
+      'gundam',
+      'samurai_shogun',
+      'stand_hen',
+      'yukimura_shadow',
+      'star_dread',
+      'bahamut_wyrm',
+      'chronos_empress',
+      'omega_god',
+      'gaia_creator',
+      'void_singularity',
+      'cat_god_supreme',
+    ]);
     const placed: PlacedChicken = {
       id: this.nextEntityId++,
       typeId,
       x,
       y,
       tier: 0,
-      targetMode:
-        typeId === 'ranger' ||
-        typeId === 'pirate' ||
-        typeId === 'mecha' ||
-        typeId === 'gundam' ||
-        typeId === 'stand_hen' ||
-        typeId === 'star_dread' ||
-        typeId === 'omega_god'
-          ? 'strong'
-          : 'first',
+      targetMode: strongDefaults.has(typeId) ? 'strong' : 'first',
       angle: 0,
       cooldown: 0,
       recoil: 0,
@@ -402,8 +576,10 @@ export class ChickenTdEngine {
       this.getOrCreateStand(placed);
       this.spawnRing(x, y, 42, '#C084FC');
     }
-    this.spawnRing(x, y, 34, '#FACC15');
-    this.spawnPixelBurst(x, y, 8, '#FACC15');
+    const mut = PROGRESSION.getMutation(typeId);
+    const ringCol = mut ? MUTATION_DEFS[mut].color : '#FACC15';
+    this.spawnRing(x, y, 34, ringCol);
+    this.spawnPixelBurst(x, y, 8, ringCol);
     this.audio.playPlaceChicken();
     this.notifyUi();
     return placed;
@@ -501,14 +677,81 @@ export class ChickenTdEngine {
       slowTimer: 0,
       burnDps: 0,
       burnTimer: 0,
+      kbCooldown: 0,
       hitFlash: 0,
       walkPhase: Math.random() * Math.PI * 2,
     });
   }
 
+  private buildDefeatSummary(killerTypeId: EnemyTypeId): RoundEndSummary {
+    // Bank all unbanked bug kills for this round right as the round ends!
+    const bankRes = this.bankPendingRunBugs();
+
+    // Battle Cats style "BOSS HP REMAINING: X%" if a Fox Boss was on the field (or leaked!)
+    let bossName: string | null = null;
+    let bossHpPct: number | null = null;
+
+    const activeFoxes = this.enemies.filter((e) => ENEMY_DEFS[e.typeId].isFoxBoss);
+    if (ENEMY_DEFS[killerTypeId].isFoxBoss) {
+      bossName = ENEMY_DEFS[killerTypeId].name;
+      const sameType = activeFoxes.find((f) => f.typeId === killerTypeId);
+      bossHpPct = sameType
+        ? Math.max(1, Math.round((sameType.hp / sameType.maxHp) * 100))
+        : 100;
+    } else if (activeFoxes.length > 0) {
+      activeFoxes.sort((a, b) => b.maxHp - a.maxHp);
+      const topBoss = activeFoxes[0];
+      bossName = ENEMY_DEFS[topBoss.typeId].name;
+      bossHpPct = Math.max(1, Math.round((topBoss.hp / topBoss.maxHp) * 100));
+    }
+
+    const spawnedRatio =
+      this.waveInitialSpawnCount > 0
+        ? Math.max(
+            0,
+            Math.min(
+              99,
+              Math.round(
+                ((this.waveInitialSpawnCount - this.pendingSpawns.length) /
+                  this.waveInitialSpawnCount) *
+                  100
+              )
+            )
+          )
+        : 50;
+
+    let mvpUnitId: ChickenTypeId | null = null;
+    let mvpDamage = 0;
+    for (const t of this.towers) {
+      if (t.totalPopDamage > mvpDamage || mvpUnitId === null) {
+        mvpUnitId = t.typeId;
+        mvpDamage = t.totalPopDamage;
+      }
+    }
+
+    return {
+      mapId: this.mapId,
+      difficultyId: this.difficultyId,
+      waveReached: this.waveNumber,
+      freeplay: this.freeplayUnlocked,
+      totalBugsKilledThisRun: this.totalBugsPopped,
+      totalCornHarvested: this.totalCornClicked,
+      towersDeployed: this.towers.length,
+      eggsEarnedThisRun: this.eggsEarnedThisRun,
+      newBugRemainder: bankRes.newRemainder,
+      totalSavedEggs: bankRes.totalSavedEggs,
+      killerEnemyId: killerTypeId,
+      bossName,
+      bossHpPercentRemaining: bossHpPct,
+      waveProgressPercent: spawnedRatio,
+      mvpUnitId,
+      mvpDamage: Math.round(mvpDamage),
+    };
+  }
+
   public tick(realDtSec: number): void {
-    // Decay real-time clicker visual meters
     this.capHitFlash = Math.max(0, this.capHitFlash - realDtSec * 3.2);
+    this.cannonFlash = Math.max(0, this.cannonFlash - realDtSec * 2.8);
     const activeCps = this.getCurrentCps();
     const foremanHoldingFrenzy =
       this.waveActive &&
@@ -531,8 +774,9 @@ export class ChickenTdEngine {
   }
 
   private simulateStep(dt: number): void {
-    // 0. Farmhand Auto-Peckers harvest Corn passively during active waves (ignores 12 CPS manual cap!)
+    // 0. Farmhand Auto-Peckers + Cluck Cannon Charging during active waves!
     if (this.waveActive) {
+      this.cannonCharge = Math.min(1, this.cannonCharge + dt / CLUCK_CANNON_CHARGE_SEC);
       const autoRate = getFarmhandAutoRate(this.clickerLevels.farmhandChicks);
       if (autoRate > 0) {
         this.autoPeckAccumulator += autoRate * dt;
@@ -562,6 +806,7 @@ export class ChickenTdEngine {
       const def = ENEMY_DEFS[e.typeId];
 
       e.hitFlash = Math.max(0, e.hitFlash - dt * 6);
+      e.kbCooldown = Math.max(0, e.kbCooldown - dt);
       e.walkPhase += dt * (def.isFoxBoss ? 6 : 12);
 
       if (e.slowTimer > 0) {
@@ -571,7 +816,8 @@ export class ChickenTdEngine {
 
       if (e.burnTimer > 0) {
         e.burnTimer -= dt;
-        e.hp -= e.burnDps * dt;
+        const mutMult = 1.0;
+        e.hp -= e.burnDps * mutMult * dt;
         if (e.hp <= 0) {
           this.popEnemyAtIndex(i);
           continue;
@@ -591,15 +837,18 @@ export class ChickenTdEngine {
         this.spawnMapPopup(`-${def.eggDamage} EGG`, nestPt.x, nestPt.y - 26, '#EF4444', 1.15);
         this.spawnRing(nestPt.x, nestPt.y, 44, '#EF4444');
         this.spawnPixelBurst(nestPt.x, nestPt.y, 12, '#EF4444');
-        this.audio.playEggLeak();
-        this.notifyUi();
 
         if (this.eggs <= 0) {
           this.eggs = 0;
           this.waveActive = false;
           this.status = 'gameover';
+          this.lastDefeatSummary = this.buildDefeatSummary(def.id);
+          this.audio.playDefeatJingle();
           this.notifyUi();
           return;
+        } else {
+          this.audio.playEggLeak();
+          this.notifyUi();
         }
       }
     }
@@ -627,31 +876,32 @@ export class ChickenTdEngine {
       tower.recoil = 1.0;
 
       const def = CHICKEN_DEFS[tower.typeId];
-      const armorPiercing =
-        tower.typeId === 'ranger' ||
-        tower.typeId === 'lobber' ||
-        tower.typeId === 'alchemist' ||
-        tower.typeId === 'wizard' ||
-        tower.typeId === 'pirate' ||
-        tower.typeId === 'bard' ||
-        tower.typeId === 'phoenix' ||
-        tower.typeId === 'mecha' ||
-        tower.typeId === 'tesla' ||
-        tower.typeId === 'chrono' ||
-        tower.typeId === 'gundam' ||
-        tower.typeId === 'valkyrie' ||
-        tower.typeId === 'star_dread' ||
-        tower.typeId === 'quasar' ||
-        tower.typeId === 'omega_god' ||
-        tower.tier >= 2;
+      const basicPeckSet = new Set<ChickenTypeId>([
+        'bantam',
+        'pecker',
+        'honey',
+        'boomerang',
+        'chilly',
+        'ninja',
+      ]);
+      const armorPiercing = !basicPeckSet.has(tower.typeId) || tower.tier >= 2;
 
-      // Special 360-degree AoE Pulse for Mariachi Rooster ('sonic') & Quasar Serama ('quasar_pulse')!
-      if (def.projectileStyle === 'sonic' || def.projectileStyle === 'quasar_pulse') {
+      // Special 360-degree AoE Pulse for Mariachi ('sonic'), Eraser ('tremor_slam'), & Quasar ('quasar_pulse')!
+      if (
+        def.projectileStyle === 'sonic' ||
+        def.projectileStyle === 'tremor_slam' ||
+        def.projectileStyle === 'quasar_pulse'
+      ) {
         const isQuasar = def.projectileStyle === 'quasar_pulse';
-        this.spawnRing(tower.x, tower.y, stats.effectiveRange, isQuasar ? '#F472B6' : '#FB7185');
+        const isTremor = def.projectileStyle === 'tremor_slam';
+        const ringCol = isQuasar ? '#F472B6' : isTremor ? '#38BDF8' : '#FB7185';
+        this.spawnRing(tower.x, tower.y, stats.effectiveRange, ringCol);
         if (isQuasar) {
           this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.65), '#22D3EE');
           this.spawnPixelBurst(tower.x, tower.y, 12, '#22D3EE');
+        } else if (isTremor) {
+          this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.55), '#E2E8F0');
+          this.spawnPixelBurst(tower.x, tower.y, 10, '#93C5FD');
         } else {
           this.spawnPixelBurst(tower.x, tower.y, 8, '#FDE047');
         }
@@ -665,13 +915,15 @@ export class ChickenTdEngine {
           vy: 0,
           curveRate: 0,
           rotation: 0,
-          damage: stats.damage,
+          damage: stats.effectiveDamage,
           pierceLeft: stats.effectivePierce,
           splashRadius: stats.effectiveRange,
           slowFactor: stats.slowFactor,
           slowDuration: stats.slowDuration,
-          burnDps: stats.burnDps,
+          burnDps: stats.effectiveBurnDps,
           foxDamageMult: stats.effectiveFoxMult,
+          knockback: stats.effectiveKnockback,
+          savageCritChance: stats.effectiveCritChance,
           armorPiercing: true,
           canHitCamo: stats.effectiveCamo,
           hitEnemyIds: new Set<number>(),
@@ -688,15 +940,15 @@ export class ChickenTdEngine {
           if (eDef.isCamo && !stats.effectiveCamo) continue;
           const pos = getPointAlongPath(e.distance, e.lateralOffset);
           if (Math.hypot(pos.x - tower.x, pos.y - tower.y) <= stats.effectiveRange + eDef.radius) {
-            this.damageEnemy(e, stats.damage, pulseCarrier);
+            this.damageEnemy(e, stats.effectiveDamage, pulseCarrier);
             hits++;
           }
         }
         continue;
       }
 
-      const count = stats.projectiles;
-      const spreadStep = def.projectileStyle === 'feather_slash' ? 0.24 : 0.14;
+      const count = stats.effectiveProjectiles;
+      const spreadStep = def.projectileStyle === 'feather_slash' ? 0.24 : 0.13;
       const isBoomerang = def.projectileStyle === 'boomerang';
 
       for (let m = 0; m < count; m++) {
@@ -704,8 +956,8 @@ export class ChickenTdEngine {
         const ang = baseAngle + angOffset - (isBoomerang ? 0.34 : 0);
         const speed = stats.projectileSpeed;
         const maxLife = isBoomerang
-          ? ((stats.effectiveRange * 2.05) / speed)
-          : (stats.effectiveRange + 70) / speed;
+          ? (stats.effectiveRange * 2.05) / speed
+          : (stats.effectiveRange + 75) / speed;
 
         this.projectiles.push({
           id: this.nextEntityId++,
@@ -717,13 +969,15 @@ export class ChickenTdEngine {
           vy: Math.sin(ang) * speed,
           curveRate: isBoomerang ? 2.15 : 0,
           rotation: ang,
-          damage: stats.damage,
+          damage: stats.effectiveDamage,
           pierceLeft: stats.effectivePierce,
           splashRadius: stats.splashRadius,
           slowFactor: stats.slowFactor,
           slowDuration: stats.slowDuration,
-          burnDps: stats.burnDps,
+          burnDps: stats.effectiveBurnDps,
           foxDamageMult: stats.effectiveFoxMult,
+          knockback: stats.effectiveKnockback,
+          savageCritChance: stats.effectiveCritChance,
           armorPiercing,
           canHitCamo: stats.effectiveCamo,
           hitEnemyIds: new Set<number>(),
@@ -748,7 +1002,7 @@ export class ChickenTdEngine {
 
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.style === 'shuriken' || p.style === 'boomerang') {
+      if (p.style === 'shuriken' || p.style === 'boomerang' || p.style === 'black_hole') {
         p.rotation += dt * 18;
       } else {
         p.rotation = Math.atan2(p.vy, p.vx);
@@ -764,22 +1018,9 @@ export class ChickenTdEngine {
       for (const e of candidates) {
         if (p.hitEnemyIds.has(e.id) || !this.enemies.includes(e)) continue;
         const eDef = ENEMY_DEFS[e.typeId];
-        // Camo enemies are strictly intangible to projectiles from units without Camo Sight!
         if (eDef.isCamo && !p.canHitCamo) continue;
         const ePos = getPointAlongPath(e.distance, e.lateralOffset);
-        const extraRadius =
-          p.style === 'egg_bomb' ||
-          p.style === 'snow' ||
-          p.style === 'acid' ||
-          p.style === 'honey' ||
-          p.style === 'cannonball' ||
-          p.style === 'feather_slash' ||
-          p.style === 'chrono_orb' ||
-          p.style === 'stand_fist' ||
-          p.style === 'antimatter' ||
-          p.style === 'genesis_beam'
-            ? 11
-            : 8;
+        const extraRadius = p.splashRadius > 0 || p.style === 'feather_slash' ? 11 : 8;
         const hitDist = eDef.radius + extraRadius;
 
         if (Math.hypot(p.x - ePos.x, p.y - ePos.y) <= hitDist) {
@@ -845,6 +1086,8 @@ export class ChickenTdEngine {
 
       if (this.waveNumber === CAMPAIGN_WAVES && !this.freeplayUnlocked) {
         this.status = 'victory_prompt';
+        const bankRes = this.bankPendingRunBugs();
+        this.lastVictoryEggsEarned = bankRes.eggsEarned;
       }
       this.waveNumber++;
       this.notifyUi();
@@ -922,7 +1165,6 @@ export class ChickenTdEngine {
       return;
     }
 
-    // Stand has reached the enemy — unleash rapid Stand Rush punches!
     stand.state = 'punching';
     tower.recoil = Math.max(tower.recoil, 0.55);
 
@@ -944,13 +1186,15 @@ export class ChickenTdEngine {
       vy: 0,
       curveRate: 0,
       rotation: stand.angle,
-      damage: stats.damage,
+      damage: stats.effectiveDamage,
       pierceLeft: stats.effectivePierce,
       splashRadius: stats.splashRadius,
       slowFactor: stats.slowFactor,
       slowDuration: stats.slowDuration,
-      burnDps: stats.burnDps,
+      burnDps: stats.effectiveBurnDps,
       foxDamageMult: stats.effectiveFoxMult,
+      knockback: stats.effectiveKnockback,
+      savageCritChance: stats.effectiveCritChance,
       armorPiercing: true,
       canHitCamo: stats.effectiveCamo,
       hitEnemyIds: new Set<number>(),
@@ -960,7 +1204,7 @@ export class ChickenTdEngine {
     };
 
     const targetIdBeforeHit = target.id;
-    this.damageEnemy(target, stats.damage, punchCarrier);
+    this.damageEnemy(target, stats.effectiveDamage, punchCarrier);
     let hits = 1;
 
     if (stats.splashRadius > 0 && hits < stats.effectivePierce) {
@@ -972,7 +1216,7 @@ export class ChickenTdEngine {
         if (eDef.isCamo && !stats.effectiveCamo) continue;
         const pos = getPointAlongPath(e.distance, e.lateralOffset);
         if (Math.hypot(pos.x - targetPos.x, pos.y - targetPos.y) <= stats.splashRadius + eDef.radius) {
-          this.damageEnemy(e, stats.damage, punchCarrier);
+          this.damageEnemy(e, stats.effectiveDamage, punchCarrier);
           hits++;
         }
       }
@@ -1025,19 +1269,32 @@ export class ChickenTdEngine {
     const ringCol =
       proj.style === 'snow'
         ? '#38BDF8'
-        : proj.style === 'acid'
+        : proj.style === 'acid' || proj.style === 'matrix_beam' || proj.style === 'soul_wisp'
         ? '#34D399'
         : proj.style === 'honey'
         ? '#FBBF24'
-        : proj.style === 'plasma' || proj.style === 'tesla_arc'
+        : proj.style === 'plasma' ||
+          proj.style === 'tesla_arc' ||
+          proj.style === 'surge_pillar' ||
+          proj.style === 'bahamut_orb'
         ? '#22D3EE'
         : proj.style === 'chrono_orb'
         ? '#2DD4BF'
-        : proj.style === 'ion_lance' || proj.style === 'antimatter'
+        : proj.style === 'ion_lance' ||
+          proj.style === 'antimatter' ||
+          proj.style === 'cat_paw' ||
+          proj.style === 'moon_slash' ||
+          proj.style === 'shadow_talon'
         ? '#FB7185'
-        : proj.style === 'stand_fist' || proj.style === 'lightning'
+        : proj.style === 'stand_fist' ||
+          proj.style === 'lightning' ||
+          proj.style === 'black_hole'
         ? '#C084FC'
-        : proj.style === 'genesis_beam' || proj.style === 'valkyrie_spear'
+        : proj.style === 'genesis_beam' ||
+          proj.style === 'valkyrie_spear' ||
+          proj.style === 'judgment_ray' ||
+          proj.style === 'nature_prism' ||
+          proj.style === 'god_wrath'
         ? '#FEF08A'
         : proj.burnDps > 0
         ? '#F97316'
@@ -1049,7 +1306,6 @@ export class ChickenTdEngine {
     for (const e of splashTargets) {
       if (!this.enemies.includes(e)) continue;
       const def = ENEMY_DEFS[e.typeId];
-      // AoE splash from non-Camo units cannot damage or debuff Camo enemies!
       if (def.isCamo && !proj.canHitCamo) continue;
       const pos = getPointAlongPath(e.distance, e.lateralOffset);
       if (Math.hypot(pos.x - cx, pos.y - cy) <= proj.splashRadius + def.radius) {
@@ -1072,14 +1328,35 @@ export class ChickenTdEngine {
       dmg = Math.max(0.25, dmg * 0.45);
     }
 
+    // Battle Cats SAVAGE BLOW Critical Strike (3.0x damage)!
+    const isSavageCrit = proj.savageCritChance > 0 && Math.random() < proj.savageCritChance;
+    if (isSavageCrit) {
+      dmg *= 3.0;
+      const pos = getPointAlongPath(e.distance, e.lateralOffset);
+      this.spawnPixelBurst(pos.x, pos.y, 7, '#FACC15');
+      if (Math.random() < 0.35 || def.isFoxBoss) {
+        this.spawnMapPopup('SAVAGE!', pos.x, pos.y - 16, '#FEF08A', 1.0);
+      }
+      this.audio.playSavageCrit();
+    }
+
     const dealt = Math.min(Math.max(0, e.hp), dmg);
-    const owner = this.towers.find((t) => t.id === proj.ownerTowerId);
-    if (owner) {
-      owner.totalPopDamage += dealt;
+    if (proj.ownerTowerId > 0) {
+      const owner = this.towers.find((t) => t.id === proj.ownerTowerId);
+      if (owner) {
+        owner.totalPopDamage += dealt;
+      }
     }
 
     e.hp -= dmg;
     e.hitFlash = 1.0;
+
+    // Battle Cats Knockback (pushes enemy backward along the path with brief KB immunity)!
+    if (proj.knockback > 0 && e.kbCooldown <= 0 && e.hp > 0) {
+      const kbDist = def.isFoxBoss ? proj.knockback * 0.38 : proj.knockback;
+      e.distance = Math.max(0, e.distance - kbDist);
+      e.kbCooldown = 0.45;
+    }
 
     if (proj.slowFactor > 0) {
       e.slowFactor = Math.max(e.slowFactor, proj.slowFactor);
@@ -1105,6 +1382,15 @@ export class ChickenTdEngine {
     this.totalBugsPopped++;
     this.audio.playBugPop(def.isFoxBoss);
 
+    // Celebratory visual callout every 2,500 bugs popped in a round!
+    const currentPool = PROGRESSION.getBugKillRemainder() + (this.totalBugsPopped - this.bugsBankedThisRun);
+    if (currentPool > 0 && currentPool % 2500 === 0) {
+      const nestPt = getPointAlongPath(getTotalPathLength());
+      this.spawnMapPopup('+1 EGG READY!', nestPt.x, nestPt.y - 36, '#38BDF8', 1.15);
+      this.spawnRing(nestPt.x, nestPt.y, 52, '#38BDF8');
+      this.audio.playUpgrade();
+    }
+
     if (def.isFoxBoss) {
       const popCol =
         popped.typeId === 'fox_cosmic'
@@ -1125,7 +1411,6 @@ export class ChickenTdEngine {
       this.spawnPixelBurst(pos.x, pos.y, 6, def.bodyColor);
     }
 
-    // Spawn inner Bloons-style child bugs/foxes at popped enemy's path position! (Zero money!)
     let childIdx = 0;
     for (const childGroup of def.childrenOnPop) {
       for (let c = 0; c < childGroup.count; c++) {
@@ -1137,13 +1422,13 @@ export class ChickenTdEngine {
   }
 
   private spawnRing(x: number, y: number, maxRadius: number, color: string): void {
-    if (this.rings.length > 36) this.rings.shift();
+    if (this.rings.length > 42) this.rings.shift();
     this.rings.push({ x, y, maxRadius, color, age: 0, lifetime: 0.24 });
   }
 
   private spawnPixelBurst(x: number, y: number, count: number, color: string): void {
     for (let i = 0; i < count; i++) {
-      if (this.particles.length > 140) this.particles.shift();
+      if (this.particles.length > 160) this.particles.shift();
       const ang = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
       const spd = 35 + Math.random() * 75;
       this.particles.push({
@@ -1166,7 +1451,7 @@ export class ChickenTdEngine {
     color: string,
     scale = 1
   ): void {
-    if (this.popups.length > 24) this.popups.shift();
+    if (this.popups.length > 26) this.popups.shift();
     this.popups.push({
       text,
       x,

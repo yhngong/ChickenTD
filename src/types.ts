@@ -13,14 +13,27 @@ export type ChickenTypeId =
   | 'bard'
   | 'phoenix'
   | 'mecha'
+  // === 20 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
+  | 'macho_cat'
+  | 'eraser_tank'
   | 'tesla'
+  | 'kasli_oracle'
   | 'chrono'
+  | 'cyber_sniper'
   | 'gundam'
+  | 'samurai_shogun'
   | 'stand_hen'
+  | 'necro_lich'
   | 'valkyrie'
+  | 'yukimura_shadow'
   | 'star_dread'
+  | 'bahamut_wyrm'
   | 'quasar'
-  | 'omega_god';
+  | 'chronos_empress'
+  | 'omega_god'
+  | 'gaia_creator'
+  | 'void_singularity'
+  | 'cat_god_supreme';
 
 export type ProjectileStyle =
   | 'feather_slash'
@@ -37,14 +50,49 @@ export type ProjectileStyle =
   | 'sonic'
   | 'solar'
   | 'plasma'
+  | 'cat_paw'
+  | 'tremor_slam'
   | 'tesla_arc'
+  | 'surge_pillar'
   | 'chrono_orb'
+  | 'matrix_beam'
   | 'ion_lance'
+  | 'moon_slash'
   | 'stand_fist'
+  | 'soul_wisp'
   | 'valkyrie_spear'
+  | 'shadow_talon'
   | 'antimatter'
+  | 'bahamut_orb'
   | 'quasar_pulse'
-  | 'genesis_beam';
+  | 'judgment_ray'
+  | 'genesis_beam'
+  | 'nature_prism'
+  | 'black_hole'
+  | 'god_wrath';
+
+export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary';
+
+export interface MutationDef {
+  id: MutationTier;
+  name: string;
+  subtitle: string;
+  chance: number; // 0..1 probability when rolling a mutation
+  color: string;
+  borderColor: string;
+  bgTint: string;
+  damageMult: number;
+  fireRateMult: number;
+  rangeMult: number;
+  bonusPierce: number;
+  bonusProjectiles: number;
+  foxMult: number;
+  costMult: number; // < 1 means discount
+  grantsCamo: boolean;
+  bonusCritChance: number;
+  bonusKnockback: number;
+  summary: string;
+}
 
 export type EnemyTypeId =
   | 'ant'
@@ -108,6 +156,12 @@ export type PixelIconId =
   | 'chicken'
   | 'corn'
   | 'egg'
+  | 'battle_egg'
+  | 'gem_egg'
+  | 'cannon'
+  | 'mutation_star'
+  | 'lock'
+  | 'skull_defeat'
   | 'fox'
   | 'bug'
   | 'shield'
@@ -147,6 +201,8 @@ export interface ChickenTierStats {
   burnDps: number; // burn / acid / sap DoT damage per sec
   foxDamageMult: number; // bonus multiplier vs Giant Fox bosses
   camoSight: boolean;
+  knockback?: number; // Battle Cats style path knockback distance
+  savageCritChance?: number; // Battle Cats Savage Blow (3x damage) probability
   description: string;
 }
 
@@ -219,6 +275,7 @@ export interface ActiveEnemy {
   slowTimer: number;
   burnDps: number;
   burnTimer: number;
+  kbCooldown: number; // prevents infinite perma-knockback lock
   hitFlash: number;
   walkPhase: number;
 }
@@ -240,6 +297,8 @@ export interface ActiveProjectile {
   slowDuration: number;
   burnDps: number;
   foxDamageMult: number;
+  knockback: number;
+  savageCritChance: number;
   armorPiercing: boolean;
   canHitCamo: boolean;
   hitEnemyIds: Set<number>;
@@ -313,4 +372,52 @@ export interface ClickResult {
   isTwinPeck?: boolean;
   isAuto?: boolean;
   currentCps: number;
+}
+
+export interface PlayerSaveData {
+  version: number;
+  eggs: number;
+  totalEggsEarned: number;
+  lifetimeBugsKilled: number;
+  bugKillRemainder: number; // 0..2499 carry-over progress toward next Egg
+  gemEggsOpened: number;
+  unlockedUnits: Partial<Record<ChickenTypeId, boolean>>;
+  unitMutations: Partial<Record<ChickenTypeId, MutationTier>>;
+  unitPlusLevels: Partial<Record<ChickenTypeId, number>>;
+}
+
+export interface EggBankResult {
+  bugsAdded: number;
+  eggsEarned: number;
+  previousRemainder: number;
+  newRemainder: number;
+  totalSavedEggs: number;
+}
+
+export interface EggRollOutcome {
+  unitId: ChickenTypeId;
+  isNewUnit: boolean;
+  rolledMutation: MutationTier | null; // non-null whenever unit was already owned
+  activeMutation: MutationTier | null; // resulting highest mutation on the unit
+  mutationUpgraded: boolean; // true if rolledMutation improved the unit's mutation tier
+  plusLevel: number; // Battle Cats style +1, +2, ...
+}
+
+export interface RoundEndSummary {
+  mapId: MapId;
+  difficultyId: DifficultyId;
+  waveReached: number;
+  freeplay: boolean;
+  totalBugsKilledThisRun: number;
+  totalCornHarvested: number;
+  towersDeployed: number;
+  eggsEarnedThisRun: number;
+  newBugRemainder: number;
+  totalSavedEggs: number;
+  killerEnemyId: EnemyTypeId | null;
+  bossName: string | null;
+  bossHpPercentRemaining: number | null; // Battle Cats style "BOSS HP REMAINING: 42%"
+  waveProgressPercent: number;
+  mvpUnitId: ChickenTypeId | null;
+  mvpDamage: number;
 }

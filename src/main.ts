@@ -6,15 +6,19 @@ import {
   CLICKER_UPGRADES,
   DIFFICULTY_DEFS,
   DIFFICULTY_ORDER,
+  ENEMY_DEFS,
+  GEM_EGG_CHICKEN_IDS,
   getBaseCornPerClick,
   getCornucopiaWaveMult,
   getFarmhandAutoRate,
   getWaveDefinition,
   MAX_CPS_CAP,
+  STARTER_CHICKEN_IDS,
   TD_UPGRADES,
 } from './data';
 import { ChickenTdEngine } from './engine';
 import { MAP_DEFS, MAP_HEIGHT, MAP_ORDER, MAP_WIDTH } from './map';
+import { BUGS_PER_EGG, GEM_EGG_COST_EACH, MUTATION_DEFS, PROGRESSION } from './progression';
 import {
   bakeMapPreviewDataUrl,
   GhostPlacementState,
@@ -23,7 +27,7 @@ import {
   PIXEL_CANVAS_W,
 } from './renderer';
 import { PIXEL_ATLAS } from './sprites';
-import { ChickenTypeId, DifficultyId, MapId } from './types';
+import { ChickenTypeId, DifficultyId, EggRollOutcome, MapId } from './types';
 
 // Main Menu Elements
 const mainMenuScreen = document.getElementById('main-menu-screen') as HTMLDivElement;
@@ -31,16 +35,49 @@ const menuMapGrid = document.getElementById('menu-map-grid') as HTMLDivElement;
 const menuDiffGrid = document.getElementById('menu-diff-grid') as HTMLDivElement;
 const menuMapSummary = document.getElementById('menu-map-summary') as HTMLElement;
 const menuDiffSummary = document.getElementById('menu-diff-summary') as HTMLElement;
+const menuEggsCount = document.getElementById('menu-eggs-count') as HTMLElement;
+const menuEggsSub = document.getElementById('menu-eggs-sub') as HTMLElement;
+const menuCollectionSub = document.getElementById('menu-collection-sub') as HTMLElement;
+const btnOpenGemShop = document.getElementById('btn-open-gem-shop') as HTMLButtonElement;
+const btnMenuGemShopCta = document.getElementById('btn-menu-gem-shop-cta') as HTMLButtonElement;
 const btnMenuStart = document.getElementById('btn-menu-start') as HTMLButtonElement;
 const btnMenuResume = document.getElementById('btn-menu-resume') as HTMLButtonElement;
+const btnMenuEndRun = document.getElementById('btn-menu-end-run') as HTMLButtonElement;
 const btnMenuRules = document.getElementById('btn-menu-rules') as HTMLButtonElement;
 
+// Gem Egg Capsule Shop Elements
+const gemShopScreen = document.getElementById('gem-shop-screen') as HTMLDivElement;
+const btnCloseGemShop = document.getElementById('btn-close-gem-shop') as HTMLButtonElement;
+const shopEggsCount = document.getElementById('shop-eggs-count') as HTMLElement;
+const shopBugProgress = document.getElementById('shop-bug-progress') as HTMLElement;
+const shopShowcaseEgg = document.getElementById('shop-showcase-egg') as HTMLImageElement;
+const btnBuyEgg1 = document.getElementById('btn-buy-egg-1') as HTMLButtonElement;
+const btnBuyEgg4 = document.getElementById('btn-buy-egg-4') as HTMLButtonElement;
+const btnBuyEgg8 = document.getElementById('btn-buy-egg-8') as HTMLButtonElement;
+const collectionHeading = document.getElementById('collection-heading') as HTMLElement;
+const collectionGrid = document.getElementById('collection-grid') as HTMLDivElement;
+
+// Gem Egg Cutscene Elements
+const eggCutsceneModal = document.getElementById('egg-cutscene-modal') as HTMLDivElement;
+const cutsceneFlash = document.getElementById('cutscene-flash') as HTMLDivElement;
+const cutsceneTitle = document.getElementById('cutscene-title') as HTMLElement;
+const cutsceneSubtitle = document.getElementById('cutscene-subtitle') as HTMLElement;
+const cutsceneStage = document.getElementById('cutscene-stage') as HTMLDivElement;
+const btnCutsceneSkip = document.getElementById('btn-cutscene-skip') as HTMLButtonElement;
+const cutsceneDoneActions = document.getElementById('cutscene-done-actions') as HTMLDivElement;
+const btnCutsceneAgain1 = document.getElementById('btn-cutscene-again-1') as HTMLButtonElement;
+const btnCutsceneAgain4 = document.getElementById('btn-cutscene-again-4') as HTMLButtonElement;
+const btnCutsceneAgain8 = document.getElementById('btn-cutscene-again-8') as HTMLButtonElement;
+const btnCutsceneDone = document.getElementById('btn-cutscene-done') as HTMLButtonElement;
+
+// HUD & Stage Elements
 const canvas = document.getElementById('td-canvas') as HTMLCanvasElement;
 const brandSubText = document.getElementById('brand-sub-text') as HTMLElement;
 const hudCorn = document.getElementById('hud-corn') as HTMLElement;
 const hudEggs = document.getElementById('hud-eggs') as HTMLElement;
 const hudWave = document.getElementById('hud-wave') as HTMLElement;
 const hudPops = document.getElementById('hud-pops') as HTMLElement;
+const hudBattleEggs = document.getElementById('hud-battle-eggs') as HTMLElement;
 
 const btnSpeed = document.getElementById('btn-speed') as HTMLButtonElement;
 const lblSpeed = document.getElementById('lbl-speed') as HTMLElement;
@@ -55,11 +92,16 @@ const placementBanner = document.getElementById('placement-banner') as HTMLDivEl
 const placementText = document.getElementById('placement-text') as HTMLElement;
 const btnCancelPlace = document.getElementById('btn-cancel-place') as HTMLButtonElement;
 
+const btnCluckCannon = document.getElementById('btn-cluck-cannon') as HTMLButtonElement;
+const lblCannonState = document.getElementById('lbl-cannon-state') as HTMLElement;
+const cannonBarFill = document.getElementById('cannon-bar-fill') as HTMLDivElement;
+
 // Inspector Elements
 const inspectorCard = document.getElementById('inspector-card') as HTMLDivElement;
 const inspPortrait = document.getElementById('insp-portrait') as HTMLImageElement;
 const inspName = document.getElementById('insp-name') as HTMLElement;
 const inspTierBadge = document.getElementById('insp-tier-badge') as HTMLElement;
+const inspMutBadge = document.getElementById('insp-mut-badge') as HTMLElement;
 const inspStats = document.getElementById('insp-stats') as HTMLElement;
 const inspNextDesc = document.getElementById('insp-next-desc') as HTMLElement;
 const btnInspTarget = document.getElementById('btn-insp-target') as HTMLButtonElement;
@@ -82,22 +124,42 @@ const basketLabel = document.getElementById('basket-label') as HTMLElement;
 const meterFrenzyFill = document.getElementById('meter-frenzy-fill') as HTMLDivElement;
 
 // Shop & Wave Elements
+const lblTabTroops = document.getElementById('lbl-tab-troops') as HTMLElement;
 const troopGrid = document.getElementById('troop-grid') as HTMLDivElement;
 const clickerUpgList = document.getElementById('clicker-upg-list') as HTMLDivElement;
 const tdUpgList = document.getElementById('td-upg-list') as HTMLDivElement;
 const btnStartWave = document.getElementById('btn-start-wave') as HTMLButtonElement;
 
-// Modals
+// Modals & Defeat Endscreen Elements
 const rulesModal = document.getElementById('rules-modal') as HTMLDivElement;
 const btnCloseRules = document.getElementById('btn-close-rules') as HTMLButtonElement;
+
 const victoryModal = document.getElementById('victory-modal') as HTMLDivElement;
 const victorySummary = document.getElementById('victory-summary') as HTMLElement;
+const victoryEggsEarned = document.getElementById('victory-eggs-earned') as HTMLElement;
+const victoryEggsTotal = document.getElementById('victory-eggs-total') as HTMLElement;
 const btnContinueFreeplay = document.getElementById('btn-continue-freeplay') as HTMLButtonElement;
-const btnRestartVictory = document.getElementById('btn-restart-victory') as HTMLButtonElement;
+const btnShopVictory = document.getElementById('btn-shop-victory') as HTMLButtonElement;
 const btnMenuVictory = document.getElementById('btn-menu-victory') as HTMLButtonElement;
+
 const gameoverModal = document.getElementById('gameover-modal') as HTMLDivElement;
+const defeatStageTag = document.getElementById('defeat-stage-tag') as HTMLElement;
 const gameoverSummary = document.getElementById('gameover-summary') as HTMLElement;
+const defeatBossLabel = document.getElementById('defeat-boss-label') as HTMLElement;
+const defeatBossPct = document.getElementById('defeat-boss-pct') as HTMLElement;
+const defeatBossFill = document.getElementById('defeat-boss-fill') as HTMLDivElement;
+const defeatEggsEarned = document.getElementById('defeat-eggs-earned') as HTMLElement;
+const defeatEggsBank = document.getElementById('defeat-eggs-bank') as HTMLElement;
+const defeatRemainderText = document.getElementById('defeat-remainder-text') as HTMLElement;
+const defeatRemainderFill = document.getElementById('defeat-remainder-fill') as HTMLDivElement;
+const defeatStatWave = document.getElementById('defeat-stat-wave') as HTMLElement;
+const defeatStatBugs = document.getElementById('defeat-stat-bugs') as HTMLElement;
+const defeatStatCorn = document.getElementById('defeat-stat-corn') as HTMLElement;
+const defeatMvpImg = document.getElementById('defeat-mvp-img') as HTMLImageElement;
+const defeatStatMvp = document.getElementById('defeat-stat-mvp') as HTMLElement;
+const lblDefeatShopBtn = document.getElementById('lbl-defeat-shop-btn') as HTMLElement;
 const btnRestartGameover = document.getElementById('btn-restart-gameover') as HTMLButtonElement;
+const btnShopGameover = document.getElementById('btn-shop-gameover') as HTMLButtonElement;
 const btnMenuGameover = document.getElementById('btn-menu-gameover') as HTMLButtonElement;
 
 // Wire all Pixel-Art UI Icons into the DOM (zero emojis!)
@@ -111,6 +173,7 @@ function initStaticPixelIcons(): void {
   setImg('icon-hud-egg', PIXEL_ATLAS.getIconUrl('egg'));
   setImg('icon-hud-fox', PIXEL_ATLAS.getIconUrl('fox'));
   setImg('icon-hud-bug', PIXEL_ATLAS.getIconUrl('bug'));
+  setImg('icon-hud-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
   setImg('icon-btn-speed', PIXEL_ATLAS.getIconUrl('speed'));
   setImg('icon-btn-sound', PIXEL_ATLAS.getIconUrl('sound_on'));
   setImg('icon-btn-rules', PIXEL_ATLAS.getIconUrl('rules'));
@@ -121,8 +184,25 @@ function initStaticPixelIcons(): void {
   setImg('icon-tab-td', PIXEL_ATLAS.getIconUrl('shield'));
   setImg('icon-rules-chicken', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-victory-trophy', PIXEL_ATLAS.getIconUrl('trophy'));
-  setImg('icon-gameover-egg', PIXEL_ATLAS.getIconUrl('cracked_egg'));
-  setImg('menu-hero-chicken', PIXEL_ATLAS.getChickenSprite('omega_god')?.portraitUrl ?? '');
+  setImg('icon-victory-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-gameover-skull', PIXEL_ATLAS.getIconUrl('skull_defeat'));
+  setImg('icon-defeat-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-defeat-gem-shop', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-cluck-cannon', PIXEL_ATLAS.getIconUrl('cannon'));
+
+  setImg('icon-menu-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-menu-gem-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-cta-gem-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-shop-title-gem', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-shop-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-shop-bug', PIXEL_ATLAS.getIconUrl('bug'));
+  setImg('icon-buy-gem-1', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-buy-gem-4', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-buy-gem-8', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-collection-star', PIXEL_ATLAS.getIconUrl('mutation_star'));
+
+  setImg('menu-hero-chicken', PIXEL_ATLAS.getChickenSprite('cat_god_supreme')?.portraitUrl ?? '');
+  shopShowcaseEgg.src = PIXEL_ATLAS.gemEggStageUrls[0];
   henSceneImg.src = PIXEL_ATLAS.henhouseIdleUrl;
 }
 
@@ -136,16 +216,28 @@ const renderer = new MeadowRenderer(canvas);
 let selectedTowerId: number | null = null;
 let peckAnimTimeout: number | null = null;
 let inMainMenu = true;
+let inGemShop = false;
+let inCutscene = false;
 let hasStartedRun = false;
 let pendingMapId: MapId = 'sunny_meadow';
 let pendingDifficultyId: DifficultyId = 'normal';
+let activeCollectionFilter: 'all' | 'gacha' | 'starter' | 'mutated' = 'all';
 
-// Bake crisp pixel-art map thumbnails once for all 5 maps!
 const MAP_THUMB_URLS = new Map<MapId, string>();
 for (const mId of MAP_ORDER) {
   MAP_THUMB_URLS.set(mId, bakeMapPreviewDataUrl(mId));
 }
 
+function formatCompactCost(n: number): string {
+  if (n >= 1000000) {
+    const m = n / 1000000;
+    return Number.isInteger(m) ? `${m}M` : `${m.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}M`;
+  }
+  if (n >= 100000) return `${Math.round(n / 1000)}K`;
+  return n.toLocaleString();
+}
+
+// ==================== MAIN MENU & GEM EGG CAPSULE SHOP ====================
 function renderMainMenu(): void {
   const selMap = MAP_DEFS[pendingMapId];
   const selDiff = DIFFICULTY_DEFS[pendingDifficultyId];
@@ -153,12 +245,23 @@ function renderMainMenu(): void {
   menuDiffSummary.textContent = `${selDiff.name.toUpperCase()} (${selDiff.badge})`;
   btnMenuStart.textContent = `>> START BATTLE — ${selMap.name.toUpperCase()} [${selDiff.badge}]`;
 
+  const savedEggs = PROGRESSION.getEggs();
+  const rem = PROGRESSION.getBugKillRemainder();
+  const unlockedCount = PROGRESSION.getUnlockedCount();
+
+  menuEggsCount.textContent = `${savedEggs.toLocaleString()} ${savedEggs === 1 ? 'EGG' : 'EGGS'}`;
+  menuEggsSub.textContent = `${rem.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} BUGS TO NEXT`;
+  menuCollectionSub.textContent = `${unlockedCount} / ${CHICKEN_ORDER.length} UNITS`;
+  btnOpenGemShop.classList.toggle('has-eggs', savedEggs >= GEM_EGG_COST_EACH);
+
   const canResume = hasStartedRun && engine.status !== 'gameover';
   if (canResume) {
     btnMenuResume.textContent = `RESUME (WAVE ${engine.waveNumber})`;
     btnMenuResume.classList.remove('hidden');
+    btnMenuEndRun.classList.remove('hidden');
   } else {
     btnMenuResume.classList.add('hidden');
+    btnMenuEndRun.classList.add('hidden');
   }
 
   menuMapGrid.innerHTML = '';
@@ -208,23 +311,396 @@ function renderMainMenu(): void {
   }
 }
 
+function renderGemEggShop(): void {
+  const savedEggs = PROGRESSION.getEggs();
+  const rem = PROGRESSION.getBugKillRemainder();
+  const unlockedCount = PROGRESSION.getUnlockedCount();
+
+  shopEggsCount.textContent = savedEggs.toLocaleString();
+  shopBugProgress.textContent = `${rem.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()}`;
+  collectionHeading.textContent = `CHICKEN ROSTER & MUTATIONS (${unlockedCount} / ${CHICKEN_ORDER.length} UNLOCKED)`;
+
+  btnBuyEgg1.disabled = savedEggs < 1;
+  btnBuyEgg4.disabled = savedEggs < 4;
+  btnBuyEgg8.disabled = savedEggs < 8;
+
+  let filteredIds: readonly ChickenTypeId[] = CHICKEN_ORDER;
+  if (activeCollectionFilter === 'gacha') {
+    filteredIds = GEM_EGG_CHICKEN_IDS;
+  } else if (activeCollectionFilter === 'starter') {
+    filteredIds = STARTER_CHICKEN_IDS;
+  } else if (activeCollectionFilter === 'mutated') {
+    filteredIds = CHICKEN_ORDER.filter((id) => PROGRESSION.getMutation(id) !== null);
+  }
+
+  collectionGrid.innerHTML = '';
+  if (filteredIds.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.gridColumn = '1 / -1';
+    empty.style.padding = '18px';
+    empty.style.textAlign = 'center';
+    empty.style.color = '#94a3b8';
+    empty.style.fontSize = '11px';
+    empty.textContent = 'No mutated units yet — hatch duplicate units from Gem Eggs to awaken Mutations!';
+    collectionGrid.appendChild(empty);
+    return;
+  }
+
+  for (const id of filteredIds) {
+    const def = CHICKEN_DEFS[id];
+    const unlocked = PROGRESSION.isUnlocked(id);
+    const mut = PROGRESSION.getMutation(id);
+    const plusLv = PROGRESSION.getPlusLevel(id);
+    const spr = PIXEL_ATLAS.getChickenSprite(id);
+    const isStarter = STARTER_CHICKEN_IDS.includes(id);
+
+    const card = document.createElement('div');
+    card.className = `coll-card${!unlocked ? ' locked' : ''}${mut ? ` mut-${mut}` : ''}`;
+
+    if (!unlocked) {
+      card.title = `Locked Gem Egg Unit! Base Cost: ${def.baseCost.toLocaleString()} Corn — Hatch Gem Eggs to unlock!`;
+      card.innerHTML = `
+        <img class="coll-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
+        <div class="coll-meta">
+          <div class="coll-name-row">
+            <span class="coll-name">??? [LOCKED]</span>
+          </div>
+          <span class="coll-role">${def.role}</span>
+          <div class="coll-bottom-row">
+            <span class="coll-cost">${formatCompactCost(def.baseCost)} CORN</span>
+            <span class="mut-badge" style="color:#f472b6">GEM EGG</span>
+          </div>
+        </div>
+      `;
+    } else {
+      const mutDef = mut ? MUTATION_DEFS[mut] : null;
+      card.title = mutDef
+        ? `${def.name}${plusLv > 0 ? ` +${plusLv}` : ''} — ${mutDef.name.toUpperCase()} MUTATION (${mutDef.summary})`
+        : `${def.name} (${def.role}) — ${isStarter ? 'Starter Unit' : 'Gem Egg Unit'}`;
+      card.innerHTML = `
+        <img class="coll-portrait" src="${spr?.portraitUrl ?? ''}" alt="" />
+        <div class="coll-meta">
+          <div class="coll-name-row">
+            <span class="coll-name">${def.name}</span>
+            ${plusLv > 0 ? `<span class="coll-plus">+${plusLv}</span>` : ''}
+          </div>
+          <span class="coll-role">${def.role}</span>
+          <div class="coll-bottom-row">
+            <span class="coll-cost">${formatCompactCost(def.baseCost)} CORN</span>
+            ${
+              mutDef
+                ? `<span class="mut-badge ${mut}">${mutDef.name}</span>`
+                : `<span class="mut-badge" style="color:#64748b">${isStarter ? 'STARTER' : 'OWNED'}</span>`
+            }
+          </div>
+        </div>
+      `;
+    }
+    collectionGrid.appendChild(card);
+  }
+}
+
 function openMainMenu(): void {
   inMainMenu = true;
+  inGemShop = false;
   pendingMapId = engine.mapId;
   pendingDifficultyId = engine.difficultyId;
   victoryModal.classList.add('hidden');
   gameoverModal.classList.add('hidden');
+  gemShopScreen.classList.add('hidden');
   renderMainMenu();
   mainMenuScreen.classList.remove('hidden');
 }
 
+function openGemEggShop(): void {
+  // If coming from a finished/lost round or mid-run menu, ensure UI is crisp
+  inMainMenu = true;
+  inGemShop = true;
+  victoryModal.classList.add('hidden');
+  gameoverModal.classList.add('hidden');
+  mainMenuScreen.classList.add('hidden');
+  renderGemEggShop();
+  gemShopScreen.classList.remove('hidden');
+}
+
+function closeGemEggShop(): void {
+  inGemShop = false;
+  gemShopScreen.classList.add('hidden');
+  renderMainMenu();
+  mainMenuScreen.classList.remove('hidden');
+}
+
+// ==================== GEM EGG BREAKING CUTSCENE (1X / 4X / 8X) ====================
+let cutsceneTimers: number[] = [];
+let activeCutsceneOutcomes: EggRollOutcome[] = [];
+let activeCutsceneSlots: HTMLDivElement[] = [];
+let cutsceneFinished = false;
+
+function clearCutsceneTimers(): void {
+  for (const id of cutsceneTimers) {
+    window.clearTimeout(id);
+  }
+  cutsceneTimers = [];
+}
+
+function triggerCutsceneFlash(): void {
+  cutsceneFlash.classList.add('active');
+  const t = window.setTimeout(() => {
+    cutsceneFlash.classList.remove('active');
+  }, 150);
+  cutsceneTimers.push(t);
+}
+
+function renderRevealedSlotHtml(
+  slot: HTMLDivElement,
+  outcome: EggRollOutcome,
+  isSingleHero: boolean
+): void {
+  slot.classList.remove('wobbling', 'cracking');
+  const def = CHICKEN_DEFS[outcome.unitId];
+  const spr = PIXEL_ATLAS.getChickenSprite(outcome.unitId);
+
+  if (outcome.isNewUnit) {
+    slot.classList.add('revealed-new');
+    slot.innerHTML = `
+      <span class="reveal-kicker-pill" style="color:#facc15; background:#3a290c">NEW UNIT UNLOCKED!</span>
+      <img class="reveal-unit-img" src="${spr?.portraitUrl ?? ''}" alt="" />
+      <div class="reveal-unit-name">${def.name}</div>
+      <div class="reveal-unit-role">${def.role} &bull; ${formatCompactCost(def.baseCost)} CORN</div>
+      <div class="reveal-mut-summary">${
+        isSingleHero ? def.tiers[0].description : 'NOW DEPLOYABLE IN BATTLE!'
+      }</div>
+    `;
+  } else {
+    const rolled = outcome.rolledMutation ?? 'common';
+    const rolledDef = MUTATION_DEFS[rolled];
+    const activeTier = outcome.activeMutation ?? rolled;
+    const activeDef = MUTATION_DEFS[activeTier];
+    slot.classList.add(`revealed-${rolled}`);
+
+    const bannerLabel = outcome.mutationUpgraded
+      ? `${rolledDef.name.toUpperCase()} MUTATION!`
+      : `${rolledDef.name.toUpperCase()} ROLL (+${outcome.plusLevel})`;
+    const detailLine = isSingleHero
+      ? outcome.mutationUpgraded
+        ? `${rolledDef.subtitle}: ${rolledDef.summary}`
+        : `Kept ${activeDef.name} Mutation + Level Up (+${outcome.plusLevel}: +${outcome.plusLevel * 4}% DMG)!`
+      : outcome.mutationUpgraded
+      ? `${activeDef.summary}`
+      : `ACTIVE: ${activeDef.name.toUpperCase()} (+${outcome.plusLevel})`;
+
+    slot.innerHTML = `
+      <span class="reveal-kicker-pill" style="color:${rolledDef.color}; background:${rolledDef.bgTint}">${bannerLabel}</span>
+      <img class="reveal-unit-img" src="${spr?.portraitUrl ?? ''}" style="border-color:${rolledDef.color}" alt="" />
+      <div class="reveal-unit-name">${def.name} +${outcome.plusLevel}</div>
+      <div class="reveal-unit-role">${def.role}</div>
+      <div class="reveal-mut-summary" style="color:${rolledDef.color}">${detailLine}</div>
+    `;
+  }
+}
+
+function finalizeCutsceneState(): void {
+  cutsceneFinished = true;
+  const count = activeCutsceneOutcomes.length;
+  const newCount = activeCutsceneOutcomes.filter((o) => o.isNewUnit).length;
+  const mutCount = count - newCount;
+
+  cutsceneTitle.textContent =
+    count === 1
+      ? activeCutsceneOutcomes[0].isNewUnit
+        ? 'NEW CHICKEN HATCHED!'
+        : 'MUTATION AWAKENED!'
+      : `${count}X GEM EGG HATCH COMPLETE!`;
+  cutsceneSubtitle.textContent =
+    count === 1
+      ? `SAVED EGGS REMAINING: ${PROGRESSION.getEggs().toLocaleString()}`
+      : `${newCount} NEW ${newCount === 1 ? 'UNIT' : 'UNITS'} & ${mutCount} ${
+          mutCount === 1 ? 'MUTATION' : 'MUTATIONS'
+        } • SAVED EGGS LEFT: ${PROGRESSION.getEggs().toLocaleString()}`;
+
+  btnCutsceneSkip.classList.add('hidden');
+  const eggsNow = PROGRESSION.getEggs();
+  btnCutsceneAgain1.disabled = eggsNow < 1;
+  btnCutsceneAgain4.disabled = eggsNow < 4;
+  btnCutsceneAgain8.disabled = eggsNow < 8;
+  cutsceneDoneActions.classList.remove('hidden');
+  renderGemEggShop();
+  renderMainMenu();
+  refreshFullUi();
+}
+
+function skipCutsceneToRevealAll(): void {
+  if (cutsceneFinished || !inCutscene) return;
+  clearCutsceneTimers();
+  triggerCutsceneFlash();
+
+  const isSingle = activeCutsceneOutcomes.length === 1;
+  let playedLegendary = false;
+  for (let i = 0; i < activeCutsceneOutcomes.length; i++) {
+    const out = activeCutsceneOutcomes[i];
+    const slot = activeCutsceneSlots[i];
+    if (slot && !slot.dataset.revealed) {
+      slot.dataset.revealed = '1';
+      renderRevealedSlotHtml(slot, out, isSingle);
+    }
+    if (out.isNewUnit || out.rolledMutation === 'legendary' || out.rolledMutation === 'epic') {
+      playedLegendary = true;
+    }
+  }
+  engine.audio.playEggReveal(playedLegendary ? 'legendary' : 'rare');
+  finalizeCutsceneState();
+}
+
+function startGemEggPurchase(count: 1 | 4 | 8): void {
+  const outcomes = PROGRESSION.buyGemEggs(count);
+  if (!outcomes) {
+    engine.audio.playBlockedClick();
+    return;
+  }
+
+  clearCutsceneTimers();
+  inCutscene = true;
+  cutsceneFinished = false;
+  activeCutsceneOutcomes = outcomes;
+  activeCutsceneSlots = [];
+
+  cutsceneTitle.textContent =
+    count === 1 ? 'CRACKING GEM EGG...' : `CRACKING ${count} GEM EGGS...`;
+  cutsceneSubtitle.textContent = 'STAND BACK — CRYSTALLINE SHELL DESTABILIZING!';
+  btnCutsceneSkip.classList.remove('hidden');
+  cutsceneDoneActions.classList.add('hidden');
+
+  cutsceneStage.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className =
+    count === 1 ? 'cutscene-grid-single' : count === 4 ? 'cutscene-grid-4' : 'cutscene-grid-8';
+
+  const isSingle = count === 1;
+  for (let i = 0; i < count; i++) {
+    const slot = document.createElement('div');
+    slot.className = `hatch-slot wobbling${isSingle ? ' single-hero' : ''}`;
+    slot.innerHTML = `
+      <img class="hatch-egg-img" src="${PIXEL_ATLAS.gemEggStageUrls[0]}" alt="" />
+      <div class="hatch-slot-status">GEM EGG #${i + 1}</div>
+    `;
+    grid.appendChild(slot);
+    activeCutsceneSlots.push(slot);
+  }
+  cutsceneStage.appendChild(grid);
+  eggCutsceneModal.classList.remove('hidden');
+  engine.audio.playEggWobble();
+
+  if (isSingle) {
+    const slot = activeCutsceneSlots[0];
+    const outcome = outcomes[0];
+    const setStage = (ms: number, fn: () => void) => {
+      cutsceneTimers.push(window.setTimeout(fn, ms));
+    };
+
+    setStage(480, () => {
+      const img = slot.querySelector<HTMLImageElement>('.hatch-egg-img');
+      const st = slot.querySelector<HTMLElement>('.hatch-slot-status');
+      if (img) img.src = PIXEL_ATLAS.gemEggStageUrls[1];
+      if (st) st.textContent = 'CRACKING...';
+      slot.classList.remove('wobbling');
+      slot.classList.add('cracking');
+      engine.audio.playEggCrack(1);
+    });
+
+    setStage(980, () => {
+      const img = slot.querySelector<HTMLImageElement>('.hatch-egg-img');
+      const st = slot.querySelector<HTMLElement>('.hatch-slot-status');
+      if (img) img.src = PIXEL_ATLAS.gemEggStageUrls[2];
+      if (st) st.textContent = 'ENERGY SURGING!';
+      engine.audio.playEggCrack(2);
+    });
+
+    setStage(1440, () => {
+      const img = slot.querySelector<HTMLImageElement>('.hatch-egg-img');
+      const st = slot.querySelector<HTMLElement>('.hatch-slot-status');
+      if (img) img.src = PIXEL_ATLAS.gemEggStageUrls[3];
+      if (st) st.textContent = 'SHATTERED!';
+      triggerCutsceneFlash();
+    });
+
+    setStage(1680, () => {
+      slot.dataset.revealed = '1';
+      renderRevealedSlotHtml(slot, outcome, true);
+      engine.audio.playEggReveal(outcome.isNewUnit ? 'new' : (outcome.rolledMutation ?? 'common'));
+      finalizeCutsceneState();
+    });
+  } else {
+    // 4x or 8x Multi-Hatch Sequential Cascade!
+    const stepDelay = count === 4 ? 390 : 280;
+    for (let i = 0; i < count; i++) {
+      const slot = activeCutsceneSlots[i];
+      const outcome = outcomes[i];
+      const baseMs = 320 + i * stepDelay;
+
+      cutsceneTimers.push(
+        window.setTimeout(() => {
+          const img = slot.querySelector<HTMLImageElement>('.hatch-egg-img');
+          if (img) img.src = PIXEL_ATLAS.gemEggStageUrls[1];
+          slot.classList.remove('wobbling');
+          slot.classList.add('cracking');
+          engine.audio.playEggCrack(1);
+        }, baseMs)
+      );
+
+      cutsceneTimers.push(
+        window.setTimeout(() => {
+          const img = slot.querySelector<HTMLImageElement>('.hatch-egg-img');
+          if (img) img.src = PIXEL_ATLAS.gemEggStageUrls[2];
+        }, baseMs + 110)
+      );
+
+      cutsceneTimers.push(
+        window.setTimeout(() => {
+          const img = slot.querySelector<HTMLImageElement>('.hatch-egg-img');
+          if (img) img.src = PIXEL_ATLAS.gemEggStageUrls[3];
+          if (
+            outcome.isNewUnit ||
+            outcome.rolledMutation === 'epic' ||
+            outcome.rolledMutation === 'legendary'
+          ) {
+            triggerCutsceneFlash();
+          }
+        }, baseMs + 210)
+      );
+
+      cutsceneTimers.push(
+        window.setTimeout(() => {
+          slot.dataset.revealed = '1';
+          renderRevealedSlotHtml(slot, outcome, false);
+          engine.audio.playEggReveal(
+            outcome.isNewUnit ? 'new' : (outcome.rolledMutation ?? 'common')
+          );
+          if (i === count - 1) {
+            finalizeCutsceneState();
+          }
+        }, baseMs + 310)
+      );
+    }
+  }
+}
+
+function closeCutsceneModal(): void {
+  clearCutsceneTimers();
+  inCutscene = false;
+  eggCutsceneModal.classList.add('hidden');
+  renderGemEggShop();
+}
+
+// ==================== GAMEPLAY LAUNCH & RESUME ====================
 function launchSelectedRun(): void {
   selectedTowerId = null;
   ghost.typeId = null;
   placementBanner.classList.add('hidden');
   hasStartedRun = true;
   inMainMenu = false;
+  inGemShop = false;
   mainMenuScreen.classList.add('hidden');
+  gemShopScreen.classList.add('hidden');
   engine.startNewRun(pendingMapId, pendingDifficultyId);
   renderer.setMap(pendingMapId);
   refreshFullUi();
@@ -233,7 +709,9 @@ function launchSelectedRun(): void {
 function resumeActiveRun(): void {
   if (!hasStartedRun || engine.status === 'gameover') return;
   inMainMenu = false;
+  inGemShop = false;
   mainMenuScreen.classList.add('hidden');
+  gemShopScreen.classList.add('hidden');
   refreshFullUi();
 }
 
@@ -254,6 +732,13 @@ function clientToLogicalCoords(clientX: number, clientY: number): { x: number; y
 }
 
 function setPlacementType(typeId: ChickenTypeId | null): void {
+  if (typeId && !engine.isChickenUnlocked(typeId)) {
+    engine.audio.playBlockedClick();
+    bannerTitle.textContent = 'LOCKED GEM EGG UNIT!';
+    bannerDesc.textContent =
+      'Kill 2,500 Bugs per Egg, then open Gem Eggs in the Main Menu Shop to unlock this unit!';
+    return;
+  }
   ghost.typeId = typeId;
   if (typeId) {
     selectedTowerId = null;
@@ -267,46 +752,81 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
   refreshFullUi();
 }
 
-// ==================== 22-UNIT PIXEL SHOP RENDERING ====================
+// ==================== 34-UNIT PIXEL SHOP RENDERING ====================
 const cornIconUrl = PIXEL_ATLAS.getIconUrl('corn');
-
-function formatCompactCost(n: number): string {
-  if (n >= 100000) return `${(n / 1000).toFixed(0)}K`;
-  return n.toLocaleString();
-}
+const lockIconUrl = PIXEL_ATLAS.getIconUrl('lock');
 
 function renderTroopCards(): void {
+  lblTabTroops.textContent = `TROOPS (${PROGRESSION.getUnlockedCount()}/${CHICKEN_ORDER.length})`;
   troopGrid.innerHTML = '';
+
   for (const id of CHICKEN_ORDER) {
     const def = CHICKEN_DEFS[id];
+    const unlocked = engine.isChickenUnlocked(id);
     const cost = engine.getTowerBaseCost(id);
-    const canAfford = engine.corn >= cost;
+    const canAfford = unlocked && engine.corn >= cost;
     const isSelected = ghost.typeId === id;
     const spr = PIXEL_ATLAS.getChickenSprite(id);
+    const mut = PROGRESSION.getMutation(id);
+    const plusLv = PROGRESSION.getPlusLevel(id);
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.dataset.cost = String(cost);
-    btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
-    btn.title = `${def.name} (${def.role}) — ${cost.toLocaleString()} Corn — Hotkey [${def.hotkey}]`;
-    btn.innerHTML = `
-      <img class="troop-portrait" src="${spr?.portraitUrl ?? ''}" alt="" />
-      <div class="troop-meta">
-        <div class="troop-top">
-          <span class="troop-key">[${def.hotkey}]</span>
-          <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(cost)}</span>
+    btn.dataset.unlocked = unlocked ? '1' : '0';
+
+    if (!unlocked) {
+      btn.className = 'troop-btn locked-troop';
+      btn.title = `${def.name} — LOCKED! Earn Eggs (1 per 2,500 Bugs) & hatch in Main Menu Gem Egg Shop!`;
+      btn.innerHTML = `
+        <img class="troop-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
+        <div class="troop-meta">
+          <div class="troop-top">
+            <span class="troop-key">[${def.hotkey}]</span>
+            <span class="troop-cost" style="color:#f472b6"><img class="px-icon px-icon-sm" src="${lockIconUrl}" alt="" />EGG</span>
+          </div>
+          <span class="troop-name">??? (${formatCompactCost(def.baseCost)})</span>
+          <span class="troop-role">Hatch in Gem Shop</span>
         </div>
-        <span class="troop-name">${def.name}</span>
-        <span class="troop-role">${def.role}</span>
-      </div>
-    `;
-    btn.addEventListener('click', () => {
-      if (ghost.typeId === id) {
-        setPlacementType(null);
-      } else {
-        setPlacementType(id);
-      }
-    });
+      `;
+      btn.addEventListener('click', () => setPlacementType(id));
+    } else {
+      const mutDef = mut ? MUTATION_DEFS[mut] : null;
+      btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
+      btn.title = `${def.name}${plusLv > 0 ? ` +${plusLv}` : ''} (${def.role})${
+        mutDef ? ` [${mutDef.name.toUpperCase()} MUTATION: ${mutDef.summary}]` : ''
+      } — ${cost.toLocaleString()} Corn — Hotkey [${def.hotkey}]`;
+
+      const shortMutLabel = mut
+        ? `${mut.slice(0, 3).toUpperCase()}${plusLv > 0 ? `+${plusLv}` : ''}`
+        : '';
+
+      btn.innerHTML = `
+        <img class="troop-portrait" src="${spr?.portraitUrl ?? ''}" alt="" style="${
+        mutDef ? `border-color:${mutDef.color}` : ''
+      }" />
+        ${
+          mutDef
+            ? `<span class="troop-mut-tag" style="color:${mutDef.color}; background:${mutDef.bgTint}">${shortMutLabel}</span>`
+            : ''
+        }
+        <div class="troop-meta">
+          <div class="troop-top">
+            <span class="troop-key">[${def.hotkey}]</span>
+            <span class="troop-cost"><img class="px-icon px-icon-sm" src="${cornIconUrl}" alt="" />${formatCompactCost(cost)}</span>
+          </div>
+          <span class="troop-name">${def.name}</span>
+          <span class="troop-role">${def.role}</span>
+        </div>
+      `;
+      btn.addEventListener('click', () => {
+        if (ghost.typeId === id) {
+          setPlacementType(null);
+        } else {
+          setPlacementType(id);
+        }
+      });
+    }
     troopGrid.appendChild(btn);
   }
 }
@@ -391,13 +911,16 @@ function formatInspectorStats(towerId: number): string {
   const tower = engine.towers.find((t) => t.id === towerId);
   if (!tower) return '';
   const eff = engine.getEffectiveChickenStats(tower);
-  const camoTag = eff.effectiveCamo ? ' | CAMO' : ' | NO CAMO';
-  const dmgText = Number.isInteger(eff.damage)
-    ? eff.damage.toLocaleString()
-    : eff.damage.toFixed(1);
+  const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
+  const kbTag = eff.effectiveKnockback > 0 ? ' | KB' : '';
+  const critTag =
+    eff.effectiveCritChance > 0 ? ` | ${Math.round(eff.effectiveCritChance * 100)}% CRIT` : '';
+  const dmgText = Number.isInteger(eff.effectiveDamage)
+    ? eff.effectiveDamage.toLocaleString()
+    : eff.effectiveDamage.toFixed(1);
   return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
     eff.effectiveRange
-  } | DEALT ${Math.round(tower.totalPopDamage).toLocaleString()}${camoTag}`;
+  } | DEALT ${Math.round(tower.totalPopDamage).toLocaleString()}${camoTag}${kbTag}${critTag}`;
 }
 
 function renderInspector(): void {
@@ -408,6 +931,7 @@ function renderInspector(): void {
 
   if (!tower) {
     inspectorCard.classList.add('hidden');
+    btnCluckCannon.classList.remove('lifted');
     return;
   }
 
@@ -417,10 +941,17 @@ function renderInspector(): void {
   const spr = PIXEL_ATLAS.getChickenSprite(tower.typeId);
 
   inspPortrait.src = spr?.portraitUrl ?? '';
-  inspName.textContent = `${def.name} — ${eff.tierName}`;
+  inspName.textContent = `${def.name}${eff.plusLevel > 0 ? ` +${eff.plusLevel}` : ''} — ${eff.tierName}`;
   inspTierBadge.textContent = tower.tier === 3 ? 'TIER 4 MAX' : `TIER ${tierNum}/4`;
-  inspStats.textContent = formatInspectorStats(tower.id);
 
+  if (eff.mutationTier) {
+    inspMutBadge.textContent = `${MUTATION_DEFS[eff.mutationTier].name.toUpperCase()}`;
+    inspMutBadge.className = `mut-badge ${eff.mutationTier}`;
+  } else {
+    inspMutBadge.className = 'mut-badge hidden';
+  }
+
+  inspStats.textContent = formatInspectorStats(tower.id);
   btnInspTarget.textContent = `AIM: ${tower.targetMode.toUpperCase()}`;
 
   if (tower.tier < 3) {
@@ -428,7 +959,7 @@ function renderInspector(): void {
     const nextTier = def.tiers[nextTierIdx];
     const upgCost = engine.getTowerUpgradeCost(tower.typeId, nextTierIdx);
     inspNextDesc.textContent = `NEXT (${nextTier.tierName}): ${nextTier.description}`;
-    btnInspUpgrade.textContent = `TIER ${tierNum + 1} (${upgCost.toLocaleString()} CORN)`;
+    btnInspUpgrade.textContent = `TIER ${tierNum + 1} (${formatCompactCost(upgCost)} CORN)`;
     btnInspUpgrade.disabled = engine.corn < upgCost;
   } else {
     inspNextDesc.textContent = 'MAXIMUM CHICKEN EVOLUTION ACHIEVED!';
@@ -437,8 +968,72 @@ function renderInspector(): void {
   }
 
   const refund = Math.round(tower.totalSpent * 0.7);
-  btnInspSell.textContent = `SELL (+${refund.toLocaleString()})`;
+  btnInspSell.textContent = `SELL (+${formatCompactCost(refund)})`;
   inspectorCard.classList.remove('hidden');
+  btnCluckCannon.classList.add('lifted');
+}
+
+function populateDefeatEndscreen(): void {
+  const rep = engine.lastDefeatSummary;
+  const mapName = MAP_DEFS[engine.mapId].name;
+  const diffBadge = engine.getDifficulty().badge;
+  defeatStageTag.textContent = `${mapName.toUpperCase()} • ${diffBadge}`;
+
+  if (!rep) {
+    gameoverSummary.textContent = `The Foxes & Bugs overran ${mapName} on Wave ${engine.waveNumber}.`;
+    return;
+  }
+
+  const killerName = rep.killerEnemyId ? ENEMY_DEFS[rep.killerEnemyId].name : 'Fox Armada';
+  gameoverSummary.textContent = `${killerName} broke through the Golden Nest on Wave ${rep.waveReached}!`;
+
+  if (rep.bossName && rep.bossHpPercentRemaining !== null) {
+    defeatBossLabel.textContent = `BOSS HP REMAINING: ${rep.bossName.toUpperCase()}`;
+    defeatBossPct.textContent = `${rep.bossHpPercentRemaining}%`;
+    defeatBossFill.style.width = `${rep.bossHpPercentRemaining}%`;
+  } else {
+    defeatBossLabel.textContent = `WAVE ${rep.waveReached} CLEAR PROGRESS`;
+    defeatBossPct.textContent = `${rep.waveProgressPercent}%`;
+    defeatBossFill.style.width = `${rep.waveProgressPercent}%`;
+  }
+
+  defeatEggsEarned.textContent = `+${rep.eggsEarnedThisRun.toLocaleString()} ${
+    rep.eggsEarnedThisRun === 1 ? 'EGG' : 'EGGS'
+  } EARNED!`;
+  defeatEggsBank.textContent = `TOTAL SAVED: ${rep.totalSavedEggs.toLocaleString()} EGGS`;
+  defeatRemainderText.textContent = `${rep.newBugRemainder.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} BUGS`;
+  defeatRemainderFill.style.width = `${Math.min(
+    100,
+    Math.round((rep.newBugRemainder / BUGS_PER_EGG) * 100)
+  )}%`;
+
+  defeatStatWave.textContent = rep.freeplay ? `WAVE ${rep.waveReached} (FREE)` : `WAVE ${rep.waveReached} / ${CAMPAIGN_WAVES}`;
+  defeatStatBugs.textContent = rep.totalBugsKilledThisRun.toLocaleString();
+  defeatStatCorn.textContent = formatCompactCost(rep.totalCornHarvested);
+
+  if (rep.mvpUnitId) {
+    const mvpDef = CHICKEN_DEFS[rep.mvpUnitId];
+    const mvpSpr = PIXEL_ATLAS.getChickenSprite(rep.mvpUnitId);
+    defeatMvpImg.src = mvpSpr?.portraitUrl ?? '';
+    defeatMvpImg.classList.remove('hidden');
+    defeatStatMvp.textContent = `${mvpDef.name} (${formatCompactCost(rep.mvpDamage)})`;
+  } else {
+    defeatMvpImg.classList.add('hidden');
+    defeatStatMvp.textContent = 'NONE';
+  }
+
+  lblDefeatShopBtn.textContent =
+    rep.totalSavedEggs > 0 ? `GEM EGG SHOP (${rep.totalSavedEggs})` : 'GEM EGG SHOP';
+}
+
+function updateHudBattleEggsLive(): void {
+  const saved = PROGRESSION.getEggs();
+  const unbanked = Math.max(0, engine.totalBugsPopped - engine.bugsBankedThisRun);
+  const pendingFromRun = Math.floor((PROGRESSION.getBugKillRemainder() + unbanked) / BUGS_PER_EGG);
+  hudBattleEggs.textContent =
+    pendingFromRun > 0 && engine.status !== 'gameover'
+      ? `${saved.toLocaleString()} (+${pendingFromRun})`
+      : saved.toLocaleString();
 }
 
 function refreshFullUi(): void {
@@ -452,6 +1047,7 @@ function refreshFullUi(): void {
     ? `${engine.waveNumber} (FREE)`
     : `${Math.min(engine.waveNumber, CAMPAIGN_WAVES)} / ${CAMPAIGN_WAVES}`;
   hudPops.textContent = engine.totalBugsPopped.toLocaleString();
+  updateHudBattleEggsLive();
 
   const waveDef = getWaveDefinition(engine.waveNumber);
   bannerTitle.textContent = `WAVE ${waveDef.waveNumber}: ${waveDef.title.toUpperCase()}`;
@@ -489,14 +1085,16 @@ function refreshFullUi(): void {
   renderInspector();
 
   if (!inMainMenu && engine.status === 'victory_prompt') {
-    victorySummary.textContent = `You crushed the Nebula Cosmic Foxes & Solar Phoenix Foxes on ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge})! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
+    victorySummary.textContent = `You crushed the Nebula Cosmic Foxes on ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge})! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
+    victoryEggsEarned.textContent = `+${engine.lastVictoryEggsEarned.toLocaleString()} EGGS SAVED!`;
+    victoryEggsTotal.textContent = `TOTAL SAVED EGGS: ${PROGRESSION.getEggs().toLocaleString()} • SPEND IN GEM EGG SHOP!`;
     victoryModal.classList.remove('hidden');
   } else {
     victoryModal.classList.add('hidden');
   }
 
   if (!inMainMenu && engine.status === 'gameover') {
-    gameoverSummary.textContent = `The Foxes & Bugs raided ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge}) on Wave ${engine.waveNumber}. Total Popped: ${engine.totalBugsPopped.toLocaleString()} | Total Corn Clicked: ${engine.totalCornClicked.toLocaleString()}.`;
+    populateDefeatEndscreen();
     gameoverModal.classList.remove('hidden');
   } else {
     gameoverModal.classList.add('hidden');
@@ -508,6 +1106,7 @@ engine.onUiChange = refreshFullUi;
 function syncLiveShopAffordability(): void {
   hudCorn.textContent = engine.corn.toLocaleString();
   troopGrid.querySelectorAll<HTMLButtonElement>('.troop-btn').forEach((btn) => {
+    if (btn.dataset.unlocked !== '1') return;
     const cost = Number(btn.dataset.cost ?? '0');
     btn.classList.toggle('unaffordable', engine.corn < cost);
   });
@@ -529,7 +1128,7 @@ function syncLiveShopAffordability(): void {
   }
 }
 
-// ==================== REAL-TIME PIXEL METER HUD ====================
+// ==================== REAL-TIME PIXEL METERS & CLUCK CANNON HUD ====================
 function updateLiveClickerMeters(): void {
   const cps = engine.getCurrentCps();
   const isAtCap = cps >= MAX_CPS_CAP || engine.capHitFlash > 0.15;
@@ -550,7 +1149,20 @@ function updateLiveClickerMeters(): void {
     basketLabel.textContent = 'MEGA COB: LOCKED';
   }
 
+  // Battle Cats Cluck Cannon live gauge
+  const cannonPct = Math.min(100, Math.floor(engine.cannonCharge * 100));
+  const cannonReady = engine.cannonCharge >= 1 && (engine.waveActive || engine.enemies.length > 0);
+  cannonBarFill.style.width = `${cannonPct}%`;
+  btnCluckCannon.classList.toggle('ready', cannonReady);
+  lblCannonState.textContent = cannonReady
+    ? 'FIRE CANNON! [TAB]'
+    : engine.cannonCharge >= 1
+    ? 'CANNON READY!'
+    : `CANNON ${cannonPct}%`;
+
   hudPops.textContent = engine.totalBugsPopped.toLocaleString();
+  updateHudBattleEggsLive();
+
   if (engine.waveActive) {
     syncLiveShopAffordability();
     const rem = engine.getPendingWaveEnemyTotal();
@@ -591,7 +1203,6 @@ function spawnClickFloat(text: string, color: string, clientX?: number, clientY?
   setTimeout(() => el.remove(), 630);
 }
 
-// Batch rapid Farmhand Chick auto-peck floaters cleanly so 20/s auto-pecks look crisp!
 let pendingAutoFloatCorn = 0;
 let pendingAutoFloatMega = false;
 let lastAutoFloatPerfMs = 0;
@@ -623,7 +1234,6 @@ btnHenClick.addEventListener('pointerdown', (e) => {
     if (res.reason === 'between_waves') {
       spawnClickFloat('START WAVE FIRST!', '#94A3B8', e.clientX, e.clientY);
     }
-    // When res.reason === 'cps_cap' (>12 CPS), excess clicks strictly do nothing!
     updateLiveClickerMeters();
     return;
   }
@@ -650,6 +1260,15 @@ btnHenClick.addEventListener('keydown', (e) => {
   }
 });
 
+btnCluckCannon.addEventListener('click', (e) => {
+  e.stopPropagation();
+  btnCluckCannon.blur();
+  if (!engine.fireCluckCannon()) {
+    engine.audio.playBlockedClick();
+  }
+  updateLiveClickerMeters();
+});
+
 // Shop tab switching
 document.querySelectorAll<HTMLButtonElement>('.shop-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
@@ -661,6 +1280,42 @@ document.querySelectorAll<HTMLButtonElement>('.shop-tab').forEach((tab) => {
     document.getElementById('tab-td')!.classList.toggle('hidden', which !== 'td');
   });
 });
+
+// Collection filter switching inside Gem Egg Shop
+document.querySelectorAll<HTMLButtonElement>('.coll-filter-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.coll-filter-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeCollectionFilter =
+      (btn.dataset.filter as 'all' | 'gacha' | 'starter' | 'mutated') ?? 'all';
+    engine.audio.playUpgrade();
+    renderGemEggShop();
+  });
+});
+
+// Gem Egg Shop navigation & purchases (1x, 4x, 8x!)
+btnOpenGemShop.addEventListener('click', () => {
+  engine.audio.playUpgrade();
+  openGemEggShop();
+});
+btnMenuGemShopCta.addEventListener('click', () => {
+  engine.audio.playUpgrade();
+  openGemEggShop();
+});
+btnCloseGemShop.addEventListener('click', () => {
+  engine.audio.playUpgrade();
+  closeGemEggShop();
+});
+
+btnBuyEgg1.addEventListener('click', () => startGemEggPurchase(1));
+btnBuyEgg4.addEventListener('click', () => startGemEggPurchase(4));
+btnBuyEgg8.addEventListener('click', () => startGemEggPurchase(8));
+
+btnCutsceneSkip.addEventListener('click', () => skipCutsceneToRevealAll());
+btnCutsceneDone.addEventListener('click', () => closeCutsceneModal());
+btnCutsceneAgain1.addEventListener('click', () => startGemEggPurchase(1));
+btnCutsceneAgain4.addEventListener('click', () => startGemEggPurchase(4));
+btnCutsceneAgain8.addEventListener('click', () => startGemEggPurchase(8));
 
 // Canvas mouse tracking & placement / selection
 canvas.addEventListener('mousemove', (e) => {
@@ -765,6 +1420,14 @@ btnMenu.addEventListener('click', () => {
 });
 btnMenuStart.addEventListener('click', () => launchSelectedRun());
 btnMenuResume.addEventListener('click', () => resumeActiveRun());
+btnMenuEndRun.addEventListener('click', () => {
+  if (!hasStartedRun || engine.status === 'gameover') return;
+  inMainMenu = false;
+  inGemShop = false;
+  mainMenuScreen.classList.add('hidden');
+  gemShopScreen.classList.add('hidden');
+  engine.endRunEarly();
+});
 
 btnContinueFreeplay.addEventListener('click', () => {
   engine.freeplayUnlocked = true;
@@ -772,12 +1435,7 @@ btnContinueFreeplay.addEventListener('click', () => {
   refreshFullUi();
 });
 
-btnRestartVictory.addEventListener('click', () => {
-  selectedTowerId = null;
-  setPlacementType(null);
-  engine.resetGame();
-});
-
+btnShopVictory.addEventListener('click', () => openGemEggShop());
 btnMenuVictory.addEventListener('click', () => openMainMenu());
 
 btnRestartGameover.addEventListener('click', () => {
@@ -786,9 +1444,10 @@ btnRestartGameover.addEventListener('click', () => {
   engine.resetGame();
 });
 
+btnShopGameover.addEventListener('click', () => openGemEggShop());
 btnMenuGameover.addEventListener('click', () => openMainMenu());
 
-// Hotkey map for all 22 Chicken Units!
+// Hotkey map for all 34 Chicken Units!
 const HOTKEY_TO_CHICKEN = new Map<string, ChickenTypeId>();
 for (const id of CHICKEN_ORDER) {
   HOTKEY_TO_CHICKEN.set(CHICKEN_DEFS[id].hotkey.toUpperCase(), id);
@@ -796,9 +1455,24 @@ for (const id of CHICKEN_ORDER) {
 
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
+
+  if (inCutscene) {
+    if (e.key === ' ' || e.key === 'Escape' || e.key === 'Enter') {
+      e.preventDefault();
+      if (!cutsceneFinished) {
+        skipCutsceneToRevealAll();
+      } else {
+        closeCutsceneModal();
+      }
+    }
+    return;
+  }
+
   if (e.key === 'Escape') {
     if (!rulesModal.classList.contains('hidden')) {
       rulesModal.classList.add('hidden');
+    } else if (inGemShop) {
+      closeGemEggShop();
     } else if (inMainMenu) {
       resumeActiveRun();
     } else if (ghost.typeId) {
@@ -810,7 +1484,16 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  if (inMainMenu) return;
+  if (inMainMenu || inGemShop) return;
+
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    if (!engine.fireCluckCannon()) {
+      engine.audio.playBlockedClick();
+    }
+    updateLiveClickerMeters();
+    return;
+  }
 
   const mappedUnit = HOTKEY_TO_CHICKEN.get(e.key.toUpperCase());
   if (mappedUnit) {
@@ -835,7 +1518,7 @@ function loop(nowMs: number): void {
     const dt = Math.max(0.001, Math.min(0.08, (nowMs - lastPerfMs) / 1000));
     lastPerfMs = nowMs;
 
-    if (!inMainMenu) {
+    if (!inMainMenu && !inGemShop && !inCutscene) {
       engine.tick(dt);
       updateLiveClickerMeters();
     }

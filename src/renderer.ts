@@ -8,6 +8,7 @@ import {
   MapDefinition,
   PATH_HALF_WIDTH,
 } from './map';
+import { MUTATION_DEFS, PROGRESSION } from './progression';
 import { PIXEL_ATLAS } from './sprites';
 import {
   ActiveEnemy,
@@ -72,6 +73,10 @@ const PIXEL_FONT_3X5: Record<string, readonly string[]> = {
   '+': ['...', '.1.', '111', '.1.', '...'],
   '-': ['...', '...', '111', '...', '...'],
   '!': ['.1.', '.1.', '.1.', '...', '.1.'],
+  '%': ['1.1', '..1', '.1.', '1..', '1.1'],
+  '/': ['..1', '..1', '.1.', '1..', '1..'],
+  ':': ['...', '.1.', '...', '.1.', '...'],
+  '.': ['...', '...', '...', '...', '.1.'],
   ' ': ['...', '...', '...', '...', '...'],
 };
 
@@ -449,8 +454,14 @@ export class MeadowRenderer {
       const def = CHICKEN_DEFS[ghost.typeId];
       const cost = engine.getTowerBaseCost(ghost.typeId);
       const valid =
-        canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) && engine.corn >= cost;
-      const range = Math.round(def.tiers[0].range * (1 + engine.tdLevels.eagleRoost * 0.08));
+        engine.isChickenUnlocked(ghost.typeId) &&
+        canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) &&
+        engine.corn >= cost;
+      const mut = PROGRESSION.getMutation(ghost.typeId);
+      const mutRangeMult = mut ? MUTATION_DEFS[mut].rangeMult : 1.0;
+      const range = Math.round(
+        def.tiers[0].range * (1 + engine.tdLevels.eagleRoost * 0.08) * mutRangeMult
+      );
       const gx = toPx(ghost.mouseX);
       const gy = toPx(ghost.mouseY);
       const gr = toPx(range);
@@ -588,9 +599,15 @@ export class MeadowRenderer {
 
     const px = toPx(tower.x);
     const py = toPx(tower.y);
+    const mutTier = PROGRESSION.getMutation(tower.typeId);
+    const mutColor = mutTier ? MUTATION_DEFS[mutTier].color : null;
 
     if (isSelected) {
       drawPixelCircle(ctx, px, py + 2, 10, '#FACC15', false);
+    } else if (mutColor) {
+      // Mutated Chicken Aura Ring!
+      const auraR = (mutTier === 'legendary' ? 10 : 9) + (Math.floor(nowSec * 5) % 2);
+      drawPixelCircle(ctx, px, py + 2, auraR, mutColor, true);
     } else if (tower.tier === 3) {
       // Tier 4 MAX golden pixel aura!
       const auraR = 9 + (Math.floor(nowSec * 4) % 2);
@@ -611,9 +628,10 @@ export class MeadowRenderer {
     ctx.drawImage(frame, -11, -12);
     ctx.restore();
 
-    // Crisp Pixel Tier Pips underneath the Chicken (1..4 golden stars/pips!)
+    // Crisp Pixel Tier Pips underneath the Chicken (1..4 golden stars/pips + Mutation Crystal!)
     const pipCount = tower.tier + 1;
-    const totalW = pipCount * 3 - 1;
+    const extraMutWidth = mutColor ? 4 : 0;
+    const totalW = pipCount * 3 - 1 + extraMutWidth;
     const startX = px - Math.floor(totalW / 2);
     const pipY = py + 9;
     ctx.fillStyle = OUTLINE;
@@ -621,6 +639,10 @@ export class MeadowRenderer {
     for (let p = 0; p < pipCount; p++) {
       ctx.fillStyle = tower.tier === 3 ? '#38BDF8' : '#FACC15';
       ctx.fillRect(startX + p * 3, pipY, 2, 2);
+    }
+    if (mutColor) {
+      ctx.fillStyle = mutColor;
+      ctx.fillRect(startX + pipCount * 3 + 1, pipY - 1, 2, 3);
     }
   }
 
@@ -974,6 +996,115 @@ export class MeadowRenderer {
         ctx.fillRect(px - dx - 2, py - dy - 2, 5, 5);
         ctx.fillStyle = '#FACC15';
         ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'cat_paw': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FB7185';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'surge_pillar': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 2, py - 5, 5, 9);
+        ctx.fillStyle = '#06B6D4';
+        ctx.fillRect(px - 1, py - 4, 3, 7);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py - 3, 1, 5);
+        break;
+      }
+      case 'matrix_beam': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#065F46';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#4ADE80';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'moon_slash': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#E11D48';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 1, py - 2, 3, 2);
+        break;
+      }
+      case 'soul_wisp': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#10B981';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#ECFDF5';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'shadow_talon': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#0F172A';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 5, 5);
+        ctx.fillStyle = '#EF4444';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FCA5A5';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'bahamut_orb': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillStyle = '#1E293B';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#22D3EE';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'judgment_ray': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#CA8A04';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'nature_prism': {
+        ctx.fillStyle = '#10B981';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#F472B6';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'black_hole': {
+        ctx.fillStyle = '#F472B6';
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillStyle = '#A855F7';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#0F172A';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        break;
+      }
+      case 'god_wrath': {
+        const dx = Math.round(Math.cos(p.rotation) * 5);
+        const dy = Math.round(Math.sin(p.rotation) * 5);
+        ctx.fillStyle = '#F43F5E';
+        ctx.fillRect(px - dx - 2, py - dy - 2, 5, 5);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(px - 1, py - 1, 3, 3);
         break;
