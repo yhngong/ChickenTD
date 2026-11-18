@@ -1,6 +1,6 @@
 import { ENEMY_DEFS } from './data';
 import { BUGS_PER_EGG, PROGRESSION } from './progression';
-import { compileGridSprite, PIXEL_ATLAS } from './sprites';
+import { PIXEL_ATLAS } from './sprites';
 import { EnemyTypeId } from './types';
 
 export const IDLE_EGG_INTERVAL_SEC = 600; // 10 minutes per Gem Egg
@@ -8,6 +8,12 @@ export const IDLE_KILLS_PER_SEC = BUGS_PER_EGG / IDLE_EGG_INTERVAL_SEC; // 1,000
 
 export const IDLE_CANVAS_W = 380;
 export const IDLE_CANVAS_H = 144;
+
+const IDLE_QUEUE_SIZE = 6;
+const IDLE_FRONT_STOP_X = 128;
+const IDLE_SLOT_SPACING = 44;
+const IDLE_ENEMY_WALK_SPEED = 104; // > 44px / 0.6s so bugs always keep pace with kills and stay on-screen!
+const IDLE_ENGAGE_MAX_X = 215; // Brawler Bantam only fires once a bug walks visibly into range!
 
 const IDLE_ENEMY_ROTATION: readonly EnemyTypeId[] = [
   'ant',
@@ -32,12 +38,11 @@ interface IdleEnemyActor {
   walkPhase: number;
 }
 
-interface IdleSeedShot {
+interface IdleSlashShot {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  targetY: number;
   age: number;
 }
 
@@ -71,52 +76,6 @@ interface IdleRing {
   lifetime: number;
 }
 
-const SMALL_CHICK_PAL: Record<string, string> = {
-  O: '#181425',
-  R: '#EF4444',
-  P: '#FB7185',
-  Y: '#FACC15',
-  H: '#FEF9C3',
-  L: '#FDE047',
-  D: '#CA8A04',
-  B: '#F97316',
-  W: '#FFFFFF',
-};
-
-const SMALL_CHICK_IDLE_ROWS: readonly string[] = [
-  '.....OO.OO.....',
-  '....ORRORRO....',
-  '.....ORRRO.....',
-  '...OOOYYYOOO...',
-  '..OYYHHYYYYYO..',
-  '.OYYYYYYYOWYYO.',
-  '.OYYYYYYYOOYYBO',
-  '.OYYLLYYYPPYOBO',
-  '.OYYLLLLYYYYOO.',
-  '..OYYDDDDYYYO..',
-  '...OOOYYYYOO...',
-  '.....OBO.OBO...',
-  '.....OO...OO...',
-  '...............',
-];
-
-const SMALL_CHICK_PECK_ROWS: readonly string[] = [
-  '...............',
-  '......OO.OO....',
-  '.....ORRORRO...',
-  '......ORRRO....',
-  '...OOOOYYYOOO..',
-  '..OYYHHYYYYYYO.',
-  '.OYYYYYYYYOWYYO',
-  '.OYYLLYYYYOOOBO',
-  '..OYYLLLLYYPPBO',
-  '..OYYYDDDDYYOO.',
-  '...OOOYYYYOO...',
-  '....OBO...OBO..',
-  '....OO.....OO..',
-  '...............',
-];
-
 export class IdlePastureSimulation {
   public active = false;
   public sessionElapsedSec = 0;
@@ -127,28 +86,54 @@ export class IdlePastureSimulation {
   public onEggEarned: ((eggsEarned: number) => void) | null = null;
 
   private lastWallMs = 0;
+  private lastRenderWallMs = 0;
   private killCreditAccum = 0;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   private nextActorId = 1;
   private spawnCounter = 0;
   private enemies: IdleEnemyActor[] = [];
-  private seeds: IdleSeedShot[] = [];
+  private slashes: IdleSlashShot[] = [];
   private particles: IdleParticle[] = [];
   private popups: IdlePopup[] = [];
   private rings: IdleRing[] = [];
 
-  private chickPeckAnim = 0;
-  private seedFireCooldown = 0.12;
+  private bantamStrikeAnim = 0;
+  private strikeFireCooldown = 0.12;
 
-  private chickIdleCanvas: HTMLCanvasElement | null = null;
-  private chickPeckCanvas: HTMLCanvasElement | null = null;
+  private bantamIdleCanvas: HTMLCanvasElement | null = null;
+  private bantamAttackCanvas: HTMLCanvasElement | null = null;
 
-  private ensureChickSprites(): void {
-    if (!this.chickIdleCanvas) {
-      this.chickIdleCanvas = compileGridSprite(SMALL_CHICK_IDLE_ROWS, SMALL_CHICK_PAL, 2);
-      this.chickPeckCanvas = compileGridSprite(SMALL_CHICK_PECK_ROWS, SMALL_CHICK_PAL, 2);
-    }
+  private ensureBantamSprites(): void {
+    if (this.bantamIdleCanvas && this.bantamAttackCanvas) return;
+    if (typeof document === 'undefined') return;
+    const spr = PIXEL_ATLAS.getChickenSprite('bantam');
+    if (!spr) return;
+
+    // Bake crisp 2x (44x44) grounded Brawler Bantam frames:
+    // - Copy rows 0..19 of spr.idle (omitting row 20 overhang) so the subtle contact shadow
+    //   sits strictly on row 19 beside the feet soles (zero shadow gap below feet!).
+    const idleCan = document.createElement('canvas');
+    idleCan.width = 44;
+    idleCan.height = 44;
+    const iCtx = idleCan.getContext('2d')!;
+    iCtx.imageSmoothingEnabled = false;
+    iCtx.drawImage(spr.idle, 0, 0, 22, 20, 0, 0, 44, 40);
+
+    // - In spr.attack, drawChickenUnitPixelArt uses hopY = -1 (feet on rows 17..18, detached
+    //   shadow on rows 19..20). Copy rows 0..18 shifted down +2px onto a sole-level contact
+    //   strip so Brawler Bantam punches forward firmly planted on the dirt path!
+    const atkCan = document.createElement('canvas');
+    atkCan.width = 44;
+    atkCan.height = 44;
+    const aCtx = atkCan.getContext('2d')!;
+    aCtx.imageSmoothingEnabled = false;
+    aCtx.fillStyle = 'rgba(15, 23, 42, 0.34)';
+    aCtx.fillRect(12, 38, 24, 2);
+    aCtx.drawImage(spr.attack, 0, 0, 22, 19, 0, 2, 44, 38);
+
+    this.bantamIdleCanvas = idleCan;
+    this.bantamAttackCanvas = atkCan;
   }
 
   public getLastWallMs(): number {
@@ -162,21 +147,22 @@ export class IdlePastureSimulation {
     this.sessionKills = 0;
     this.sessionGemEggsEarned = 0;
     this.killCreditAccum = 0;
-    this.chickPeckAnim = 0;
-    this.seedFireCooldown = 0.1;
+    this.bantamStrikeAnim = 0;
+    this.strikeFireCooldown = 0.1;
 
     this.enemies = [];
-    this.seeds = [];
+    this.slashes = [];
     this.particles = [];
     this.popups = [];
     this.rings = [];
     this.spawnCounter = 0;
 
     // Populate initial strolling bugs along the pasture path
-    for (let i = 0; i < 5; i++) {
-      this.spawnVisualEnemy(156 + i * 52);
+    for (let i = 0; i < IDLE_QUEUE_SIZE; i++) {
+      this.spawnVisualEnemy(IDLE_FRONT_STOP_X + 4 + i * IDLE_SLOT_SPACING);
     }
 
+    this.lastRenderWallMs = nowMs;
     if (
       typeof resumeFromWallMs === 'number' &&
       Number.isFinite(resumeFromWallMs) &&
@@ -211,6 +197,18 @@ export class IdlePastureSimulation {
     }
   }
 
+  private advanceVisualEnemies(dtSec: number): void {
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      e.hitFlash = Math.max(0, e.hitFlash - dtSec * 6.5);
+      e.walkPhase += dtSec * 9.5;
+      const minStopX = IDLE_FRONT_STOP_X + i * IDLE_SLOT_SPACING;
+      if (e.x > minStopX) {
+        e.x = Math.max(minStopX, e.x - IDLE_ENEMY_WALK_SPEED * dtSec);
+      }
+    }
+  }
+
   /**
    * Credits exact wall-clock elapsed time at 1,000 kills / 600s (1 Gem Egg per 10 minutes),
    * immune to background-tab requestAnimationFrame throttling!
@@ -229,6 +227,12 @@ export class IdlePastureSimulation {
     this.sessionElapsedSec += elapsedSec;
     this.killCreditAccum += elapsedSec * IDLE_KILLS_PER_SEC;
 
+    // If requestAnimationFrame was throttled/paused (e.g. background tab), keep the visual
+    // bug line walking forward so enemies never drift off-screen!
+    if (nowMs - this.lastRenderWallMs > 220) {
+      this.advanceVisualEnemies(elapsedSec);
+    }
+
     const wholeKills = Math.floor(this.killCreditAccum + 1e-9);
     if (wholeKills > 0) {
       this.killCreditAccum = Math.max(0, this.killCreditAccum - wholeKills);
@@ -236,12 +240,12 @@ export class IdlePastureSimulation {
       this.sessionKills += wholeKills;
       this.sessionGemEggsEarned += bankRes.eggsEarned;
 
-      if (wholeKills <= 4) {
-        for (let k = 0; k < wholeKills; k++) {
-          this.popFrontVisualEnemy();
-        }
-      } else {
-        this.popFrontVisualEnemy();
+      // Pop the front enemy visually once (and keep the remaining parade neatly on-screen!)
+      this.popFrontVisualEnemy();
+      if (wholeKills > 1) {
+        this.advanceVisualEnemies(0.45);
+      }
+      if (wholeKills > 4) {
         this.spawnPopup(`+${wholeKills.toLocaleString()} IDLE KILLS!`, 200, 56, '#4ADE80', 1.15);
       }
 
@@ -280,12 +284,12 @@ export class IdlePastureSimulation {
       this.spawnCounter % 20 === 0
         ? 'fox_scout'
         : IDLE_ENEMY_ROTATION[this.spawnCounter % IDLE_ENEMY_ROTATION.length];
-    const laneOffset = ((this.spawnCounter * 7) % 3) * 4 - 4;
+    const laneOffset = ((this.spawnCounter * 7) % 3) * 3 - 3;
     this.enemies.push({
       id: this.nextActorId++,
       typeId,
       x: startX,
-      y: 94 + laneOffset,
+      y: 95 + laneOffset,
       hpRatio: 1,
       hitFlash: 0,
       walkPhase: this.spawnCounter * 1.1,
@@ -294,15 +298,23 @@ export class IdlePastureSimulation {
 
   private popFrontVisualEnemy(): void {
     if (this.enemies.length === 0) {
-      this.spawnVisualEnemy(170);
+      this.spawnVisualEnemy(IDLE_FRONT_STOP_X);
     }
     const popped = this.enemies.shift()!;
     const def = ENEMY_DEFS[popped.typeId];
-    this.spawnBurst(popped.x, popped.y - 4, def.isFoxBoss ? 12 : 7, def.bodyColor);
-    this.spawnPopup('+1 KILL', popped.x, popped.y - 16, '#FEF08A', 0.62);
+    const burstX = Math.min(IDLE_CANVAS_W - 18, popped.x);
+    this.spawnBurst(burstX, popped.y - 3, def.isFoxBoss ? 12 : 7, def.bodyColor);
+    this.spawnPopup('+1 KILL', burstX, popped.y - 16, '#FEF08A', 0.62);
 
-    const rightmostX = this.enemies.reduce((mx, e) => Math.max(mx, e.x), 210);
-    this.spawnVisualEnemy(Math.max(IDLE_CANVAS_W + 14, rightmostX + 50));
+    while (this.enemies.length < IDLE_QUEUE_SIZE) {
+      const rightmostX = this.enemies.reduce((mx, e) => Math.max(mx, e.x), IDLE_FRONT_STOP_X);
+      // Strictly cap spawnX just outside the right edge so the queue can never drift off-screen!
+      const spawnX = Math.min(
+        IDLE_CANVAS_W + 18,
+        Math.max(IDLE_CANVAS_W - 6, rightmostX + IDLE_SLOT_SPACING)
+      );
+      this.spawnVisualEnemy(spawnX);
+    }
   }
 
   private spawnBurst(x: number, y: number, count: number, color: string): void {
@@ -343,62 +355,58 @@ export class IdlePastureSimulation {
   }
 
   public render(canvas: HTMLCanvasElement, dtSec: number, nowSec: number): void {
-    this.ensureChickSprites();
+    this.ensureBantamSprites();
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
+    this.lastRenderWallMs = Date.now();
     const dt = Math.max(0.001, Math.min(0.08, dtSec));
 
-    // 1. Update Small Chicken pecking & golden seed pellets
-    this.chickPeckAnim = Math.max(0, this.chickPeckAnim - dt * 5.2);
-    this.seedFireCooldown -= dt;
-    if (this.seedFireCooldown <= 0 && this.enemies.length > 0) {
-      this.seedFireCooldown = 0.22;
-      this.chickPeckAnim = 1.0;
-      const target = this.enemies[0];
-      const startX = 94;
-      const startY = 89;
-      const dx = Math.max(16, target.x - startX);
-      const dy = target.y - 4 - startY;
+    // 1. Move bugs steadily along the pasture path into Brawler Bantam's melee/slash zone
+    this.advanceVisualEnemies(dt);
+
+    // 2. Update Brawler Bantam martial-arts strikes & crimson feather-slash projectiles
+    this.bantamStrikeAnim = Math.max(0, this.bantamStrikeAnim - dt * 5.4);
+    this.strikeFireCooldown -= dt;
+    const leadTarget = this.enemies[0];
+    if (
+      this.strikeFireCooldown <= 0 &&
+      leadTarget &&
+      leadTarget.x <= IDLE_ENGAGE_MAX_X
+    ) {
+      this.strikeFireCooldown = 0.24;
+      this.bantamStrikeAnim = 1.0;
+      const startX = 96;
+      const startY = 86;
+      const dx = Math.max(14, leadTarget.x - startX);
+      const dy = leadTarget.y - 2 - startY;
       const dist = Math.hypot(dx, dy);
-      const spd = 260;
-      this.seeds.push({
+      const spd = 290;
+      this.slashes.push({
         x: startX,
         y: startY,
         vx: (dx / dist) * spd,
         vy: (dy / dist) * spd,
-        targetY: target.y - 4,
         age: 0,
       });
     }
 
-    // 2. Move bugs steadily along the pasture path (kept at cozy pecking distance >= 122px)
-    for (let i = 0; i < this.enemies.length; i++) {
-      const e = this.enemies[i];
-      e.hitFlash = Math.max(0, e.hitFlash - dt * 6.5);
-      e.walkPhase += dt * 10;
-      const minStopX = 124 + i * 44;
-      if (e.x > minStopX) {
-        e.x = Math.max(minStopX, e.x - 68 * dt);
-      }
-    }
-
-    // 3. Move seed pellets & trigger crisp white hit flashes
-    for (let i = this.seeds.length - 1; i >= 0; i--) {
-      const s = this.seeds[i];
+    // 3. Move feather-slash waves & strike the front bug cleanly (zero tunneling!)
+    for (let i = this.slashes.length - 1; i >= 0; i--) {
+      const s = this.slashes[i];
       s.age += dt;
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       const lead = this.enemies[0];
-      if (lead && Math.abs(s.x - lead.x) <= 12) {
+      if (lead && lead.x <= IDLE_CANVAS_W - 4 && s.x >= lead.x - 10) {
         lead.hitFlash = 1.0;
-        this.spawnBurst(lead.x - 4, lead.y - 4, 3, '#FEF08A');
-        this.seeds.splice(i, 1);
+        this.spawnBurst(lead.x - 4, lead.y - 2, 4, '#FCA5A5');
+        this.slashes.splice(i, 1);
         continue;
       }
-      if (s.age > 1.2 || s.x > IDLE_CANVAS_W + 10) {
-        this.seeds.splice(i, 1);
+      if (s.age > 0.85 || s.x > IDLE_ENGAGE_MAX_X + 28) {
+        this.slashes.splice(i, 1);
       }
     }
 
@@ -518,29 +526,30 @@ export class IdlePastureSimulation {
       ctx.fillRect(ex + 1, 83, 2, 1);
     }
 
-    // Draw Small Chicken Hero!
-    const chickHop = Math.abs(Math.sin(nowSec * 5.5)) * 2.5;
-    const chickX = Math.round(68 + this.chickPeckAnim * 5);
-    const chickY = Math.round(74 - chickHop);
-    // Pixel shadow under chick
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
-    ctx.fillRect(72, 101, 22, 4);
-
-    const chickSpr =
-      this.chickPeckAnim > 0.35 ? this.chickPeckCanvas : this.chickIdleCanvas;
-    if (chickSpr) {
-      ctx.drawImage(chickSpr, chickX, chickY);
+    // Draw Brawler Bantam Hero (planted directly on the dirt trail — zero floating!)
+    const isStriking = this.bantamStrikeAnim > 0.35;
+    const bantamX = Math.round(58 + (isStriking ? 2 : 0));
+    const bantamY = 59; // Feet soles (y=38..39) rest firmly at y=97..98 on the dirt trail!
+    const bantamSpr = isStriking ? this.bantamAttackCanvas : this.bantamIdleCanvas;
+    if (bantamSpr) {
+      ctx.drawImage(bantamSpr, bantamX, bantamY);
     }
 
-    // Draw golden corn seed pellets
-    for (const s of this.seeds) {
+    // Draw Brawler Bantam's crimson/white feather-slash waves
+    for (const s of this.slashes) {
+      const sx = Math.round(s.x);
+      const sy = Math.round(s.y);
       ctx.fillStyle = '#181425';
-      ctx.fillRect(Math.round(s.x) - 2, Math.round(s.y) - 2, 5, 5);
-      ctx.fillStyle = '#FACC15';
-      ctx.fillRect(Math.round(s.x) - 1, Math.round(s.y) - 1, 3, 3);
+      ctx.fillRect(sx - 3, sy - 4, 7, 8);
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(sx - 2, sy - 3, 3, 6);
+      ctx.fillStyle = '#FCA5A5';
+      ctx.fillRect(sx, sy - 3, 3, 6);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(sx + 1, sy - 2, 2, 4);
     }
 
-    // Draw approaching Bugs & mini Foxes (facing left toward the Small Chicken)
+    // Draw approaching Bugs & mini Foxes (facing left toward Brawler Bantam)
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
       const sprSet = PIXEL_ATLAS.getEnemySprite(e.typeId);
@@ -548,30 +557,34 @@ export class IdlePastureSimulation {
       const rawSpr =
         e.hitFlash > 0.25 ? sprSet?.flashFrames[frameIdx] : sprSet?.frames[frameIdx];
 
-      const bob = Math.abs(Math.sin(e.walkPhase)) * 2;
+      const stepLift = frameIdx === 1 ? 1 : 0;
       const ex = Math.round(e.x);
-      const ey = Math.round(e.y - bob);
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.4)';
-      ctx.fillRect(ex - 8, Math.round(e.y) + 6, 16, 3);
+      const ey = Math.round(e.y) - stepLift;
 
       if (rawSpr) {
         const isFox = ENEMY_DEFS[e.typeId].isFoxBoss;
-        const scale = isFox ? 0.85 : 1.25;
+        const scale = isFox ? 0.9 : 1.25;
         const dw = Math.round(rawSpr.width * scale);
         const dh = Math.round(rawSpr.height * scale);
+
+        // Grounded contact shadow right along the enemy's feet line (no floating gap!)
+        const shadowW = Math.max(10, Math.round(dw * 0.72));
+        const shadowY = Math.round(e.y) + Math.floor(dh / 2) - 2;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+        ctx.fillRect(ex - Math.floor(shadowW / 2), shadowY, shadowW, 2);
+
         ctx.save();
         ctx.translate(ex, ey);
-        ctx.scale(-1, 1); // Face leftward toward our Small Chicken!
+        ctx.scale(-1, 1); // Face leftward toward Brawler Bantam!
         ctx.drawImage(rawSpr, -Math.round(dw / 2), -Math.round(dh / 2), dw, dh);
         ctx.restore();
       }
 
       // Lead enemy HP bar
-      if (i === 0) {
+      if (i === 0 && ex <= IDLE_CANVAS_W - 6) {
         const barW = 20;
         const bx = ex - 10;
-        const by = ey - 15;
+        const by = ey - 14;
         ctx.fillStyle = '#0F172A';
         ctx.fillRect(bx - 1, by - 1, barW + 2, 5);
         ctx.fillStyle = '#EF4444';
@@ -610,15 +623,15 @@ export class IdlePastureSimulation {
 
     // Top-left pasture status badge on canvas
     ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
-    ctx.fillRect(6, 6, 174, 16);
+    ctx.fillRect(6, 6, 178, 16);
     ctx.strokeStyle = '#38BDF8';
     ctx.lineWidth = 1;
-    ctx.strokeRect(6.5, 6.5, 173, 15);
+    ctx.strokeRect(6.5, 6.5, 177, 15);
     ctx.fillStyle = '#4ADE80';
     ctx.fillRect(12, 11, 6, 6);
     ctx.textAlign = 'left';
     ctx.font = 'bold 8px "Silkscreen", monospace';
     ctx.fillStyle = '#E2E8F0';
-    ctx.fillText('TINY CHICK ON PATROL • 100/MIN', 22, 17);
+    ctx.fillText('BRAWLER BANTAM • 100/MIN', 22, 17);
   }
 }

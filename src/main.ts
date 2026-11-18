@@ -197,14 +197,16 @@ function initStaticPixelIcons(): void {
   setImg('icon-hud-fox', PIXEL_ATLAS.getIconUrl('fox'));
   setImg('icon-hud-bug', PIXEL_ATLAS.getIconUrl('bug'));
   setImg('icon-hud-battle-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  const bantamIconUrl =
+    PIXEL_ATLAS.getChickenSprite('bantam')?.portraitUrl ?? PIXEL_ATLAS.getIconUrl('idle_chick');
   setImg('icon-btn-speed', PIXEL_ATLAS.getIconUrl('speed'));
   setImg('icon-btn-sound', PIXEL_ATLAS.getIconUrl('sound_on'));
-  setImg('icon-btn-idle', PIXEL_ATLAS.getIconUrl('idle_chick'));
+  setImg('icon-btn-idle', bantamIconUrl);
   setImg('icon-btn-rules', PIXEL_ATLAS.getIconUrl('rules'));
   setImg('icon-btn-menu', PIXEL_ATLAS.getIconUrl('menu'));
-  setImg('icon-menu-idle', PIXEL_ATLAS.getIconUrl('idle_chick'));
-  setImg('icon-shop-idle', PIXEL_ATLAS.getIconUrl('idle_chick'));
-  setImg('icon-idle-title-chick', PIXEL_ATLAS.getIconUrl('idle_chick'));
+  setImg('icon-menu-idle', bantamIconUrl);
+  setImg('icon-shop-idle', bantamIconUrl);
+  setImg('icon-idle-title-chick', bantamIconUrl);
   setImg('icon-idle-gem-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-clicker-corn', PIXEL_ATLAS.getIconUrl('corn'));
   setImg('icon-tab-troops', PIXEL_ATLAS.getIconUrl('chicken'));
