@@ -379,7 +379,7 @@ export interface PlayerSaveData {
   eggs: number;
   totalEggsEarned: number;
   lifetimeBugsKilled: number;
-  bugKillRemainder: number; // 0..2499 carry-over progress toward next Egg
+  bugKillRemainder: number; // 0..999 carry-over progress toward next Egg
   gemEggsOpened: number;
   unlockedUnits: Partial<Record<ChickenTypeId, boolean>>;
   unitMutations: Partial<Record<ChickenTypeId, MutationTier>>;
@@ -420,4 +420,43 @@ export interface RoundEndSummary {
   waveProgressPercent: number;
   mvpUnitId: ChickenTypeId | null;
   mvpDamage: number;
+}
+
+export interface SavedRunState {
+  version: number;
+  savedAtMs: number;
+  inMainMenu: boolean;
+  mapId: MapId;
+  difficultyId: DifficultyId;
+  corn: number;
+  totalCornClicked: number;
+  eggs: number;
+  maxEggs: number;
+  waveNumber: number;
+  waveActive: boolean;
+  waveElapsedSec: number;
+  waveInitialSpawnCount: number;
+  status: 'playing' | 'victory_prompt';
+  freeplayUnlocked: boolean;
+  speedMultiplier: 1 | 2;
+  totalBugsPopped: number;
+  bugsBankedThisRun: number;
+  eggsEarnedThisRun: number;
+  lastVictoryEggsEarned: number;
+  totalClicksAccepted: number;
+  waveClickCounter: number;
+  waveCornHarvested: number;
+  cannonCharge: number;
+  frenzyMeter: number;
+  clickerLevels: Record<ClickerUpgradeId, number>;
+  tdLevels: Record<TdUpgradeId, number>;
+  towers: PlacedChicken[];
+  enemies: ActiveEnemy[];
+  pendingSpawns: { spawnAtWaveTime: number; enemyType: EnemyTypeId }[];
+}
+
+export interface UserPreferences {
+  pendingMapId: MapId;
+  pendingDifficultyId: DifficultyId;
+  isMuted: boolean;
 }

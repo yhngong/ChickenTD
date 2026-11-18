@@ -1,20 +1,29 @@
 import {
   CHICKEN_DEFS,
   CHICKEN_ORDER,
+  DIFFICULTY_ORDER,
   GEM_EGG_CHICKEN_IDS,
   STARTER_CHICKEN_IDS,
 } from './data';
+import { MAP_ORDER } from './map';
 import {
   ChickenTypeId,
+  DifficultyId,
   EggBankResult,
   EggRollOutcome,
+  MapId,
   MutationDef,
   MutationTier,
   PlayerSaveData,
+  SavedRunState,
+  UserPreferences,
 } from './types';
 
 export const SAVE_STORAGE_KEY = 'chickentd_battlecats_save_v1';
-export const BUGS_PER_EGG = 2500;
+export const ACTIVE_RUN_STORAGE_KEY = 'chickentd_active_run_v1';
+export const PREFS_STORAGE_KEY = 'chickentd_prefs_v1';
+
+export const BUGS_PER_EGG = 1000;
 export const GEM_EGG_COST_EACH = 1; // 1 Egg = 1 Gem Egg, 4 Eggs = 4x, 8 Eggs = 8x
 
 export const MUTATION_ORDER: readonly MutationTier[] = [
@@ -144,7 +153,6 @@ function rollMutationTier(): MutationTier {
 }
 
 function pickWeightedUnit(candidates: readonly ChickenTypeId[]): ChickenTypeId {
-  // Gently weight cheaper/mid capsule units slightly higher while keeping mythics exciting & reachable!
   const weights = candidates.map((id) => {
     const cost = CHICKEN_DEFS[id].baseCost;
     if (cost <= 2000) return 10;
@@ -182,7 +190,6 @@ export class ProgressionStore {
       const parsed = JSON.parse(raw) as Partial<PlayerSaveData>;
 
       const unlockedUnits: Partial<Record<ChickenTypeId, boolean>> = {};
-      // Starter units up to Cyber-Cluck 9000 are ALWAYS owned
       for (const id of STARTER_CHICKEN_IDS) {
         unlockedUnits[id] = true;
       }
@@ -214,15 +221,17 @@ export class ProgressionStore {
         }
       }
 
+      const rawRem = Math.max(0, Math.floor(Number(parsed.bugKillRemainder ?? 0) || 0));
+      const migratedEggs = Math.floor(rawRem / BUGS_PER_EGG);
+      const cleanRem = rawRem % BUGS_PER_EGG;
+
       return {
         version: 1,
-        eggs: Math.max(0, Math.floor(Number(parsed.eggs ?? 0) || 0)),
-        totalEggsEarned: Math.max(0, Math.floor(Number(parsed.totalEggsEarned ?? 0) || 0)),
+        eggs: Math.max(0, Math.floor(Number(parsed.eggs ?? 0) || 0)) + migratedEggs,
+        totalEggsEarned:
+          Math.max(0, Math.floor(Number(parsed.totalEggsEarned ?? 0) || 0)) + migratedEggs,
         lifetimeBugsKilled: Math.max(0, Math.floor(Number(parsed.lifetimeBugsKilled ?? 0) || 0)),
-        bugKillRemainder: Math.max(
-          0,
-          Math.min(BUGS_PER_EGG - 1, Math.floor(Number(parsed.bugKillRemainder ?? 0) || 0))
-        ),
+        bugKillRemainder: cleanRem,
         gemEggsOpened: Math.max(0, Math.floor(Number(parsed.gemEggsOpened ?? 0) || 0)),
         unlockedUnits,
         unitMutations,
@@ -241,6 +250,81 @@ export class ProgressionStore {
       // Ignore quota errors in restricted sandboxes
     }
     if (this.onChange) this.onChange();
+  }
+
+  public saveActiveRun(state: SavedRunState): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      window.localStorage.setItem(ACTIVE_RUN_STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // Ignore quota errors
+    }
+  }
+
+  public loadActiveRun(): SavedRunState | null {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    try {
+      const raw = window.localStorage.getItem(ACTIVE_RUN_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<SavedRunState>;
+      if (
+        !parsed ||
+        typeof parsed !== 'object' ||
+        !parsed.mapId ||
+        !MAP_ORDER.includes(parsed.mapId as MapId) ||
+        !parsed.difficultyId ||
+        !DIFFICULTY_ORDER.includes(parsed.difficultyId as DifficultyId) ||
+        !Array.isArray(parsed.towers)
+      ) {
+        return null;
+      }
+      return parsed as SavedRunState;
+    } catch {
+      return null;
+    }
+  }
+
+  public clearActiveRun(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      window.localStorage.removeItem(ACTIVE_RUN_STORAGE_KEY);
+    } catch {
+      // Ignore
+    }
+  }
+
+  public savePrefs(prefs: UserPreferences): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+    } catch {
+      // Ignore
+    }
+  }
+
+  public loadPrefs(): UserPreferences | null {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    try {
+      const raw = window.localStorage.getItem(PREFS_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<UserPreferences>;
+      if (!parsed || typeof parsed !== 'object') return null;
+      const pendingMapId: MapId =
+        parsed.pendingMapId && MAP_ORDER.includes(parsed.pendingMapId)
+          ? parsed.pendingMapId
+          : 'sunny_meadow';
+      const pendingDifficultyId: DifficultyId =
+        parsed.pendingDifficultyId && DIFFICULTY_ORDER.includes(parsed.pendingDifficultyId)
+          ? parsed.pendingDifficultyId
+          : 'normal';
+      return {
+        pendingMapId,
+        pendingDifficultyId,
+        isMuted: Boolean(parsed.isMuted),
+      };
+    } catch {
+      return null;
+    }
   }
 
   public getEggs(): number {
@@ -285,8 +369,8 @@ export class ProgressionStore {
   }
 
   /**
-   * Banks unbanked bug kills when a round ends!
-   * Awards 1 Egg per 2,500 bugs killed and persists carry-over remainder to localStorage.
+   * Banks unbanked bug kills into persistent storage!
+   * Awards 1 Egg per 1,000 enemies killed and persists carry-over remainder to localStorage.
    */
   public bankBugsAfterRound(bugsKilledDelta: number): EggBankResult {
     const cleanDelta = Math.max(0, Math.floor(bugsKilledDelta));
@@ -325,11 +409,9 @@ export class ProgressionStore {
     for (let i = 0; i < count; i++) {
       let chosenUnit: ChickenTypeId;
       if (this.data.gemEggsOpened === 0) {
-        // Very first Gem Egg ever guarantees an exciting new post-Cyber-Cluck unit!
         const lockedGacha = GEM_EGG_CHICKEN_IDS.filter((id) => !this.isUnlocked(id));
         chosenUnit = pickWeightedUnit(lockedGacha.length > 0 ? lockedGacha : GEM_EGG_CHICKEN_IDS);
       } else {
-        // 82% Gem Egg Exclusive Pool, 18% Classic Starter Pool (so starters can also earn Mutations!)
         const useGachaPool = Math.random() < 0.82;
         chosenUnit = pickWeightedUnit(useGachaPool ? GEM_EGG_CHICKEN_IDS : STARTER_CHICKEN_IDS);
       }
@@ -347,7 +429,6 @@ export class ProgressionStore {
           plusLevel: this.getPlusLevel(chosenUnit),
         });
       } else {
-        // Already owned -> Awaken / Upgrade a Mutation + increment Battle Cats +Level!
         const rolledTier = rollMutationTier();
         const currentTier = this.getMutation(chosenUnit);
         const currentRank = currentTier ? MUTATION_RANK[currentTier] : 0;

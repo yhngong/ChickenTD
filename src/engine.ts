@@ -29,7 +29,7 @@ import {
   getTotalPathLength,
   setActiveMap,
 } from './map';
-import { MUTATION_DEFS, PROGRESSION } from './progression';
+import { BUGS_PER_EGG, MUTATION_DEFS, PROGRESSION } from './progression';
 import {
   ActiveEnemy,
   ActiveProjectile,
@@ -48,6 +48,7 @@ import {
   PixelParticle,
   PlacedChicken,
   RoundEndSummary,
+  SavedRunState,
   TargetMode,
   TdUpgradeId,
   UpgradeDef,
@@ -215,6 +216,170 @@ export class ChickenTdEngine {
     this.difficultyId = difficultyId;
     setActiveMap(mapId);
     this.resetGame();
+  }
+
+  public serializeRun(inMainMenu: boolean): SavedRunState | null {
+    if (this.status === 'gameover') return null;
+    return {
+      version: 1,
+      savedAtMs: Date.now(),
+      inMainMenu,
+      mapId: this.mapId,
+      difficultyId: this.difficultyId,
+      corn: this.corn,
+      totalCornClicked: this.totalCornClicked,
+      eggs: this.eggs,
+      maxEggs: this.maxEggs,
+      waveNumber: this.waveNumber,
+      waveActive: this.waveActive,
+      waveElapsedSec: this.waveElapsedSec,
+      waveInitialSpawnCount: this.waveInitialSpawnCount,
+      status: this.status,
+      freeplayUnlocked: this.freeplayUnlocked,
+      speedMultiplier: this.speedMultiplier,
+      totalBugsPopped: this.totalBugsPopped,
+      bugsBankedThisRun: this.bugsBankedThisRun,
+      eggsEarnedThisRun: this.eggsEarnedThisRun,
+      lastVictoryEggsEarned: this.lastVictoryEggsEarned,
+      totalClicksAccepted: this.totalClicksAccepted,
+      waveClickCounter: this.waveClickCounter,
+      waveCornHarvested: this.waveCornHarvested,
+      cannonCharge: this.cannonCharge,
+      frenzyMeter: this.frenzyMeter,
+      clickerLevels: { ...this.clickerLevels },
+      tdLevels: { ...this.tdLevels },
+      towers: this.towers.map((t) => ({ ...t })),
+      enemies: this.enemies.map((e) => ({ ...e })),
+      pendingSpawns: this.pendingSpawns.map((s) => ({ ...s })),
+    };
+  }
+
+  public restoreFromSavedRun(saved: SavedRunState): boolean {
+    try {
+      this.mapId = saved.mapId;
+      this.difficultyId = saved.difficultyId;
+      setActiveMap(this.mapId);
+
+      this.corn = Math.max(0, Math.floor(Number(saved.corn ?? 150)));
+      this.totalCornClicked = Math.max(0, Math.floor(Number(saved.totalCornClicked ?? 0)));
+      this.maxEggs = Math.max(1, Math.floor(Number(saved.maxEggs ?? 25)));
+      this.eggs = Math.max(1, Math.min(this.maxEggs, Math.floor(Number(saved.eggs ?? 25))));
+      this.waveNumber = Math.max(1, Math.floor(Number(saved.waveNumber ?? 1)));
+      this.waveActive = Boolean(saved.waveActive);
+      this.waveElapsedSec = Math.max(0, Number(saved.waveElapsedSec ?? 0));
+      this.waveInitialSpawnCount = Math.max(1, Math.floor(Number(saved.waveInitialSpawnCount ?? 1)));
+      this.status = saved.status === 'victory_prompt' ? 'victory_prompt' : 'playing';
+      this.freeplayUnlocked = Boolean(saved.freeplayUnlocked);
+      this.speedMultiplier = saved.speedMultiplier === 2 ? 2 : 1;
+
+      this.totalBugsPopped = Math.max(0, Math.floor(Number(saved.totalBugsPopped ?? 0)));
+      this.bugsBankedThisRun = Math.max(
+        0,
+        Math.min(this.totalBugsPopped, Math.floor(Number(saved.bugsBankedThisRun ?? 0)))
+      );
+      this.eggsEarnedThisRun = Math.max(0, Math.floor(Number(saved.eggsEarnedThisRun ?? 0)));
+      this.lastVictoryEggsEarned = Math.max(0, Math.floor(Number(saved.lastVictoryEggsEarned ?? 0)));
+      this.lastDefeatSummary = null;
+
+      this.totalClicksAccepted = Math.max(0, Math.floor(Number(saved.totalClicksAccepted ?? 0)));
+      this.waveClickCounter = Math.max(0, Math.floor(Number(saved.waveClickCounter ?? 0)));
+      this.waveCornHarvested = Math.max(0, Math.floor(Number(saved.waveCornHarvested ?? 0)));
+      this.cannonCharge = Math.max(0, Math.min(1, Number(saved.cannonCharge ?? 0.5)));
+      this.cannonFlash = 0;
+      this.frenzyMeter = Math.max(0, Math.min(1, Number(saved.frenzyMeter ?? 0)));
+      this.capHitFlash = 0;
+      this.clickTimestampsMs = [];
+      this.autoPeckAccumulator = 0;
+
+      for (const def of CLICKER_UPGRADES) {
+        const lv = Math.floor(Number(saved.clickerLevels?.[def.id] ?? 0) || 0);
+        this.clickerLevels[def.id] = Math.max(0, Math.min(def.maxLevel, lv));
+      }
+      for (const def of TD_UPGRADES) {
+        const lv = Math.floor(Number(saved.tdLevels?.[def.id] ?? 0) || 0);
+        this.tdLevels[def.id] = Math.max(0, Math.min(def.maxLevel, lv));
+      }
+
+      let maxId = 1;
+      this.towers = [];
+      if (Array.isArray(saved.towers)) {
+        for (const t of saved.towers) {
+          if (!t || !(t.typeId in CHICKEN_DEFS)) continue;
+          const cleanTower: PlacedChicken = {
+            id: Math.max(1, Math.floor(Number(t.id))),
+            typeId: t.typeId,
+            x: Number(t.x),
+            y: Number(t.y),
+            tier: ([0, 1, 2, 3].includes(t.tier) ? t.tier : 0) as 0 | 1 | 2 | 3,
+            targetMode: ['first', 'strong', 'last', 'close'].includes(t.targetMode)
+              ? t.targetMode
+              : 'first',
+            angle: Number(t.angle ?? 0),
+            cooldown: 0,
+            recoil: 0,
+            totalPopDamage: Math.max(0, Number(t.totalPopDamage ?? 0)),
+            totalSpent: Math.max(0, Number(t.totalSpent ?? 0)),
+          };
+          maxId = Math.max(maxId, cleanTower.id);
+          this.towers.push(cleanTower);
+        }
+      }
+
+      this.enemies = [];
+      if (Array.isArray(saved.enemies)) {
+        for (const e of saved.enemies) {
+          if (!e || !(e.typeId in ENEMY_DEFS)) continue;
+          const cleanEnemy: ActiveEnemy = {
+            id: Math.max(1, Math.floor(Number(e.id))),
+            typeId: e.typeId,
+            hp: Math.max(1, Number(e.hp)),
+            maxHp: Math.max(1, Number(e.maxHp)),
+            distance: Math.max(0, Number(e.distance ?? 0)),
+            lateralOffset: Number(e.lateralOffset ?? 0),
+            slowFactor: Math.max(0, Number(e.slowFactor ?? 0)),
+            slowTimer: Math.max(0, Number(e.slowTimer ?? 0)),
+            burnDps: Math.max(0, Number(e.burnDps ?? 0)),
+            burnTimer: Math.max(0, Number(e.burnTimer ?? 0)),
+            kbCooldown: 0,
+            hitFlash: 0,
+            walkPhase: Number(e.walkPhase ?? 0),
+          };
+          maxId = Math.max(maxId, cleanEnemy.id);
+          this.enemies.push(cleanEnemy);
+        }
+      }
+
+      this.pendingSpawns = [];
+      if (Array.isArray(saved.pendingSpawns)) {
+        for (const s of saved.pendingSpawns) {
+          if (!s || !(s.enemyType in ENEMY_DEFS)) continue;
+          this.pendingSpawns.push({
+            spawnAtWaveTime: Number(s.spawnAtWaveTime ?? 0),
+            enemyType: s.enemyType,
+          });
+        }
+      }
+
+      if (this.waveActive && this.enemies.length === 0 && this.pendingSpawns.length === 0) {
+        this.waveActive = false;
+      }
+
+      this.nextEntityId = maxId + 1;
+      this.stands = [];
+      for (const t of this.towers) {
+        if (t.typeId === 'stand_hen') {
+          this.getOrCreateStand(t);
+        }
+      }
+      this.projectiles = [];
+      this.rings = [];
+      this.particles = [];
+      this.popups = [];
+      this.notifyUi();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   public resetGame(): void {
@@ -684,8 +849,9 @@ export class ChickenTdEngine {
   }
 
   private buildDefeatSummary(killerTypeId: EnemyTypeId): RoundEndSummary {
-    // Bank all unbanked bug kills for this round right as the round ends!
+    // Bank all unbanked bug kills for this round & clear active run save!
     const bankRes = this.bankPendingRunBugs();
+    PROGRESSION.clearActiveRun();
 
     // Battle Cats style "BOSS HP REMAINING: X%" if a Fox Boss was on the field (or leaked!)
     let bossName: string | null = null;
@@ -1382,13 +1548,23 @@ export class ChickenTdEngine {
     this.totalBugsPopped++;
     this.audio.playBugPop(def.isFoxBoss);
 
-    // Celebratory visual callout every 2,500 bugs popped in a round!
-    const currentPool = PROGRESSION.getBugKillRemainder() + (this.totalBugsPopped - this.bugsBankedThisRun);
-    if (currentPool > 0 && currentPool % 2500 === 0) {
-      const nestPt = getPointAlongPath(getTotalPathLength());
-      this.spawnMapPopup('+1 EGG READY!', nestPt.x, nestPt.y - 36, '#38BDF8', 1.15);
-      this.spawnRing(nestPt.x, nestPt.y, 52, '#38BDF8');
-      this.audio.playUpgrade();
+    // Auto-bank & save +1 Egg immediately every 1,000 enemies popped!
+    const currentPool =
+      PROGRESSION.getBugKillRemainder() + (this.totalBugsPopped - this.bugsBankedThisRun);
+    if (currentPool >= BUGS_PER_EGG) {
+      const bankRes = this.bankPendingRunBugs();
+      if (bankRes.eggsEarned > 0) {
+        const nestPt = getPointAlongPath(getTotalPathLength());
+        this.spawnMapPopup(
+          `+${bankRes.eggsEarned} EGG SAVED!`,
+          nestPt.x,
+          nestPt.y - 36,
+          '#38BDF8',
+          1.15
+        );
+        this.spawnRing(nestPt.x, nestPt.y, 52, '#38BDF8');
+        this.audio.playUpgrade();
+      }
     }
 
     if (def.isFoxBoss) {

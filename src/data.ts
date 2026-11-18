@@ -3387,8 +3387,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Sharper Beak',
     iconId: 'beak_upg',
     maxLevel: 20,
-    baseCost: 75,
-    costMult: 1.78,
+    baseCost: 115,
+    costMult: 2.15,
     getEffectLabel: (lvl) => `${getBaseCornPerClick(lvl).toLocaleString()} Corn / Peck`,
     description: 'Increases base Corn harvested on every manual click & Farmhand peck.',
   },
@@ -3397,8 +3397,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Farmhand Chicks',
     iconId: 'farmhand_upg',
     maxLevel: 12,
-    baseCost: 110,
-    costMult: 1.85,
+    baseCost: 175,
+    costMult: 2.3,
     getEffectLabel: (lvl) =>
       lvl === 0 ? 'Locked (0/s)' : `${getFarmhandAutoRate(lvl).toFixed(1)} Auto-Pecks/s`,
     description:
@@ -3409,8 +3409,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Golden Egg Luck',
     iconId: 'sparkle_upg',
     maxLevel: 10,
-    baseCost: 115,
-    costMult: 1.98,
+    baseCost: 190,
+    costMult: 2.42,
     getEffectLabel: (lvl) => {
       if (lvl === 0) return '0% Crit';
       const p = getCritParams(lvl);
@@ -3423,8 +3423,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Frenzy Peck Streak',
     iconId: 'flame_upg',
     maxLevel: 10,
-    baseCost: 135,
-    costMult: 1.98,
+    baseCost: 220,
+    costMult: 2.42,
     getEffectLabel: (lvl) => `Up to ${getMaxRhythmMult(lvl).toFixed(2)}x`,
     description: 'Active pecking builds a live Frenzy multiplier bar across the wave.',
   },
@@ -3433,8 +3433,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: '12-Peck Mega Cob',
     iconId: 'basket_upg',
     maxLevel: 10,
-    baseCost: 150,
-    costMult: 1.98,
+    baseCost: 250,
+    costMult: 2.45,
     getEffectLabel: (lvl) => (lvl === 0 ? 'Locked' : `+${getHarvestBasketMult(lvl)}x every 12th`),
     description: 'Every 12th peck in a wave drops a giant bonus Mega Cob!',
   },
@@ -3443,8 +3443,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Twin-Peck Multistrike',
     iconId: 'twin_beak_upg',
     maxLevel: 10,
-    baseCost: 220,
-    costMult: 2.02,
+    baseCost: 360,
+    costMult: 2.55,
     getEffectLabel: (lvl) =>
       lvl === 0 ? '0% Double' : `${Math.round(getTwinBeakChance(lvl) * 100)}% Double-Peck`,
     description: 'Chance per click or auto-peck to strike twice (2x Corn & +2 Mega Cob)!',
@@ -3454,8 +3454,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Roost Foreman',
     iconId: 'foreman_upg',
     maxLevel: 8,
-    baseCost: 260,
-    costMult: 2.05,
+    baseCost: 440,
+    costMult: 2.62,
     getEffectLabel: (lvl) =>
       lvl === 0 ? '1.00x Auto' : `${getForemanMult(lvl).toFixed(2)}x Auto + Hold Frenzy`,
     description: 'Multiplies Farmhand Chick Corn yield & stops Frenzy decay while pecking!',
@@ -3465,8 +3465,8 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Golden Corn Silo',
     iconId: 'silo_upg',
     maxLevel: 10,
-    baseCost: 300,
-    costMult: 2.05,
+    baseCost: 500,
+    costMult: 2.58,
     getEffectLabel: (lvl) =>
       lvl === 0 ? '0% Wave Bonus' : `+${Math.round(getCornSiloDividendRate(lvl) * 100)}% Wave Bonus`,
     description: 'Pays a massive bonus % of all Corn pecked that wave when the wave clears!',
@@ -3476,11 +3476,11 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     name: 'Mythic Cornucopia',
     iconId: 'cornucopia_upg',
     maxLevel: 10,
-    baseCost: 420,
-    costMult: 2.12,
+    baseCost: 680,
+    costMult: 2.65,
     getEffectLabel: (lvl) =>
       lvl === 0 ? '+0% / Wave' : `+${(lvl * 0.8).toFixed(1)}% Corn / Wave`,
-    description: 'Scales all Henhouse Corn by current Wave # to fund 250K+ Apex Chickens!',
+    description: 'Scales all Henhouse Corn by current Wave # to fund Apex Chickens!',
   },
 ];
 

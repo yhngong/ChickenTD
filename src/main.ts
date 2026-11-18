@@ -229,9 +229,13 @@ for (const mId of MAP_ORDER) {
 }
 
 function formatCompactCost(n: number): string {
+  if (n >= 1000000000) {
+    const b = n / 1000000000;
+    return b >= 100 ? `${Math.round(b)}B` : `${b.toFixed(1).replace(/\.0$/, '')}B`;
+  }
   if (n >= 1000000) {
     const m = n / 1000000;
-    return Number.isInteger(m) ? `${m}M` : `${m.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}M`;
+    return m >= 100 ? `${Math.round(m)}M` : `${m.toFixed(1).replace(/\.0$/, '')}M`;
   }
   if (n >= 100000) return `${Math.round(n / 1000)}K`;
   return n.toLocaleString();
@@ -400,6 +404,28 @@ function renderGemEggShop(): void {
   }
 }
 
+function persistFullGameState(): void {
+  PROGRESSION.savePrefs({
+    pendingMapId,
+    pendingDifficultyId,
+    isMuted: engine.audio.getMuted(),
+  });
+  if (hasStartedRun && engine.status !== 'gameover') {
+    const snap = engine.serializeRun(inMainMenu);
+    if (snap) {
+      PROGRESSION.saveActiveRun(snap);
+    }
+  }
+}
+
+function flushAllSavesBeforeExit(): void {
+  if (hasStartedRun && engine.status !== 'gameover' && engine.totalBugsPopped > engine.bugsBankedThisRun) {
+    engine.bankPendingRunBugs();
+  }
+  PROGRESSION.save();
+  persistFullGameState();
+}
+
 function openMainMenu(): void {
   inMainMenu = true;
   inGemShop = false;
@@ -408,17 +434,18 @@ function openMainMenu(): void {
   victoryModal.classList.add('hidden');
   gameoverModal.classList.add('hidden');
   gemShopScreen.classList.add('hidden');
+  persistFullGameState();
   renderMainMenu();
   mainMenuScreen.classList.remove('hidden');
 }
 
 function openGemEggShop(): void {
-  // If coming from a finished/lost round or mid-run menu, ensure UI is crisp
   inMainMenu = true;
   inGemShop = true;
   victoryModal.classList.add('hidden');
   gameoverModal.classList.add('hidden');
   mainMenuScreen.classList.add('hidden');
+  persistFullGameState();
   renderGemEggShop();
   gemShopScreen.classList.remove('hidden');
 }
@@ -736,7 +763,7 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
     engine.audio.playBlockedClick();
     bannerTitle.textContent = 'LOCKED GEM EGG UNIT!';
     bannerDesc.textContent =
-      'Kill 2,500 Bugs per Egg, then open Gem Eggs in the Main Menu Shop to unlock this unit!';
+      `Kill ${BUGS_PER_EGG.toLocaleString()} Enemies per Egg, then open Gem Eggs in the Main Menu Shop to unlock this unit!`;
     return;
   }
   ghost.typeId = typeId;
@@ -777,7 +804,7 @@ function renderTroopCards(): void {
 
     if (!unlocked) {
       btn.className = 'troop-btn locked-troop';
-      btn.title = `${def.name} — LOCKED! Earn Eggs (1 per 2,500 Bugs) & hatch in Main Menu Gem Egg Shop!`;
+      btn.title = `${def.name} — LOCKED! Earn Eggs (1 per ${BUGS_PER_EGG.toLocaleString()} Enemies) & hatch in Main Menu Gem Egg Shop!`;
       btn.innerHTML = `
         <img class="troop-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
         <div class="troop-meta">
@@ -1099,6 +1126,7 @@ function refreshFullUi(): void {
   } else {
     gameoverModal.classList.add('hidden');
   }
+  persistFullGameState();
 }
 
 engine.onUiChange = refreshFullUi;
@@ -1399,12 +1427,14 @@ btnSpeed.addEventListener('click', () => {
   engine.speedMultiplier = engine.speedMultiplier === 1 ? 2 : 1;
   lblSpeed.textContent = `${engine.speedMultiplier}X`;
   btnSpeed.classList.toggle('active-speed', engine.speedMultiplier === 2);
+  persistFullGameState();
 });
 
 btnMute.addEventListener('click', () => {
   btnMute.blur();
   const muted = engine.audio.toggleMute();
   iconBtnSound.src = PIXEL_ATLAS.getIconUrl(muted ? 'sound_off' : 'sound_on');
+  persistFullGameState();
 });
 
 btnRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
@@ -1507,11 +1537,52 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// Initial UI & Main Menu population
+window.addEventListener('beforeunload', () => {
+  flushAllSavesBeforeExit();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    flushAllSavesBeforeExit();
+  }
+});
+
+// Restore saved Preferences & Active Game Run on startup!
+function restoreSavedSessionOnBoot(): void {
+  const prefs = PROGRESSION.loadPrefs();
+  if (prefs) {
+    pendingMapId = prefs.pendingMapId;
+    pendingDifficultyId = prefs.pendingDifficultyId;
+    engine.audio.setMuted(prefs.isMuted);
+    iconBtnSound.src = PIXEL_ATLAS.getIconUrl(prefs.isMuted ? 'sound_off' : 'sound_on');
+  }
+
+  const savedRun = PROGRESSION.loadActiveRun();
+  if (savedRun && engine.restoreFromSavedRun(savedRun)) {
+    hasStartedRun = true;
+    pendingMapId = engine.mapId;
+    pendingDifficultyId = engine.difficultyId;
+    renderer.setMap(engine.mapId);
+    lblSpeed.textContent = `${engine.speedMultiplier}X`;
+    btnSpeed.classList.toggle('active-speed', engine.speedMultiplier === 2);
+
+    if (!savedRun.inMainMenu) {
+      inMainMenu = false;
+      mainMenuScreen.classList.add('hidden');
+    } else {
+      inMainMenu = true;
+      mainMenuScreen.classList.remove('hidden');
+    }
+  }
+}
+
+restoreSavedSessionOnBoot();
 renderMainMenu();
 refreshFullUi();
 
 let lastPerfMs = performance.now();
+let autoSaveAccumulatorSec = 0;
+
 function loop(nowMs: number): void {
   requestAnimationFrame(loop);
   try {
@@ -1521,6 +1592,11 @@ function loop(nowMs: number): void {
     if (!inMainMenu && !inGemShop && !inCutscene) {
       engine.tick(dt);
       updateLiveClickerMeters();
+      autoSaveAccumulatorSec += dt;
+      if (autoSaveAccumulatorSec >= 1.5) {
+        autoSaveAccumulatorSec = 0;
+        persistFullGameState();
+      }
     }
     renderer.render(canvas, engine, selectedTowerId, ghost, nowMs / 1000);
   } catch (err) {

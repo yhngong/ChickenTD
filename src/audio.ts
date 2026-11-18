@@ -26,7 +26,11 @@ export class ChickenAudioEngine {
   }
 
   public toggleMute(): boolean {
-    this.isMuted = !this.isMuted;
+    return this.setMuted(!this.isMuted);
+  }
+
+  public setMuted(muted: boolean): boolean {
+    this.isMuted = muted;
     if (this.ctx && this.masterGain) {
       this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.45, this.ctx.currentTime, 0.015);
     }
