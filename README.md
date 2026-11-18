@@ -1,22 +1,22 @@
 # ChickenTD
 
-A 16-bit pixel-art mashup of an **active Clicker game**, **Bloons TD-inspired layered defense**, and **Battle Cats gacha, mutations, & cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **4 Difficulties**, deploy and upgrade **34 specialized pixel-art Chicken Troops**, fire your rechargeable **Cluck Cannon**, and earn **Saved Eggs** (`1 Egg per 1,000 Enemies killed`) to crack open **Gem Eggs** for new units and **4-Tier Mutations**.
+A 16-bit pixel-art mashup of an **active Clicker game**, **Bloons TD-inspired layered defense**, and **Battle Cats gacha, mutations, & cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **4 Difficulties**, deploy and upgrade **34 specialized pixel-art Chicken Troops**, fire your rechargeable **Cluck Cannon**, and earn **Gem Eggs** directly (`1 Gem Egg per 1,000 Enemies killed`) to crack open new units and **4-Tier Mutations**.
 
 ## Core Mechanics
 
-- **Main Menu — 5 Maps, 4 Difficulties & Gem Egg Capsule Shrine**:
+- **Main Menu — 5 Maps, 4 Difficulties & Gem Egg Hatchery**:
   - **Maps**: *Sunny Clover Meadow* (`Beginner`), *Frostbite Pine Fjord* (`Intermediate`), *Scorched Roost Caldera* (`Advanced`), *Whispering Honey-Bog* (`Expert`), and *Cosmic Egg Sanctum* (`Master`).
   - **Difficulties**: *Chickadee* (`Easy`), *Barnyard* (`Normal`), *Fox-Hunt* (`Hard`), and *Henpocalypse* (`Nightmare`).
-- **Battle Cats Progression — Saved Eggs, Full Auto-Save & Gem Egg Shop**:
-  - **Saved Eggs Currency**: Earn **1 Egg per 1,000 Enemies killed** (progress carries over across rounds and saves automatically!).
-  - **Full Game Auto-Save**: Automatically saves your active run (wave, Corn, Nest HP, placed Chickens, tiers, upgrades, and enemies) alongside your Eggs, unlocked units, and Mutations in `localStorage`.
-  - **Starter vs. Gem Egg Roster**: You start with the **14 classic Chickens up to Cyber-Cluck 9000**. All **20 units after Cyber-Cluck 9000** must be unlocked by buying **Gem Eggs** in the Main Menu Shop!
+- **Battle Cats Progression — Gem Eggs, Full Auto-Save & Mutations**:
+  - **Direct Gem Egg Drops**: Earn **1 Gem Egg per 1,000 Enemies killed** (kill progress carries over across rounds and saves automatically!).
+  - **Full Game Auto-Save**: Automatically saves your active run (wave, Corn, Nest HP, placed Chickens, tiers, upgrades, and enemies) alongside your Gem Eggs, unlocked units, and Mutations in `localStorage`.
+  - **Starter vs. Gem Egg Roster**: You start with the **14 classic Chickens up to Cyber-Cluck 9000**. All **20 units after Cyber-Cluck 9000** are unlocked by opening your **Gem Eggs** in the Main Menu!
   - **1x, 4x & 8x Multi-Hatch Cutscene**: Crack open **1 Gem Egg**, **4 Gem Eggs at a time**, or **8 Gem Eggs at a time** in an animated crystalline egg-shattering cutscene!
   - **4-Tier Duplicate Mutations & `+Levels`**: Pulling a unit you already own awakens a **Mutation** (**Common `55%`**, **Rare `28%`**, **Epic `13%`**, **Legendary `4%`**) plus permanent Battle Cats **`+Levels`**!
 - **Battle Cats Combat Features & Defeat Endscreen**:
   - **Cluck Cannon (`[TAB]`)**: Charges during active waves and unleashes a full-lane shockwave beam that damages, slows, and knocks back every Bug and Fox Boss on the map!
   - **Knockback & 3x Savage Blows**: Deploy specialized Battle-Cats-inspired units that knock enemies backward along the path and land explosive **3x Savage Crit** strikes!
-  - **Battle Cats Defeat Report**: Detailed endscreen when you lose showing Boss HP Remaining % / Stage Wave Progress %, Bugs Popped, MVP Chicken Unit, and Saved Egg rewards!
+  - **Battle Cats Defeat Report**: Detailed endscreen when you lose showing Boss HP Remaining % / Stage Wave Progress %, Bugs Popped, MVP Chicken Unit, and Gem Egg rewards!
 - **100% Handcrafted Pixel-Art Graphics**:
   - Custom nearest-neighbor `460x300` pixel-art biome stages, live baked pixel-art map thumbnails, multi-stage Gem Egg sprites, and bespoke pixel-art sprites for all **34 Chicken classes**, **10 Bug types**, **9 Giant Fox Bosses**, and UI icons (zero emoji sprites).
 - **Zero Enemy Gold — 100% Henhouse Economy (`12 CPS` Cap)**:

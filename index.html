@@ -28,19 +28,19 @@
           </div>
 
           <div class="menu-meta-side">
-            <div class="menu-egg-wallet" title="Earn 1 Egg per 1,000 Enemies killed! Game auto-saves automatically.">
+            <div class="menu-egg-wallet" title="Earn 1 Gem Egg per 1,000 Enemies killed! Open them right here.">
               <img id="icon-menu-battle-egg" class="px-icon px-icon-lg" alt="" />
               <div class="menu-egg-wallet-text">
-                <span class="menu-wallet-lbl">SAVED EGGS (1 / 1,000 KILLS)</span>
-                <strong id="menu-eggs-count">0 EGGS</strong>
-                <span id="menu-eggs-sub" class="menu-wallet-sub">0 / 1,000 TO NEXT EGG</span>
+                <span class="menu-wallet-lbl">GEM EGGS (1 / 1,000 KILLS)</span>
+                <strong id="menu-eggs-count">0 GEM EGGS</strong>
+                <span id="menu-eggs-sub" class="menu-wallet-sub">0 / 1,000 TO NEXT GEM EGG</span>
               </div>
             </div>
 
             <button id="btn-open-gem-shop" class="gem-shop-hero-btn" type="button">
               <img id="icon-menu-gem-egg" class="px-icon px-icon-lg" alt="" />
               <div>
-                <span class="gem-btn-top">GEM EGG SHOP</span>
+                <span class="gem-btn-top">OPEN GEM EGGS</span>
                 <span id="menu-collection-sub" class="gem-btn-sub">14 / 34 UNITS</span>
               </div>
             </button>
@@ -68,14 +68,14 @@
             RESUME CURRENT RUN
           </button>
           <button id="btn-menu-end-run" class="secondary-modal-btn menu-side-btn hidden" type="button" style="border-color:#f87171; color:#fecaca">
-            END ROUND &amp; SAVE EGGS
+            END ROUND
           </button>
           <button id="btn-menu-start" class="menu-play-btn" type="button">
             &gt;&gt; START NEW GAME
           </button>
           <button id="btn-menu-gem-shop-cta" class="gem-cta-btn menu-side-btn" type="button">
             <img id="icon-cta-gem-egg" class="px-icon px-icon-sm" alt="" />
-            <span>GEM EGG SHOP</span>
+            <span>OPEN GEM EGGS</span>
           </button>
           <button id="btn-menu-rules" class="secondary-modal-btn menu-side-btn" type="button">
             HOW TO PLAY
@@ -84,7 +84,7 @@
       </div>
     </div>
 
-    <!-- GEM EGG CAPSULE SHOP & MUTATION ROSTER (MAIN MENU SUB-SCREEN) -->
+    <!-- GEM EGG HATCHERY & MUTATION ROSTER (MAIN MENU SUB-SCREEN) -->
     <div id="gem-shop-screen" class="gem-shop-screen hidden">
       <div class="gem-shop-container">
         <header class="gem-shop-header">
@@ -94,39 +94,39 @@
           <div class="gem-shop-title-block">
             <img id="icon-shop-title-gem" class="px-icon px-icon-lg" alt="" />
             <div>
-              <h2>GEM EGG CAPSULE SHRINE</h2>
-              <p>BUY GEM EGGS TO UNLOCK MORE UNITS &bull; DUPLICATES GRANT MUTATIONS!</p>
+              <h2>GEM EGG HATCHERY</h2>
+              <p>OPEN GEM EGGS TO UNLOCK MORE UNITS &bull; DUPLICATES GRANT MUTATIONS!</p>
             </div>
           </div>
           <div class="shop-wallet-row">
             <div class="shop-wallet-pill">
               <img id="icon-shop-egg" class="px-icon px-icon-md" alt="" />
               <div>
-                <span class="stat-lbl">SAVED EGGS</span>
+                <span class="stat-lbl">OWNED GEM EGGS</span>
                 <strong id="shop-eggs-count">0</strong>
               </div>
             </div>
             <div class="shop-wallet-pill">
               <img id="icon-shop-bug" class="px-icon px-icon-md" alt="" />
               <div>
-                <span class="stat-lbl">NEXT EGG PROGRESS</span>
+                <span class="stat-lbl">NEXT GEM EGG</span>
                 <strong id="shop-bug-progress">0 / 1,000</strong>
               </div>
             </div>
           </div>
         </header>
 
-        <!-- CAPSULE BANNER & 1X / 4X / 8X PULL CONTROLS -->
+        <!-- CAPSULE BANNER & 1X / 4X / 8X OPEN CONTROLS -->
         <section class="capsule-banner">
           <div class="capsule-art-box">
             <img id="shop-showcase-egg" class="shop-showcase-egg" alt="" />
             <div class="capsule-banner-copy">
-              <div class="capsule-kicker">RARE GEM CAPSULE &bull; 1 EGG = 1,000 ENEMIES KILLED</div>
-              <h3>BUY GEM EGGS TO UNLOCK MORE UNITS!</h3>
+              <div class="capsule-kicker">1 GEM EGG EARNED PER 1,000 ENEMIES KILLED</div>
+              <h3>OPEN YOUR GEM EGGS TO UNLOCK MORE UNITS!</h3>
               <p>
-                Start with Chickens up to <strong>Cyber-Cluck 9000</strong> and buy
-                <strong>Gem Eggs</strong> to unlock more units! If you get a unit you already own,
-                it awakens a <strong>Mutation</strong> + Battle Cats <strong>+Level</strong>!
+                Start with Chickens up to <strong>Cyber-Cluck 9000</strong> and crack open the
+                <strong>Gem Eggs</strong> you earn from battle! If an egg hatches a unit you already
+                own, it awakens a <strong>Mutation</strong> + Battle Cats <strong>+Level</strong>!
               </p>
               <div class="mutation-odds-row">
                 <span class="mut-odds-pill common">COMMON 55%</span>
@@ -141,17 +141,17 @@
             <button id="btn-buy-egg-1" class="capsule-buy-btn single" type="button">
               <img id="icon-buy-gem-1" class="px-icon px-icon-md" alt="" />
               <span class="buy-qty">OPEN 1 GEM EGG</span>
-              <span class="buy-price">COST: 1 EGG</span>
+              <span class="buy-price">1X HATCH</span>
             </button>
             <button id="btn-buy-egg-4" class="capsule-buy-btn multi4" type="button">
               <img id="icon-buy-gem-4" class="px-icon px-icon-md" alt="" />
               <span class="buy-qty">OPEN 4 GEM EGGS</span>
-              <span class="buy-price">4X MULTI-HATCH &bull; 4 EGGS</span>
+              <span class="buy-price">4X MULTI-HATCH</span>
             </button>
             <button id="btn-buy-egg-8" class="capsule-buy-btn multi8" type="button">
               <img id="icon-buy-gem-8" class="px-icon px-icon-md" alt="" />
               <span class="buy-qty">OPEN 8 GEM EGGS</span>
-              <span class="buy-price">8X MEGA-HATCH &bull; 8 EGGS</span>
+              <span class="buy-price">8X MEGA-HATCH</span>
             </button>
           </div>
         </section>
@@ -192,16 +192,16 @@
           </button>
           <div id="cutscene-done-actions" class="cutscene-done-actions hidden">
             <button id="btn-cutscene-again-1" class="capsule-again-btn" type="button">
-              OPEN 1 MORE (1 EGG)
+              OPEN 1 MORE
             </button>
             <button id="btn-cutscene-again-4" class="capsule-again-btn" type="button">
-              OPEN 4 MORE (4 EGGS)
+              OPEN 4 MORE
             </button>
             <button id="btn-cutscene-again-8" class="capsule-again-btn" type="button">
-              OPEN 8 MORE (8 EGGS)
+              OPEN 8 MORE
             </button>
             <button id="btn-cutscene-done" class="primary-modal-btn cutscene-close-btn" type="button">
-              COLLECT &amp; RETURN TO SHOP
+              COLLECT &amp; BACK TO HATCHERY
             </button>
           </div>
         </footer>
@@ -261,11 +261,11 @@
           <div
             id="hud-saved-egg-pill"
             class="stat-pill battle-egg-pill"
-            title="1 Egg earned per 1,000 Enemies killed! Game & Eggs auto-save automatically."
+            title="Earn 1 Gem Egg per 1,000 Enemies killed! Open your Gem Eggs in the Main Menu."
           >
             <img id="icon-hud-battle-egg" class="px-icon px-icon-md" alt="" />
             <div>
-              <span class="stat-lbl">EGGS BANK</span>
+              <span class="stat-lbl">GEM EGGS</span>
               <strong id="hud-battle-eggs">0</strong>
             </div>
           </div>
@@ -284,7 +284,7 @@
             <img id="icon-btn-rules" class="px-icon px-icon-sm" alt="" />
             <span>RULES</span>
           </button>
-          <button id="btn-menu" class="hud-btn menu-hud-btn" type="button" title="Open Main Menu (Maps & Gem Egg Shop)">
+          <button id="btn-menu" class="hud-btn menu-hud-btn" type="button" title="Open Main Menu (Maps & Gem Eggs)">
             <img id="icon-btn-menu" class="px-icon px-icon-sm" alt="" />
             <span>MENU</span>
           </button>
@@ -451,15 +451,14 @@
         </h2>
         <ul class="rules-list">
           <li>
-            <strong>34 PIXEL CHICKENS &amp; GEM EGG GACHA:</strong> Start with the Chickens up to
-            <em>Cyber-Cluck 9000</em>, and buy <strong>Gem Eggs</strong> in the Main Menu Shop to
-            unlock more units!
+            <strong>34 PIXEL CHICKENS &amp; GEM EGGS:</strong> Start with the Chickens up to
+            <em>Cyber-Cluck 9000</em>, and open <strong>Gem Eggs</strong> in the Main Menu to unlock
+            more units!
           </li>
           <li>
-            <strong>SAVED EGGS &amp; AUTO-SAVE (1 PER 1,000 KILLS):</strong> Every
-            <strong>1,000 Enemies</strong> popped earns <strong>1 Egg</strong>, and your entire game
-            run, units, mutations, and Eggs save automatically! Spend Eggs in the
-            <strong>Gem Egg Shop</strong> (`1x`, `4x`, or `8x` multi-hatch!).
+            <strong>GEM EGGS &amp; AUTO-SAVE (1 PER 1,000 KILLS):</strong> Every
+            <strong>1,000 Enemies</strong> popped gives you <strong>1 Gem Egg</strong> directly!
+            Open them `1x`, `4x`, or `8x` at a time &mdash; your whole game saves automatically!
           </li>
           <li>
             <strong>4-TIER MUTATIONS &amp; +LEVELS:</strong> Hatching a Chicken you already own
@@ -501,8 +500,8 @@
         <div id="victory-egg-banner" class="endscreen-egg-card victory-egg-card">
           <img id="icon-victory-battle-egg" class="px-icon px-icon-lg" alt="" />
           <div>
-            <strong id="victory-eggs-earned">+0 EGGS BANKED!</strong>
-            <span id="victory-eggs-total">SAVED EGGS: 0 &bull; SPEND IN GEM EGG SHOP!</span>
+            <strong id="victory-eggs-earned">+0 GEM EGGS EARNED!</strong>
+            <span id="victory-eggs-total">OWNED GEM EGGS: 0 &bull; OPEN IN MAIN MENU!</span>
           </div>
         </div>
         <div class="modal-btn-row">
@@ -510,7 +509,7 @@
             CONTINUE FREEPLAY
           </button>
           <button id="btn-shop-victory" class="gem-cta-btn" type="button">
-            GEM EGG SHOP
+            OPEN GEM EGGS
           </button>
           <button id="btn-menu-victory" class="secondary-modal-btn" type="button">
             MAIN MENU
@@ -546,20 +545,20 @@
           </div>
         </div>
 
-        <!-- SAVED EGGS REWARD BREAKDOWN (1 EGG PER 1,000 ENEMIES KILLED) -->
+        <!-- GEM EGGS REWARD BREAKDOWN (1 GEM EGG PER 1,000 ENEMIES KILLED) -->
         <div class="endscreen-egg-card">
           <img id="icon-defeat-battle-egg" class="px-icon px-icon-lg" alt="" />
           <div class="endscreen-egg-body">
             <div class="egg-reward-headline">
-              <strong id="defeat-eggs-earned">+0 EGGS EARNED</strong>
-              <span class="egg-bank-pill" id="defeat-eggs-bank">TOTAL SAVED: 0 EGGS</span>
+              <strong id="defeat-eggs-earned">+0 GEM EGGS EARNED</strong>
+              <span class="egg-bank-pill" id="defeat-eggs-bank">OWNED: 0 GEM EGGS</span>
             </div>
             <div class="egg-rate-note">
-              1 EGG PER 1,000 ENEMIES KILLED (AUTO-SAVED TO PROFILE!)
+              1 GEM EGG PER 1,000 ENEMIES KILLED (AUTO-SAVED!)
             </div>
             <div class="egg-carry-meter">
               <div class="meter-lbl-row">
-                <span>PROGRESS TO NEXT EGG</span>
+                <span>PROGRESS TO NEXT GEM EGG</span>
                 <strong id="defeat-remainder-text">0 / 1,000 KILLS</strong>
               </div>
               <div class="meter-track">
@@ -598,7 +597,7 @@
           </button>
           <button id="btn-shop-gameover" class="gem-cta-btn" type="button">
             <img id="icon-defeat-gem-shop" class="px-icon px-icon-sm" alt="" />
-            <span id="lbl-defeat-shop-btn">GEM EGG SHOP</span>
+            <span id="lbl-defeat-shop-btn">OPEN GEM EGGS</span>
           </button>
           <button id="btn-menu-gameover" class="secondary-modal-btn" type="button">
             MAIN MENU

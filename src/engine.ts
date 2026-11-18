@@ -1548,7 +1548,7 @@ export class ChickenTdEngine {
     this.totalBugsPopped++;
     this.audio.playBugPop(def.isFoxBoss);
 
-    // Auto-bank & save +1 Egg immediately every 1,000 enemies popped!
+    // Auto-award & save +1 Gem Egg immediately every 1,000 enemies popped!
     const currentPool =
       PROGRESSION.getBugKillRemainder() + (this.totalBugsPopped - this.bugsBankedThisRun);
     if (currentPool >= BUGS_PER_EGG) {
@@ -1556,13 +1556,13 @@ export class ChickenTdEngine {
       if (bankRes.eggsEarned > 0) {
         const nestPt = getPointAlongPath(getTotalPathLength());
         this.spawnMapPopup(
-          `+${bankRes.eggsEarned} EGG SAVED!`,
+          `+${bankRes.eggsEarned} GEM EGG!`,
           nestPt.x,
           nestPt.y - 36,
-          '#38BDF8',
+          '#F472B6',
           1.15
         );
-        this.spawnRing(nestPt.x, nestPt.y, 52, '#38BDF8');
+        this.spawnRing(nestPt.x, nestPt.y, 52, '#F472B6');
         this.audio.playUpgrade();
       }
     }

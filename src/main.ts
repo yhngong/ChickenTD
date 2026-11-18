@@ -173,7 +173,7 @@ function initStaticPixelIcons(): void {
   setImg('icon-hud-egg', PIXEL_ATLAS.getIconUrl('egg'));
   setImg('icon-hud-fox', PIXEL_ATLAS.getIconUrl('fox'));
   setImg('icon-hud-bug', PIXEL_ATLAS.getIconUrl('bug'));
-  setImg('icon-hud-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-hud-battle-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-btn-speed', PIXEL_ATLAS.getIconUrl('speed'));
   setImg('icon-btn-sound', PIXEL_ATLAS.getIconUrl('sound_on'));
   setImg('icon-btn-rules', PIXEL_ATLAS.getIconUrl('rules'));
@@ -184,17 +184,17 @@ function initStaticPixelIcons(): void {
   setImg('icon-tab-td', PIXEL_ATLAS.getIconUrl('shield'));
   setImg('icon-rules-chicken', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-victory-trophy', PIXEL_ATLAS.getIconUrl('trophy'));
-  setImg('icon-victory-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-victory-battle-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-gameover-skull', PIXEL_ATLAS.getIconUrl('skull_defeat'));
-  setImg('icon-defeat-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-defeat-battle-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-defeat-gem-shop', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-cluck-cannon', PIXEL_ATLAS.getIconUrl('cannon'));
 
-  setImg('icon-menu-battle-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-menu-battle-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-menu-gem-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-cta-gem-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-shop-title-gem', PIXEL_ATLAS.getIconUrl('gem_egg'));
-  setImg('icon-shop-egg', PIXEL_ATLAS.getIconUrl('battle_egg'));
+  setImg('icon-shop-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-shop-bug', PIXEL_ATLAS.getIconUrl('bug'));
   setImg('icon-buy-gem-1', PIXEL_ATLAS.getIconUrl('gem_egg'));
   setImg('icon-buy-gem-4', PIXEL_ATLAS.getIconUrl('gem_egg'));
@@ -253,8 +253,10 @@ function renderMainMenu(): void {
   const rem = PROGRESSION.getBugKillRemainder();
   const unlockedCount = PROGRESSION.getUnlockedCount();
 
-  menuEggsCount.textContent = `${savedEggs.toLocaleString()} ${savedEggs === 1 ? 'EGG' : 'EGGS'}`;
-  menuEggsSub.textContent = `${rem.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} BUGS TO NEXT`;
+  menuEggsCount.textContent = `${savedEggs.toLocaleString()} ${
+    savedEggs === 1 ? 'GEM EGG' : 'GEM EGGS'
+  }`;
+  menuEggsSub.textContent = `${rem.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} KILLS TO NEXT`;
   menuCollectionSub.textContent = `${unlockedCount} / ${CHICKEN_ORDER.length} UNITS`;
   btnOpenGemShop.classList.toggle('has-eggs', savedEggs >= GEM_EGG_COST_EACH);
 
@@ -540,10 +542,10 @@ function finalizeCutsceneState(): void {
       : `${count}X GEM EGG HATCH COMPLETE!`;
   cutsceneSubtitle.textContent =
     count === 1
-      ? `SAVED EGGS REMAINING: ${PROGRESSION.getEggs().toLocaleString()}`
+      ? `GEM EGGS REMAINING: ${PROGRESSION.getEggs().toLocaleString()}`
       : `${newCount} NEW ${newCount === 1 ? 'UNIT' : 'UNITS'} & ${mutCount} ${
           mutCount === 1 ? 'MUTATION' : 'MUTATIONS'
-        } • SAVED EGGS LEFT: ${PROGRESSION.getEggs().toLocaleString()}`;
+        } • GEM EGGS LEFT: ${PROGRESSION.getEggs().toLocaleString()}`;
 
   btnCutsceneSkip.classList.add('hidden');
   const eggsNow = PROGRESSION.getEggs();
@@ -763,7 +765,7 @@ function setPlacementType(typeId: ChickenTypeId | null): void {
     engine.audio.playBlockedClick();
     bannerTitle.textContent = 'LOCKED GEM EGG UNIT!';
     bannerDesc.textContent =
-      `Kill ${BUGS_PER_EGG.toLocaleString()} Enemies per Egg, then open Gem Eggs in the Main Menu Shop to unlock this unit!`;
+      `Earn 1 Gem Egg per ${BUGS_PER_EGG.toLocaleString()} Enemies killed, then open your Gem Eggs in the Main Menu!`;
     return;
   }
   ghost.typeId = typeId;
@@ -804,16 +806,16 @@ function renderTroopCards(): void {
 
     if (!unlocked) {
       btn.className = 'troop-btn locked-troop';
-      btn.title = `${def.name} — LOCKED! Earn Eggs (1 per ${BUGS_PER_EGG.toLocaleString()} Enemies) & hatch in Main Menu Gem Egg Shop!`;
+      btn.title = `${def.name} — LOCKED! Earn Gem Eggs (1 per ${BUGS_PER_EGG.toLocaleString()} Enemies) & open them in the Main Menu!`;
       btn.innerHTML = `
         <img class="troop-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
         <div class="troop-meta">
           <div class="troop-top">
             <span class="troop-key">[${def.hotkey}]</span>
-            <span class="troop-cost" style="color:#f472b6"><img class="px-icon px-icon-sm" src="${lockIconUrl}" alt="" />EGG</span>
+            <span class="troop-cost" style="color:#f472b6"><img class="px-icon px-icon-sm" src="${lockIconUrl}" alt="" />GEM</span>
           </div>
           <span class="troop-name">??? (${formatCompactCost(def.baseCost)})</span>
-          <span class="troop-role">Hatch in Gem Shop</span>
+          <span class="troop-role">Open Gem Eggs</span>
         </div>
       `;
       btn.addEventListener('click', () => setPlacementType(id));
@@ -1025,10 +1027,10 @@ function populateDefeatEndscreen(): void {
   }
 
   defeatEggsEarned.textContent = `+${rep.eggsEarnedThisRun.toLocaleString()} ${
-    rep.eggsEarnedThisRun === 1 ? 'EGG' : 'EGGS'
+    rep.eggsEarnedThisRun === 1 ? 'GEM EGG' : 'GEM EGGS'
   } EARNED!`;
-  defeatEggsBank.textContent = `TOTAL SAVED: ${rep.totalSavedEggs.toLocaleString()} EGGS`;
-  defeatRemainderText.textContent = `${rep.newBugRemainder.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} BUGS`;
+  defeatEggsBank.textContent = `OWNED: ${rep.totalSavedEggs.toLocaleString()} GEM EGGS`;
+  defeatRemainderText.textContent = `${rep.newBugRemainder.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} KILLS`;
   defeatRemainderFill.style.width = `${Math.min(
     100,
     Math.round((rep.newBugRemainder / BUGS_PER_EGG) * 100)
@@ -1050,7 +1052,7 @@ function populateDefeatEndscreen(): void {
   }
 
   lblDefeatShopBtn.textContent =
-    rep.totalSavedEggs > 0 ? `GEM EGG SHOP (${rep.totalSavedEggs})` : 'GEM EGG SHOP';
+    rep.totalSavedEggs > 0 ? `OPEN GEM EGGS (${rep.totalSavedEggs})` : 'OPEN GEM EGGS';
 }
 
 function updateHudBattleEggsLive(): void {
@@ -1113,8 +1115,8 @@ function refreshFullUi(): void {
 
   if (!inMainMenu && engine.status === 'victory_prompt') {
     victorySummary.textContent = `You crushed the Nebula Cosmic Foxes on ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge})! Popped ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
-    victoryEggsEarned.textContent = `+${engine.lastVictoryEggsEarned.toLocaleString()} EGGS SAVED!`;
-    victoryEggsTotal.textContent = `TOTAL SAVED EGGS: ${PROGRESSION.getEggs().toLocaleString()} • SPEND IN GEM EGG SHOP!`;
+    victoryEggsEarned.textContent = `+${engine.lastVictoryEggsEarned.toLocaleString()} GEM EGGS EARNED!`;
+    victoryEggsTotal.textContent = `OWNED GEM EGGS: ${PROGRESSION.getEggs().toLocaleString()} • OPEN IN MAIN MENU!`;
     victoryModal.classList.remove('hidden');
   } else {
     victoryModal.classList.add('hidden');
