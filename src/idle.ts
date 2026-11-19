@@ -103,10 +103,92 @@ export class IdlePastureSimulation {
 
   private bantamIdleCanvas: HTMLCanvasElement | null = null;
   private bantamAttackCanvas: HTMLCanvasElement | null = null;
+  private staticBgCanvas: HTMLCanvasElement | null = null;
 
   private ensureBantamSprites(): void {
-    if (this.bantamIdleCanvas && this.bantamAttackCanvas) return;
     if (typeof document === 'undefined') return;
+    if (!this.staticBgCanvas) {
+      const bg = document.createElement('canvas');
+      bg.width = IDLE_CANVAS_W;
+      bg.height = IDLE_CANVAS_H;
+      const bCtx = bg.getContext('2d')!;
+      bCtx.imageSmoothingEnabled = false;
+
+      // Cozy twilight sky bands
+      bCtx.fillStyle = '#0F172A';
+      bCtx.fillRect(0, 0, IDLE_CANVAS_W, 20);
+      bCtx.fillStyle = '#1E293B';
+      bCtx.fillRect(0, 20, IDLE_CANVAS_W, 18);
+      bCtx.fillStyle = '#334155';
+      bCtx.fillRect(0, 38, IDLE_CANVAS_W, 18);
+
+      // Distant rolling hills
+      bCtx.fillStyle = '#14532D';
+      bCtx.fillRect(0, 50, IDLE_CANVAS_W, 18);
+      for (let hx = 0; hx < IDLE_CANVAS_W; hx += 48) {
+        bCtx.fillRect(hx + 6, 45, 32, 6);
+      }
+
+      // Wooden pasture fence along horizon
+      bCtx.fillStyle = '#78350F';
+      bCtx.fillRect(0, 58, IDLE_CANVAS_W, 3);
+      bCtx.fillRect(0, 64, IDLE_CANVAS_W, 3);
+      for (let fx = 8; fx < IDLE_CANVAS_W; fx += 24) {
+        bCtx.fillStyle = '#92400E';
+        bCtx.fillRect(fx, 53, 4, 17);
+        bCtx.fillStyle = '#B45309';
+        bCtx.fillRect(fx, 53, 4, 2);
+      }
+
+      // Lush meadow grass
+      bCtx.fillStyle = '#15803D';
+      bCtx.fillRect(0, 68, IDLE_CANVAS_W, IDLE_CANVAS_H - 68);
+      bCtx.fillStyle = '#16A34A';
+      bCtx.fillRect(0, 68, IDLE_CANVAS_W, 8);
+
+      // Grass tufts & tiny wildflowers
+      for (let gx = 14; gx < IDLE_CANVAS_W; gx += 34) {
+        bCtx.fillStyle = '#22C55E';
+        bCtx.fillRect(gx, 74, 4, 2);
+        bCtx.fillRect(gx + 14, 122, 5, 2);
+        bCtx.fillStyle = gx % 68 === 14 ? '#FACC15' : '#F472B6';
+        bCtx.fillRect(gx + 2, 72, 2, 2);
+      }
+
+      // Dirt garden trail (bugs walk right -> left)
+      bCtx.fillStyle = '#78350F';
+      bCtx.fillRect(42, 83, IDLE_CANVAS_W - 42, 28);
+      bCtx.fillStyle = '#92400E';
+      bCtx.fillRect(44, 85, IDLE_CANVAS_W - 44, 24);
+      bCtx.fillStyle = '#B45309';
+      for (let px = 56; px < IDLE_CANVAS_W; px += 28) {
+        bCtx.fillRect(px, 91, 6, 2);
+        bCtx.fillRect(px + 12, 101, 5, 2);
+      }
+
+      // Cozy Gem Egg Nest Basket on the left!
+      bCtx.fillStyle = '#181425';
+      bCtx.fillRect(22, 87, 30, 18);
+      bCtx.fillStyle = '#D97706';
+      bCtx.fillRect(24, 89, 26, 14);
+      bCtx.fillStyle = '#F59E0B';
+      bCtx.fillRect(24, 89, 26, 4);
+      const eggPixels = [28, 36, 43];
+      for (const ex of eggPixels) {
+        bCtx.fillStyle = '#181425';
+        bCtx.fillRect(ex - 1, 82, 7, 8);
+        bCtx.fillStyle = '#38BDF8';
+        bCtx.fillRect(ex, 83, 5, 6);
+        bCtx.fillStyle = '#F472B6';
+        bCtx.fillRect(ex + 1, 85, 3, 2);
+        bCtx.fillStyle = '#FFFFFF';
+        bCtx.fillRect(ex + 1, 83, 2, 1);
+      }
+
+      this.staticBgCanvas = bg;
+    }
+
+    if (this.bantamIdleCanvas && this.bantamAttackCanvas) return;
     const spr = PIXEL_ATLAS.getChickenSprite('bantam');
     if (!spr) return;
 
@@ -410,31 +492,45 @@ export class IdlePastureSimulation {
       }
     }
 
-    // 4. Update rings, particles, and popups
-    for (const r of this.rings) r.age += dt;
-    this.rings = this.rings.filter((r) => r.age < r.lifetime);
+    // 4. Update rings, particles, and popups (in-place compaction)
+    let wRing = 0;
+    for (let i = 0; i < this.rings.length; i++) {
+      const r = this.rings[i];
+      r.age += dt;
+      if (r.age < r.lifetime) this.rings[wRing++] = r;
+    }
+    this.rings.length = wRing;
 
-    for (const p of this.particles) {
+    let wPt = 0;
+    for (let i = 0; i < this.particles.length; i++) {
+      const p = this.particles[i];
       p.age += dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
+      if (p.age < p.lifetime) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        this.particles[wPt++] = p;
+      }
     }
-    this.particles = this.particles.filter((p) => p.age < p.lifetime);
+    this.particles.length = wPt;
 
-    for (const pop of this.popups) {
+    let wPop = 0;
+    for (let i = 0; i < this.popups.length; i++) {
+      const pop = this.popups[i];
       pop.age += dt;
-      pop.y += pop.vy * dt;
+      if (pop.age < pop.lifetime) {
+        pop.y += pop.vy * dt;
+        this.popups[wPop++] = pop;
+      }
     }
-    this.popups = this.popups.filter((pop) => pop.age < pop.lifetime);
+    this.popups.length = wPop;
 
     // ==================== DRAW 16-BIT PIXEL PASTURE ====================
-    // Cozy twilight sky bands
-    ctx.fillStyle = '#0F172A';
-    ctx.fillRect(0, 0, IDLE_CANVAS_W, 20);
-    ctx.fillStyle = '#1E293B';
-    ctx.fillRect(0, 20, IDLE_CANVAS_W, 18);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(0, 38, IDLE_CANVAS_W, 18);
+    if (this.staticBgCanvas) {
+      ctx.drawImage(this.staticBgCanvas, 0, 0);
+    } else {
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(0, 0, IDLE_CANVAS_W, IDLE_CANVAS_H);
+    }
 
     // Twinkling pixel stars
     const starCoords = [
@@ -460,70 +556,6 @@ export class IdlePastureSimulation {
       const cy = 24 + (c % 2) * 8;
       ctx.fillRect(cx, cy, 26, 6);
       ctx.fillRect(cx + 5, cy - 4, 16, 4);
-    }
-
-    // Distant rolling hills
-    ctx.fillStyle = '#14532D';
-    ctx.fillRect(0, 50, IDLE_CANVAS_W, 18);
-    for (let hx = 0; hx < IDLE_CANVAS_W; hx += 48) {
-      ctx.fillRect(hx + 6, 45, 32, 6);
-    }
-
-    // Wooden pasture fence along horizon
-    ctx.fillStyle = '#78350F';
-    ctx.fillRect(0, 58, IDLE_CANVAS_W, 3);
-    ctx.fillRect(0, 64, IDLE_CANVAS_W, 3);
-    for (let fx = 8; fx < IDLE_CANVAS_W; fx += 24) {
-      ctx.fillStyle = '#92400E';
-      ctx.fillRect(fx, 53, 4, 17);
-      ctx.fillStyle = '#B45309';
-      ctx.fillRect(fx, 53, 4, 2);
-    }
-
-    // Lush meadow grass
-    ctx.fillStyle = '#15803D';
-    ctx.fillRect(0, 68, IDLE_CANVAS_W, IDLE_CANVAS_H - 68);
-    ctx.fillStyle = '#16A34A';
-    ctx.fillRect(0, 68, IDLE_CANVAS_W, 8);
-
-    // Grass tufts & tiny wildflowers
-    for (let gx = 14; gx < IDLE_CANVAS_W; gx += 34) {
-      ctx.fillStyle = '#22C55E';
-      ctx.fillRect(gx, 74, 4, 2);
-      ctx.fillRect(gx + 14, 122, 5, 2);
-      ctx.fillStyle = gx % 68 === 14 ? '#FACC15' : '#F472B6';
-      ctx.fillRect(gx + 2, 72, 2, 2);
-    }
-
-    // Dirt garden trail (bugs walk right -> left)
-    ctx.fillStyle = '#78350F';
-    ctx.fillRect(42, 83, IDLE_CANVAS_W - 42, 28);
-    ctx.fillStyle = '#92400E';
-    ctx.fillRect(44, 85, IDLE_CANVAS_W - 44, 24);
-    ctx.fillStyle = '#B45309';
-    for (let px = 56; px < IDLE_CANVAS_W; px += 28) {
-      ctx.fillRect(px, 91, 6, 2);
-      ctx.fillRect(px + 12, 101, 5, 2);
-    }
-
-    // Cozy Gem Egg Nest Basket on the left!
-    ctx.fillStyle = '#181425';
-    ctx.fillRect(22, 87, 30, 18);
-    ctx.fillStyle = '#D97706';
-    ctx.fillRect(24, 89, 26, 14);
-    ctx.fillStyle = '#F59E0B';
-    ctx.fillRect(24, 89, 26, 4);
-    // Tiny Gem Eggs nestled inside the basket!
-    const eggPixels = [28, 36, 43];
-    for (const ex of eggPixels) {
-      ctx.fillStyle = '#181425';
-      ctx.fillRect(ex - 1, 82, 7, 8);
-      ctx.fillStyle = '#38BDF8';
-      ctx.fillRect(ex, 83, 5, 6);
-      ctx.fillStyle = '#F472B6';
-      ctx.fillRect(ex + 1, 85, 3, 2);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(ex + 1, 83, 2, 1);
     }
 
     // Draw Brawler Bantam Hero (planted directly on the dirt trail — zero floating!)

@@ -187,6 +187,97 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
       '..............',
     ],
   },
+  cannon_timestop: {
+    pal: {
+      O: OUTLINE,
+      P: '#A855F7',
+      C: '#22D3EE',
+      Y: '#FACC15',
+      H: '#FFFFFF',
+    },
+    rows: [
+      '..OOOOOOOOOO..',
+      '..OYYYYYYYYO..',
+      '...OPPHHPPO...',
+      '....OPCCPO....',
+      '.....OCCO.....',
+      '.....OCCO.....',
+      '....OPCCPO....',
+      '...OPPCCPPO...',
+      '..OYYYYYYYYO..',
+      '..OOOOOOOOOO..',
+      '..............',
+      '..............',
+    ],
+  },
+  cannon_dmgboost: {
+    pal: {
+      O: OUTLINE,
+      F: '#F97316',
+      R: '#EF4444',
+      Y: '#FACC15',
+      H: '#FEF08A',
+    },
+    rows: [
+      '.......OOOOOO.',
+      '.....OOYYYYHHO',
+      '...OOFFRRRRHHO',
+      '..OFFYYYYFFRRO',
+      '.OFFFFFFFFOO..',
+      '.OFFOOOOOO....',
+      '..OO.OYYO.....',
+      '....OYHHYO....',
+      '....OYYYYO....',
+      '.....OOOO.....',
+      '..............',
+      '..............',
+    ],
+  },
+  cannon_nova: {
+    pal: {
+      O: OUTLINE,
+      R: '#F43F5E',
+      C: '#38BDF8',
+      Y: '#FACC15',
+      H: '#FFFFFF',
+    },
+    rows: [
+      '......OO......',
+      '.....ORRO.....',
+      '..OO.OHHO.OO..',
+      '.ORRHOHHHORRO.',
+      'ORHHYYYYYYHHRO',
+      '.ORRHYCCYHRRO.',
+      '..OO.OHHO.OO..',
+      '.....ORRO.....',
+      '....ORCCRO....',
+      '....OOOOOO....',
+      '..............',
+      '..............',
+    ],
+  },
+  cannon_cornstorm: {
+    pal: {
+      O: OUTLINE,
+      G: '#22C55E',
+      Y: '#FACC15',
+      H: '#FEF08A',
+    },
+    rows: [
+      '.......OOOOOO.',
+      '.....OOYYYYHHO',
+      '...OOGGYYYYHHO',
+      '..OGGHHHHGGYYO',
+      '.OGGGGGGGGOO..',
+      '.OGGOOOOOO....',
+      '..OO.OYYO.....',
+      '....OYGGYO....',
+      '....OYYYYO....',
+      '.....OOOO.....',
+      '..............',
+      '..............',
+    ],
+  },
   mutation_star: {
     pal: {
       O: OUTLINE,
@@ -909,7 +1000,7 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       break;
     }
     case 'ranger': {
-      // Cute forest-scout cap with gold acorn badge + mini pop-rifle under wing!
+      // Cute forest-scout cap with gold acorn badge + mini scout-rifle under wing!
       px(bx + 2, by + 1, '#14532D', 10, 1);
       px(bx + 3, by - 2, '#15803D', 7, 3);
       px(bx + 6, by - 1, '#FACC15', 2, 2);
@@ -918,7 +1009,7 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       break;
     }
     case 'lobber': {
-      // Adorable oversized round olive helmet + stubby egg-popper tube!
+      // Adorable oversized round olive helmet + stubby egg-mortar tube!
       px(bx + 2, by - 2, '#4D7C0F', 9, 3);
       px(bx + 1, by + 1, '#365314', 11, 1);
       px(bx + 4, by - 1, '#BEF264', 3, 1);
@@ -1022,11 +1113,11 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       break;
     }
     case 'stand_hen': {
-      // JOJO CLUCKSTAR: Iconic dark-indigo Stand-User cap + gold badge + purple/gold Stand aura!
+      // STAR CRUSADER: Iconic dark-indigo Crusader cap + gold badge + purple/gold Stand aura!
       px(bx + 2, by - 2, '#1E1B4B', 8, 4);
       px(bx + 3, by + 1, '#312E81', 10, 1); // cool peaked cap brim above eye!
       px(bx + 2, by - 2, '#FACC15', 8, 1); // gold cap band
-      px(bx + 7, by - 1, '#FACC15', 2, 2); // gold Jotaro wing-emblem!
+      px(bx + 7, by - 1, '#FACC15', 2, 2); // gold Crusader wing-emblem!
       // Cool purple Stand-User collar & gold chain pixel on chest
       px(bx + 2, by + 7, '#4C1D95', 5, 2);
       px(bx + 6, by + 7, '#FACC15', 2, 1);
@@ -1221,23 +1312,23 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       break;
     }
     case 'roost_beacon': {
-      // Roost Beacon (Bloons Village homage): thatched wooden watchtower roof + radar beacon + war-drum!
+      // Roost Beacon (Watchtower Support): thatched wooden watchtower roof + beacon + war-drum!
       px(bx + 1, by, '#78350F', 11, 2);
       px(bx + 3, by - 2, '#D97706', 7, 2);
       px(bx + 5, by - 5, '#94A3B8', 2, 3);
-      px(bx + 5, by - 6, '#38BDF8', 2, 2); // spinning cyan radar beacon tip!
-      // Cute red & gold Jungle Drum in front!
+      px(bx + 5, by - 6, '#38BDF8', 2, 2); // spinning cyan beacon tip!
+      // Cute red & gold War-Drum in front!
       px(bx + 12, by + 6, OUTLINE, 5, 5);
       px(bx + 13, by + 7, '#DC2626', 3, 3);
       px(bx + 13, by + 7, '#FEF08A', 3, 1);
       break;
     }
     case 'brew_hen': {
-      // Espresso Brew-Hen (Bloons Alch-Buff homage): cozy brown barista beret + steaming golden buff mug!
+      // Espresso Brew-Hen (Barista Support): cozy brown barista beret + steaming golden buff mug!
       px(bx + 2, by - 2, '#78350F', 8, 3);
       px(bx + 4, by - 3, '#B45309', 4, 1);
       px(bx + 3, by + 8, '#FFFFFF', 6, 2); // crisp white barista apron!
-      // Glowing Berserker Espresso Mug + rising steam!
+      // Glowing Dark-Roast Espresso Mug + rising steam!
       px(bx + 12, by + 6, OUTLINE, 5, 5);
       px(bx + 13, by + 7, '#F59E0B', 3, 3);
       px(bx + 13, by + 7, '#FEF08A', 2, 1);
@@ -1245,7 +1336,7 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       break;
     }
     case 'overclock_engie': {
-      // Overclock Engie-Hen (Bloons Engineer homage): yellow hard-hat + blue overclock coil + silver wrench!
+      // Overclock Engie-Hen (Dynamo Mechanic): yellow hard-hat + blue dynamo coil + silver wrench!
       px(bx + 1, by, '#CA8A04', 11, 1);
       px(bx + 2, by - 3, '#FACC15', 9, 3);
       px(bx + 5, by - 2, '#0284C7', 3, 2);
@@ -1825,7 +1916,7 @@ export class PixelSpriteAtlas {
       const portraitCanvas = makeCanvas(44, 44);
       const pCtx = portraitCanvas.getContext('2d')!;
       if (id === 'stand_hen' && this.standSprites) {
-        // Show JoJo Cluckstar's glowing Stand Spirit hovering behind it in the Shop portrait!
+        // Show Star Crusader's glowing Stand Spirit hovering behind it in the Shop portrait!
         pCtx.save();
         pCtx.globalAlpha = 0.85;
         pCtx.drawImage(this.standSprites.normalIdle, -2, 0, 36, 33);

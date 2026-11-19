@@ -80,18 +80,16 @@ const PIXEL_FONT_3X5: Record<string, readonly string[]> = {
   ' ': ['...', '...', '...', '...', '...'],
 };
 
-function drawCrispPixelText(
+const TEXT_STAMP_CACHE = new Map<string, HTMLCanvasElement>();
+const MAX_TEXT_STAMP_CACHE = 96;
+
+function renderCrispPixelTextDirect(
   ctx: CanvasRenderingContext2D,
-  rawText: string,
-  cx: number,
-  cy: number,
+  text: string,
+  startX: number,
+  startY: number,
   color: string
 ): void {
-  const text = rawText.toUpperCase();
-  const totalW = text.length * 4 - 1;
-  const startX = Math.round(cx - totalW / 2);
-  const startY = Math.round(cy - 2);
-
   // Dark pixel backing plate / shadow for instant readability
   ctx.fillStyle = OUTLINE;
   for (let i = 0; i < text.length; i++) {
@@ -120,6 +118,43 @@ function drawCrispPixelText(
       }
     }
   }
+}
+
+function drawCrispPixelText(
+  ctx: CanvasRenderingContext2D,
+  rawText: string,
+  cx: number,
+  cy: number,
+  color: string
+): void {
+  const text = rawText.toUpperCase();
+  if (text.length === 0) return;
+  const totalW = text.length * 4 - 1;
+  const startX = Math.round(cx - totalW / 2);
+  const startY = Math.round(cy - 2);
+
+  if (typeof document === 'undefined') {
+    renderCrispPixelTextDirect(ctx, text, startX, startY, color);
+    return;
+  }
+
+  const key = `${text}|${color}`;
+  let stamp = TEXT_STAMP_CACHE.get(key);
+  if (!stamp) {
+    if (TEXT_STAMP_CACHE.size >= MAX_TEXT_STAMP_CACHE) {
+      const oldestKey = TEXT_STAMP_CACHE.keys().next().value;
+      if (oldestKey !== undefined) TEXT_STAMP_CACHE.delete(oldestKey);
+    }
+    stamp = document.createElement('canvas');
+    stamp.width = totalW + 3;
+    stamp.height = 8;
+    const sCtx = stamp.getContext('2d')!;
+    sCtx.imageSmoothingEnabled = false;
+    renderCrispPixelTextDirect(sCtx, text, 1, 1, color);
+    TEXT_STAMP_CACHE.set(key, stamp);
+  }
+
+  ctx.drawImage(stamp, startX - 1, startY - 1);
 }
 
 function toPx(logicalVal: number): number {
@@ -395,14 +430,25 @@ export function bakeMapPreviewDataUrl(mapId: MapId): string {
 }
 
 export class MeadowRenderer {
+  private mainCtx: CanvasRenderingContext2D | null;
   private staticBg: HTMLCanvasElement;
   private bakedMapId: MapId | null = null;
+  private sortedTowersBuf: PlacedChicken[] = [];
+  private lastTowerSortSig = '';
+  // Overdraw guard for dense stacked swarms (230x150 = 2x2 pixel cells)
+  private bugCellFrame = new Int32Array(230 * 150);
+  private bugCellCount = new Uint8Array(230 * 150);
+  private renderFrameCounter = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     canvas.width = PIXEL_CANVAS_W;
     canvas.height = PIXEL_CANVAS_H;
-    const mainCtx = canvas.getContext('2d')!;
-    mainCtx.imageSmoothingEnabled = false;
+    this.mainCtx =
+      (canvas.getContext('2d', { alpha: false }) as CanvasRenderingContext2D | null) ??
+      canvas.getContext('2d');
+    if (this.mainCtx) {
+      this.mainCtx.imageSmoothingEnabled = false;
+    }
 
     this.staticBg = document.createElement('canvas');
     this.staticBg.width = PIXEL_CANVAS_W;
@@ -426,7 +472,7 @@ export class MeadowRenderer {
     if (this.bakedMapId !== engine.mapId) {
       this.setMap(engine.mapId);
     }
-    const ctx = canvas.getContext('2d');
+    const ctx = this.mainCtx ?? canvas.getContext('2d');
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
@@ -438,7 +484,7 @@ export class MeadowRenderer {
 
     // 3. Selected Chicken Pixel Range Circle (+ Highlighted Buffed Allies for Support Units!)
     if (selectedTowerId !== null) {
-      const sel = engine.towers.find((t) => t.id === selectedTowerId);
+      const sel = engine.getTowerById(selectedTowerId);
       if (sel) {
         const selDef = CHICKEN_DEFS[sel.typeId];
         const eff = engine.getEffectiveChickenStats(sel);
@@ -464,7 +510,7 @@ export class MeadowRenderer {
       }
     }
 
-    // 4. Ghost Placement Preview (Pixel Sprite + Pixel Range Ring + Bloons-style Support Preview!)
+    // 4. Ghost Placement Preview (Pixel Sprite + Pixel Range Ring + Support Aura Preview!)
     if (ghost.typeId && ghost.insideCanvas) {
       const def = CHICKEN_DEFS[ghost.typeId];
       const cost = engine.getTowerBaseCost(ghost.typeId);
@@ -512,47 +558,90 @@ export class MeadowRenderer {
       }
     }
 
-    // 5. Placed Chicken Troops (depth-sorted by Y for authentic 2D pixel overlap!)
-    const sortedTowers = [...engine.towers].sort((a, b) => a.y - b.y);
-    for (const tower of sortedTowers) {
+    // 5. Placed Chicken Troops (cached depth-sort by Y for authentic 2D pixel overlap!)
+    const tLen = engine.towers.length;
+    const sig =
+      tLen === 0
+        ? '0'
+        : `${tLen}:${engine.towers[0].id}:${engine.towers[tLen - 1].id}`;
+    if (sig !== this.lastTowerSortSig) {
+      this.lastTowerSortSig = sig;
+      this.sortedTowersBuf = engine.towers.slice().sort((a, b) => a.y - b.y);
+    }
+    for (let i = 0; i < this.sortedTowersBuf.length; i++) {
+      const tower = this.sortedTowersBuf[i];
       this.drawPixelPlacedChicken(ctx, engine, tower, tower.id === selectedTowerId, nowSec);
     }
 
-    // 6. Bugs & Giant Fox Bosses (regular bugs first, Giant Foxes on top)
-    for (const e of engine.enemies) {
-      if (!ENEMY_DEFS[e.typeId].isFoxBoss) {
+    // 6. Bugs & Giant Fox Bosses (regular bugs first with 2x2 pixel overdraw culling, Giant Foxes on top)
+    const frameTag = ++this.renderFrameCounter;
+    let hasFoxBoss = false;
+    for (let i = 0; i < engine.enemies.length; i++) {
+      const e = engine.enemies[i];
+      if (e.alive === false) continue;
+      if (ENEMY_DEFS[e.typeId].isFoxBoss) {
+        hasFoxBoss = true;
+      } else {
+        const cx = Math.max(0, Math.min(229, toPx(e.x ?? 0) >> 1));
+        const cy = Math.max(0, Math.min(149, toPx(e.y ?? 0) >> 1));
+        const cellIdx = cy * 230 + cx;
+        if (this.bugCellFrame[cellIdx] !== frameTag) {
+          this.bugCellFrame[cellIdx] = frameTag;
+          this.bugCellCount[cellIdx] = 1;
+        } else if (this.bugCellCount[cellIdx] >= 2) {
+          continue;
+        } else {
+          this.bugCellCount[cellIdx]++;
+        }
         this.drawPixelEnemy(ctx, e);
       }
     }
-    for (const e of engine.enemies) {
-      if (ENEMY_DEFS[e.typeId].isFoxBoss) {
-        this.drawPixelEnemy(ctx, e);
+    if (hasFoxBoss) {
+      for (let i = 0; i < engine.enemies.length; i++) {
+        const e = engine.enemies[i];
+        if (e.alive !== false && ENEMY_DEFS[e.typeId].isFoxBoss) {
+          this.drawPixelEnemy(ctx, e);
+        }
       }
     }
 
-    // 6.5. Summoned Astral Stands (fly out from JoJo Cluckstar & ORA-punch enemies!)
-    for (const stand of engine.stands) {
-      const owner = engine.towers.find((t) => t.id === stand.ownerTowerId);
+    // 6.5. Summoned Astral Stands (fly out from Star Crusader & ORA-punch enemies!)
+    for (let i = 0; i < engine.stands.length; i++) {
+      const stand = engine.stands[i];
+      const owner = engine.getTowerById(stand.ownerTowerId);
       if (owner) {
         this.drawPixelActiveStand(ctx, stand, owner, nowSec);
       }
     }
 
     // 7. Pixel Projectiles
-    for (const p of engine.projectiles) {
-      this.drawPixelProjectile(ctx, p);
+    for (let i = 0; i < engine.projectiles.length; i++) {
+      this.drawPixelProjectile(ctx, engine.projectiles[i]);
     }
 
     // 8. Expanding Pixel Shockwave Rings & Pixel Burst Particles
-    for (const r of engine.rings) {
+    for (let i = 0; i < engine.rings.length; i++) {
+      const r = engine.rings[i];
       const t = r.age / r.lifetime;
       const curRad = toPx(r.maxRadius * (0.25 + 0.75 * t));
       drawPixelCircle(ctx, toPx(r.x), toPx(r.y), curRad, r.color, t > 0.55);
     }
 
-    for (const pt of engine.particles) {
+    for (let i = 0; i < engine.particles.length; i++) {
+      const pt = engine.particles[i];
       ctx.fillStyle = pt.color;
       ctx.fillRect(toPx(pt.x), toPx(pt.y), pt.size, pt.size);
+    }
+
+    // 8.5. Active Cannon Battlefield Visual Frame (Time-Stop Chrono Border!)
+    if (engine.cannonTimeStopVisualTimer > 0) {
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.10)';
+      ctx.fillRect(0, 0, PIXEL_CANVAS_W, PIXEL_CANVAS_H);
+      ctx.fillStyle = Math.floor(nowSec * 6) % 2 === 0 ? '#C084FC' : '#22D3EE';
+      ctx.fillRect(0, 0, PIXEL_CANVAS_W, 2);
+      ctx.fillRect(0, PIXEL_CANVAS_H - 2, PIXEL_CANVAS_W, 2);
+      ctx.fillRect(0, 0, 2, PIXEL_CANVAS_H);
+      ctx.fillRect(PIXEL_CANVAS_W - 2, 0, 2, PIXEL_CANVAS_H);
     }
 
     // 9. Crisp Pixel Bitmap Labels & Floating Popups
@@ -627,7 +716,18 @@ export class MeadowRenderer {
     const mutTier = PROGRESSION.getMutation(tower.typeId);
     const mutColor = mutTier ? MUTATION_DEFS[mutTier].color : null;
 
-    if (def.isSupport && !isSelected) {
+    if (engine.cannonDamageBoostTimer > 0) {
+      // Blazing golden-orange Overdrive ring when Damage Boost Cannon is active!
+      const boostR = 11 + (Math.floor(nowSec * 8) % 2);
+      drawPixelCircle(
+        ctx,
+        px,
+        py + 2,
+        boostR,
+        Math.floor(nowSec * 10) % 2 === 0 ? '#F97316' : '#FACC15',
+        false
+      );
+    } else if (def.isSupport && !isSelected) {
       // Subtle ambient support beacon ring under Support Chickens!
       const supR = 11 + (Math.floor(nowSec * 3) % 2);
       drawPixelCircle(ctx, px, py + 2, supR, '#67E8F9', true);
@@ -648,13 +748,15 @@ export class MeadowRenderer {
     const cuteIdleBob =
       tower.recoil <= 0.05 && Math.sin(nowSec * 3.6 + tower.id * 1.9) > 0.62 ? -1 : 0;
 
-    ctx.save();
-    ctx.translate(px, py + cuteIdleBob);
     if (faceLeft) {
+      ctx.save();
+      ctx.translate(px, py + cuteIdleBob);
       ctx.scale(-1, 1);
+      ctx.drawImage(frame, -11, -12);
+      ctx.restore();
+    } else {
+      ctx.drawImage(frame, px - 11, py + cuteIdleBob - 12);
     }
-    ctx.drawImage(frame, -11, -12);
-    ctx.restore();
 
     // Crisp Pixel Buff Indicator Arrow above Chicken if buffed by a nearby Support Chicken!
     if (eff.supportBuffCount > 0 && !def.isSupport) {
@@ -770,26 +872,49 @@ export class MeadowRenderer {
     const sprSet = PIXEL_ATLAS.getEnemySprite(e.typeId);
     if (!sprSet) return;
 
-    const pos = getPointAlongPath(e.distance, e.lateralOffset);
-    const px = toPx(pos.x);
-    const py = toPx(pos.y);
+    let ex = e.x;
+    let ey = e.y;
+    let eAng = e.angle;
+    if (ex === undefined || ey === undefined || eAng === undefined) {
+      const pos = getPointAlongPath(e.distance, e.lateralOffset);
+      ex = pos.x;
+      ey = pos.y;
+      eAng = pos.angle;
+    }
+    const px = toPx(ex);
+    const py = toPx(ey);
 
     const fIdx = (Math.floor(e.walkPhase) & 1) as 0 | 1;
     const img = e.hitFlash > 0.45 ? sprSet.flashFrames[fIdx] : sprSet.frames[fIdx];
-    const faceLeft = Math.cos(pos.angle) < -0.15;
+    const faceLeft = Math.cos(eAng) < -0.15;
+    const halfW = img.width >> 1;
+    const halfH = img.height >> 1;
 
-    ctx.save();
-    ctx.translate(px, py);
-    if (def.isCamo) {
-      ctx.globalAlpha = 0.78;
+    if (!faceLeft && !def.isCamo) {
+      ctx.drawImage(img, px - halfW, py - halfH);
+    } else {
+      ctx.save();
+      ctx.translate(px, py);
+      if (def.isCamo) {
+        ctx.globalAlpha = 0.78;
+      }
+      if (faceLeft) {
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(img, -halfW, -halfH);
+      ctx.restore();
     }
-    if (faceLeft) {
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(img, -Math.floor(img.width / 2), -Math.floor(img.height / 2));
-    ctx.restore();
 
-    // Pixel Status Pips (Slow / Burn / Acid)
+    // Pixel Status Pips (Time-Stop Freeze / Armor Shatter / Slow / Burn)
+    if (e.freezeTimer > 0) {
+      drawPixelCircle(ctx, px, py, Math.max(5, Math.floor(img.width / 2) + 1), '#C084FC', true);
+      ctx.fillStyle = '#22D3EE';
+      ctx.fillRect(px - 5, py - Math.floor(img.height / 2) - 2, 2, 2);
+    }
+    if (e.vulnTimer > 0) {
+      ctx.fillStyle = '#F43F5E';
+      ctx.fillRect(px + 4, py - Math.floor(img.height / 2) - 2, 2, 2);
+    }
     if (e.slowTimer > 0) {
       ctx.fillStyle = '#38BDF8';
       ctx.fillRect(px - 2, py - Math.floor(img.height / 2) - 2, 2, 2);

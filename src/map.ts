@@ -1,4 +1,4 @@
-import { MapId, PlacedChicken } from './types';
+import { ActiveEnemy, MapId, PlacedChicken } from './types';
 
 export const MAP_WIDTH = 920;
 export const MAP_HEIGHT = 600;
@@ -22,9 +22,14 @@ export interface PathSegment {
   y1: number;
   x2: number;
   y2: number;
+  dx: number;
+  dy: number;
   length: number;
+  invLen: number;
   cumStart: number;
   angle: number;
+  cos: number;
+  sin: number;
 }
 
 export type MapBiomeStyle = 'meadow' | 'fjord' | 'caldera' | 'bog' | 'cosmic';
@@ -80,15 +85,23 @@ function compileMapSpec(spec: RawMapSpec): MapDefinition {
   for (let i = 0; i < spec.waypoints.length - 1; i++) {
     const a = spec.waypoints[i];
     const b = spec.waypoints[i + 1];
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
     segments.push({
       x1: a.x,
       y1: a.y,
       x2: b.x,
       y2: b.y,
+      dx,
+      dy,
       length: len,
+      invLen: len > 0 ? 1 / len : 0,
       cumStart: totalLen,
-      angle: Math.atan2(b.y - a.y, b.x - a.x),
+      angle,
+      cos: Math.cos(angle),
+      sin: Math.sin(angle),
     });
     totalLen += len;
   }
@@ -458,15 +471,41 @@ export function getPointAlongPath(
   for (let i = 0; i < segs.length; i++) {
     const seg = segs[i];
     if (clamped <= seg.cumStart + seg.length || i === segs.length - 1) {
-      const t = seg.length > 0 ? (clamped - seg.cumStart) / seg.length : 0;
-      const bx = seg.x1 + (seg.x2 - seg.x1) * t;
-      const by = seg.y1 + (seg.y2 - seg.y1) * t;
-      const nx = -Math.sin(seg.angle) * lateralOffset;
-      const ny = Math.cos(seg.angle) * lateralOffset;
-      return { x: bx + nx, y: by + ny, angle: seg.angle };
+      const t = (clamped - seg.cumStart) * seg.invLen;
+      return {
+        x: seg.x1 + seg.dx * t - seg.sin * lateralOffset,
+        y: seg.y1 + seg.dy * t + seg.cos * lateralOffset,
+        angle: seg.angle,
+      };
     }
   }
   return { x: mapDef.nestPos.x, y: mapDef.nestPos.y, angle: 0 };
+}
+
+/**
+ * Zero-allocation in-place path coordinate update for ActiveEnemy!
+ * Avoids millions of {x, y, angle} heap allocations & trig calls during swarm waves.
+ */
+export function syncEnemyPathPosition(
+  enemy: ActiveEnemy,
+  mapDef = getActiveMap()
+): void {
+  const segs = mapDef.segments;
+  const clamped = Math.max(0, Math.min(mapDef.totalPathLength, enemy.distance));
+  const lat = enemy.lateralOffset;
+  for (let i = 0; i < segs.length; i++) {
+    const seg = segs[i];
+    if (clamped <= seg.cumStart + seg.length || i === segs.length - 1) {
+      const t = (clamped - seg.cumStart) * seg.invLen;
+      enemy.x = seg.x1 + seg.dx * t - seg.sin * lat;
+      enemy.y = seg.y1 + seg.dy * t + seg.cos * lat;
+      enemy.angle = seg.angle;
+      return;
+    }
+  }
+  enemy.x = mapDef.nestPos.x;
+  enemy.y = mapDef.nestPos.y;
+  enemy.angle = 0;
 }
 
 function distPointToSegment(

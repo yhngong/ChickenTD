@@ -557,7 +557,7 @@ button {
 
 .shop-tabs {
   display: grid;
-  grid-template-columns: 1.15fr 0.95fr 0.95fr;
+  grid-template-columns: 1.18fr 0.88fr 0.82fr 1.05fr;
   border-bottom: 3px solid var(--panel-border);
   background: #141f17;
   flex-shrink: 0;
@@ -567,14 +567,15 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   background: transparent;
   color: var(--text-muted);
   border: none;
   border-right: 2px solid #2b4231;
-  padding: 7px 4px;
-  font-size: 10px;
+  padding: 7px 3px;
+  font-size: 9px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .shop-tab:last-child {
@@ -654,14 +655,7 @@ button {
 .troop-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 4px;
-}
-
-.troop-key {
-  font-size: 9px;
-  color: #93c5fd;
-  font-weight: 700;
 }
 
 .troop-cost {
@@ -919,21 +913,22 @@ button {
     );
   overflow-y: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 18px 20px;
+  padding: 14px 20px;
 }
 
 .menu-container {
+  margin: auto;
   width: 100%;
   max-width: 1120px;
   background: var(--panel-bg);
   border: 4px solid var(--gold);
   box-shadow: 0 8px 0 var(--pixel-shadow);
-  padding: 18px 22px;
+  padding: 15px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 13px;
 }
 
 .menu-hero {
@@ -961,6 +956,14 @@ button {
   border: 3px solid var(--gold);
   box-shadow: 0 3px 0 var(--pixel-shadow);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.08s steps(2);
+}
+
+.menu-hero-sprite:active,
+.menu-hero-sprite.omni-tap-pop {
+  transform: translateY(-3px) scale(1.06);
+  border-color: #38bdf8;
 }
 
 .menu-kicker {
@@ -1304,24 +1307,56 @@ button {
   border-color: #facc15;
 }
 
-/* ==================== BATTLE CATS CLUCK CANNON ON STAGE ==================== */
-.cluck-cannon-btn {
+/* ==================== CLUCK CANNON & QUICK LOADOUT CLUSTER ON STAGE ==================== */
+.stage-cannon-cluster {
   position: absolute;
   bottom: 10px;
   right: 10px;
   z-index: 15;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  transition: bottom 0.08s steps(2);
+}
+
+.stage-cannon-cluster.lifted {
+  bottom: 72px;
+}
+
+.cannon-swap-btn {
+  background: rgba(24, 20, 44, 0.95);
+  border: 3px solid #a855f7;
+  box-shadow: 0 4px 0 var(--pixel-shadow);
+  color: #f5d0fe;
+  padding: 5px 8px;
+  font-family: var(--font-px-head);
+  font-size: 8px;
+  line-height: 1.25;
+  max-width: 78px;
+  text-align: center;
+}
+
+.cannon-swap-btn:hover {
+  background: #4c1d95;
+  border-color: #facc15;
+  color: #fef08a;
+}
+
+.cluck-cannon-btn {
+  position: relative;
   background: rgba(15, 23, 42, 0.94);
   border: 3px solid #475569;
   box-shadow: 0 4px 0 var(--pixel-shadow);
   padding: 6px 10px;
   color: #94a3b8;
-  min-width: 148px;
+  min-width: 162px;
   text-align: left;
-  transition: bottom 0.08s steps(2);
 }
 
-.cluck-cannon-btn.lifted {
-  bottom: 72px;
+.cluck-cannon-btn.buff-active {
+  background: #2e1065;
+  border-color: #facc15;
+  color: #fef08a;
 }
 
 .cluck-cannon-btn.ready {
@@ -2536,4 +2571,319 @@ button {
 
 .hidden {
   display: none !important;
+}
+
+/* ==================== CLUCK CANNON LOADOUT & GEM EGG ARMORY ==================== */
+.menu-cannon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 980px) {
+  .menu-cannon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cannon-card-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--panel-inner);
+  border: 3px solid #3c5c43;
+  box-shadow: 0 4px 0 var(--pixel-shadow);
+  padding: 8px 9px;
+  text-align: left;
+  color: #ffffff;
+}
+
+.cannon-card-btn:hover {
+  border-color: var(--gold);
+  background: #213426;
+}
+
+.cannon-card-btn.equipped {
+  background: #172554;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px #facc15, 0 4px 0 var(--pixel-shadow);
+}
+
+.cannon-card-btn.locked-cannon {
+  background: #131222;
+  border-color: #4c1d95;
+}
+
+.cannon-card-btn.locked-cannon.affordable-cannon {
+  border-color: #f472b6;
+}
+
+.cannon-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.cannon-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cannon-card-name {
+  font-family: var(--font-px-head);
+  font-size: 9px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cannon-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 5px;
+  background: #0f172a;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cannon-card-badge {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.cannon-card-desc {
+  font-size: 9px;
+  line-height: 1.35;
+  color: #cbd5e1;
+}
+
+.cannon-armory-section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: #171229;
+  border: 3px solid #38bdf8;
+  box-shadow: 0 4px 0 var(--pixel-shadow);
+  padding: 12px 14px;
+}
+
+.cannon-armory-note {
+  font-size: 10px;
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+.shop-cannon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 1020px) {
+  .shop-cannon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.shop-cannon-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 7px;
+  background: #110e20;
+  border: 2px solid #4c3b78;
+  box-shadow: 0 3px 0 var(--pixel-shadow);
+  padding: 9px 10px;
+}
+
+.shop-cannon-card.equipped {
+  border-color: #facc15;
+  background: #1e1b3a;
+  box-shadow: 0 0 0 1px #38bdf8, 0 3px 0 var(--pixel-shadow);
+}
+
+.shop-cannon-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  padding: 6px 8px;
+  font-family: var(--font-px-head);
+  font-size: 8px;
+  border: 2px solid #64748b;
+  box-shadow: 0 3px 0 var(--pixel-shadow);
+  color: #ffffff;
+  background: #1e293b;
+}
+
+.shop-cannon-action-btn.equip-ready {
+  background: #15803d;
+  border-color: #4ade80;
+}
+
+.shop-cannon-action-btn.is-equipped {
+  background: #0c4a6e;
+  border-color: #38bdf8;
+  color: #fef08a;
+  cursor: default;
+}
+
+.shop-cannon-action-btn.buy-gem {
+  background: #6b21a8;
+  border-color: #f472b6;
+  color: #fef08a;
+}
+
+.shop-cannon-action-btn:disabled {
+  background: #1e1e2e;
+  border-color: #334155;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.upg-buy-btn.equipped-btn {
+  background: #0c4a6e;
+  border-color: #38bdf8;
+  color: #fef08a;
+  cursor: default;
+}
+
+.upg-buy-btn.gem-buy-btn {
+  background: #6b21a8;
+  border-color: #f472b6;
+  color: #fef08a;
+}
+
+.upg-buy-btn.gem-buy-btn:disabled {
+  background: #27273a;
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+/* ==================== LAYOUT CONTAINMENT & SECRET CODE VAULT ==================== */
+.troop-grid,
+.upgrade-list,
+.collection-grid {
+  contain: layout style;
+}
+
+.secret-code-backdrop {
+  z-index: 85;
+}
+
+.secret-code-box {
+  max-width: 470px;
+  background: #141126;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px #facc15, 0 8px 0 var(--pixel-shadow);
+}
+
+.secret-vault-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #241942;
+  border: 2px solid #f472b6;
+  color: #fef08a;
+  padding: 4px 9px;
+  font-family: var(--font-px-head);
+  font-size: 9px;
+  margin-bottom: 12px;
+}
+
+.secret-code-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.secret-omni-portrait {
+  width: 54px;
+  height: 54px;
+  background: #1e1b3a;
+  border: 3px solid #facc15;
+  box-shadow: 0 3px 0 var(--pixel-shadow);
+  flex-shrink: 0;
+}
+
+.secret-code-header h2 {
+  font-family: var(--font-px-head);
+  font-size: 13px;
+  color: #ffffff;
+  margin-bottom: 5px;
+}
+
+.secret-code-header p {
+  font-size: 10px;
+  line-height: 1.4;
+  color: #cbd5e1;
+}
+
+.secret-code-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.secret-code-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #0b0916;
+  border: 3px solid #4c3b78;
+  color: #fef08a;
+  font-family: var(--font-px-head);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.secret-code-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.secret-code-input::placeholder {
+  color: #64748b;
+}
+
+.secret-code-feedback {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 7px 10px;
+  background: #1d1836;
+  border: 2px solid #334155;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.secret-code-feedback.success {
+  background: #143322;
+  border-color: #4ade80;
+  color: #fef08a;
+}
+
+.secret-code-feedback.warn {
+  background: #3a290c;
+  border-color: #facc15;
+  color: #fde047;
+}
+
+.secret-code-feedback.error {
+  background: #3b131b;
+  border-color: #f43f5e;
+  color: #fecdd3;
 }

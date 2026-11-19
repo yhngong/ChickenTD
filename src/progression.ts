@@ -1,4 +1,6 @@
 import {
+  CANNON_DEFS,
+  CANNON_ORDER,
   CHICKEN_DEFS,
   CHICKEN_ORDER,
   DIFFICULTY_ORDER,
@@ -7,6 +9,7 @@ import {
 } from './data';
 import { MAP_ORDER } from './map';
 import {
+  CannonTypeId,
   ChickenTypeId,
   DifficultyId,
   EggBankResult,
@@ -25,6 +28,16 @@ export const PREFS_STORAGE_KEY = 'chickentd_prefs_v1';
 
 export const BUGS_PER_EGG = 1000;
 export const GEM_EGG_COST_EACH = 1; // 1 Egg = 1 Gem Egg, 4 Eggs = 4x, 8 Eggs = 8x
+
+export const SECRET_PROMO_CODES: Readonly<Record<string, number>> = {
+  GEMEGGS: 8,
+  ADMINSLOPLOL: 512,
+};
+
+export type RedeemCodeResult =
+  | { status: 'success'; code: string; rewardEggs: number; totalEggs: number }
+  | { status: 'already_redeemed'; code: string }
+  | { status: 'invalid' };
 
 export const MUTATION_ORDER: readonly MutationTier[] = [
   'common',
@@ -139,6 +152,9 @@ function createDefaultSaveData(): PlayerSaveData {
     unlockedUnits,
     unitMutations: {},
     unitPlusLevels: {},
+    unlockedCannons: { shockwave: true },
+    equippedCannon: 'shockwave',
+    redeemedCodes: {},
   };
 }
 
@@ -221,6 +237,32 @@ export class ProgressionStore {
         }
       }
 
+      const unlockedCannons: Partial<Record<CannonTypeId, boolean>> = {
+        shockwave: true,
+      };
+      if (parsed.unlockedCannons && typeof parsed.unlockedCannons === 'object') {
+        for (const cId of CANNON_ORDER) {
+          if (parsed.unlockedCannons[cId] === true || CANNON_DEFS[cId].gemEggCost === 0) {
+            unlockedCannons[cId] = true;
+          }
+        }
+      }
+      const equippedCannon: CannonTypeId =
+        parsed.equippedCannon &&
+        CANNON_ORDER.includes(parsed.equippedCannon) &&
+        unlockedCannons[parsed.equippedCannon] === true
+          ? parsed.equippedCannon
+          : 'shockwave';
+
+      const redeemedCodes: Partial<Record<string, boolean>> = {};
+      if (parsed.redeemedCodes && typeof parsed.redeemedCodes === 'object') {
+        for (const code of Object.keys(SECRET_PROMO_CODES)) {
+          if (parsed.redeemedCodes[code] === true) {
+            redeemedCodes[code] = true;
+          }
+        }
+      }
+
       const rawRem = Math.max(0, Math.floor(Number(parsed.bugKillRemainder ?? 0) || 0));
       const migratedEggs = Math.floor(rawRem / BUGS_PER_EGG);
       const cleanRem = rawRem % BUGS_PER_EGG;
@@ -236,6 +278,9 @@ export class ProgressionStore {
         unlockedUnits,
         unitMutations,
         unitPlusLevels,
+        unlockedCannons,
+        equippedCannon,
+        redeemedCodes,
       };
     } catch {
       return fallback;
@@ -371,6 +416,75 @@ export class ProgressionStore {
 
   public getPlusLevel(id: ChickenTypeId): number {
     return this.data.unitPlusLevels[id] ?? 0;
+  }
+
+  public isCannonUnlocked(id: CannonTypeId): boolean {
+    if (CANNON_DEFS[id].gemEggCost === 0) return true;
+    return this.data.unlockedCannons[id] === true;
+  }
+
+  public getUnlockedCannonCount(): number {
+    let count = 0;
+    for (const id of CANNON_ORDER) {
+      if (this.isCannonUnlocked(id)) count++;
+    }
+    return count;
+  }
+
+  public getEquippedCannon(): CannonTypeId {
+    const eq = this.data.equippedCannon;
+    return this.isCannonUnlocked(eq) ? eq : 'shockwave';
+  }
+
+  public equipCannon(id: CannonTypeId): boolean {
+    if (!this.isCannonUnlocked(id)) return false;
+    this.data.equippedCannon = id;
+    this.save();
+    return true;
+  }
+
+  /**
+   * Unlocks a Cluck Cannon loadout permanently using Gem Eggs and equips it!
+   */
+  public buyCannon(id: CannonTypeId): boolean {
+    if (this.isCannonUnlocked(id)) {
+      return this.equipCannon(id);
+    }
+    const cost = CANNON_DEFS[id].gemEggCost;
+    if (this.data.eggs < cost) return false;
+
+    this.data.eggs -= cost;
+    this.data.unlockedCannons[id] = true;
+    this.data.equippedCannon = id;
+    this.save();
+    return true;
+  }
+
+  /**
+   * Redeems a secret promo code unlocked via 4-tapping Omnicluck Prime on the Main Menu!
+   */
+  public redeemSecretCode(rawInput: string): RedeemCodeResult {
+    const code = rawInput.trim().toUpperCase();
+    if (!code || !(code in SECRET_PROMO_CODES)) {
+      return { status: 'invalid' };
+    }
+    if (!this.data.redeemedCodes) {
+      this.data.redeemedCodes = {};
+    }
+    if (this.data.redeemedCodes[code] === true) {
+      return { status: 'already_redeemed', code };
+    }
+    const rewardEggs = SECRET_PROMO_CODES[code];
+    this.data.redeemedCodes[code] = true;
+    this.data.eggs += rewardEggs;
+    this.data.totalEggsEarned += rewardEggs;
+    this.save();
+    return {
+      status: 'success',
+      code,
+      rewardEggs,
+      totalEggs: this.data.eggs,
+    };
   }
 
   /**

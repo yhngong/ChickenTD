@@ -161,6 +161,25 @@ export type ClickerUpgradeId =
 
 export type TdUpgradeId = 'eagleRoost' | 'caffeinatedFeed' | 'razorTalons' | 'fortifiedNest';
 
+export type CannonTypeId =
+  | 'shockwave'
+  | 'time_stop'
+  | 'damage_boost'
+  | 'orbital_nova'
+  | 'cornstorm';
+
+export interface CannonDef {
+  id: CannonTypeId;
+  name: string;
+  shortLabel: string;
+  iconId: PixelIconId;
+  gemEggCost: number;
+  chargeSec: number;
+  accentColor: string;
+  badgeText: string;
+  description: string;
+}
+
 export type PixelIconId =
   | 'chicken'
   | 'corn'
@@ -168,6 +187,10 @@ export type PixelIconId =
   | 'battle_egg'
   | 'gem_egg'
   | 'cannon'
+  | 'cannon_timestop'
+  | 'cannon_dmgboost'
+  | 'cannon_nova'
+  | 'cannon_cornstorm'
   | 'mutation_star'
   | 'lock'
   | 'skull_defeat'
@@ -203,8 +226,8 @@ export interface SupportAuraSpec {
   bonusPierce: number; // flat extra pierce to nearby allies
   bonusProjectiles: number; // extra multishot to nearby allies
   foxDamageBonus: number; // e.g. 0.25 = +25% bonus vs Giant Foxes
-  grantsCamo: boolean; // Radar Scanner style Camo Sight
-  grantsArmorPierce: boolean; // MIB style Armor-Piercing
+  grantsCamo: boolean; // Grants Camo Sight to nearby allies
+  grantsArmorPierce: boolean; // Grants Armor-Piercing to nearby allies
   bonusCritChance: number; // extra Savage Blow crit chance
   bonusKnockback: number; // extra path knockback
 }
@@ -226,7 +249,7 @@ export interface ChickenTierStats {
   camoSight: boolean;
   knockback?: number; // Battle Cats style path knockback distance
   savageCritChance?: number; // Battle Cats Savage Blow (3x damage) probability
-  supportAura?: SupportAuraSpec; // Bloons Village / Alch style nearby-tower buff!
+  supportAura?: SupportAuraSpec; // Nearby-tower support aura buff
   description: string;
 }
 
@@ -234,7 +257,6 @@ export interface ChickenTowerDef {
   id: ChickenTypeId;
   name: string;
   role: string;
-  hotkey: string;
   baseCost: number;
   featherColor: string;
   bellyColor: string;
@@ -252,7 +274,7 @@ export interface EnemySpawnChild {
 export interface EnemyDef {
   id: EnemyTypeId;
   name: string;
-  isFoxBoss: boolean; // true = MOAB-class Fox Boss!
+  isFoxBoss: boolean; // true = Giant Fox Boss
   isArmored: boolean; // resists basic sharp pecks unless armor-piercing/splash/magic/energy
   isCamo: boolean; // requires Camo Sight
   maxHp: number;
@@ -284,7 +306,7 @@ export interface ActiveStand {
   y: number;
   angle: number;
   targetEnemyId: number | null;
-  punchAnim: number; // 0..1 rapid alternating ORA fist flurry animation
+  punchAnim: number; // 0..1 rapid alternating fist flurry animation
   punchCount: number;
   state: 'hover' | 'charging' | 'punching';
 }
@@ -298,11 +320,19 @@ export interface ActiveEnemy {
   lateralOffset: number; // slight visual jitter for swarms
   slowFactor: number;
   slowTimer: number;
+  freezeTimer: number; // >0 = frozen solid at 0 speed (Time-Stop Cannon)
+  vulnTimer: number; // >0 = shattered armor & takes +35% bonus damage (Orbital Nova Cannon)
   burnDps: number;
   burnTimer: number;
   kbCooldown: number; // prevents infinite perma-knockback lock
   hitFlash: number;
   walkPhase: number;
+  // Runtime cached world coordinates & liveness (avoids millions of per-frame path recomputations)
+  x?: number;
+  y?: number;
+  angle?: number;
+  alive?: boolean;
+  gridIdx?: number;
 }
 
 export interface ActiveProjectile {
@@ -326,7 +356,7 @@ export interface ActiveProjectile {
   savageCritChance: number;
   armorPiercing: boolean;
   canHitCamo: boolean;
-  hitEnemyIds: Set<number>;
+  hitEnemyIds: Set<number> | null;
   age: number;
   maxLifetime: number;
   color: string;
@@ -409,6 +439,9 @@ export interface PlayerSaveData {
   unlockedUnits: Partial<Record<ChickenTypeId, boolean>>;
   unitMutations: Partial<Record<ChickenTypeId, MutationTier>>;
   unitPlusLevels: Partial<Record<ChickenTypeId, number>>;
+  unlockedCannons: Partial<Record<CannonTypeId, boolean>>;
+  equippedCannon: CannonTypeId;
+  redeemedCodes?: Partial<Record<string, boolean>>;
 }
 
 export interface EggBankResult {
@@ -472,6 +505,9 @@ export interface SavedRunState {
   waveClickCounter: number;
   waveCornHarvested: number;
   cannonCharge: number;
+  cannonDamageBoostTimer?: number;
+  cannonCornBoostTimer?: number;
+  cannonTimeStopVisualTimer?: number;
   frenzyMeter: number;
   clickerLevels: Record<ClickerUpgradeId, number>;
   tdLevels: Record<TdUpgradeId, number>;

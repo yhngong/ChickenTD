@@ -1,6 +1,7 @@
 import { ChickenAudioEngine } from './audio';
 import {
   CAMPAIGN_WAVES,
+  CANNON_DEFS,
   CHICKEN_DEFS,
   CLICKER_UPGRADES,
   DIFFICULTY_DEFS,
@@ -28,12 +29,15 @@ import {
   getPointAlongPath,
   getTotalPathLength,
   setActiveMap,
+  syncEnemyPathPosition,
 } from './map';
 import { BUGS_PER_EGG, MUTATION_DEFS, PROGRESSION } from './progression';
 import {
   ActiveEnemy,
   ActiveProjectile,
   ActiveStand,
+  CannonDef,
+  CannonTypeId,
   ChickenTierStats,
   ChickenTypeId,
   ClickResult,
@@ -80,6 +84,41 @@ export interface EffectiveChickenStats extends ChickenTierStats {
 
 export const CLUCK_CANNON_CHARGE_SEC = 22;
 
+const SPATIAL_COLS = 16;
+const SPATIAL_ROWS = 11;
+const SPATIAL_CELL_SHIFT = 6; // 64x64 logical pixel cells covering 920x600 map
+const MAX_ACTIVE_PROJECTILES = 420;
+const MAX_ACTIVE_RINGS = 24;
+const MAX_ACTIVE_PARTICLES = 110;
+const MAX_ACTIVE_POPUPS = 24;
+
+const BASIC_PECK_SET = new Set<ChickenTypeId>([
+  'bantam',
+  'pecker',
+  'honey',
+  'boomerang',
+  'chilly',
+  'ninja',
+]);
+
+const STRONG_DEFAULT_SET = new Set<ChickenTypeId>([
+  'ranger',
+  'pirate',
+  'mecha',
+  'cyber_sniper',
+  'gundam',
+  'samurai_shogun',
+  'stand_hen',
+  'yukimura_shadow',
+  'star_dread',
+  'bahamut_wyrm',
+  'chronos_empress',
+  'omega_god',
+  'gaia_creator',
+  'void_singularity',
+  'cat_god_supreme',
+]);
+
 export class ChickenTdEngine {
   public audio = new ChickenAudioEngine();
 
@@ -109,9 +148,12 @@ export class ChickenTdEngine {
   public waveClickCounter = 0; // counts toward 12-Peck Mega Cob
   public waveCornHarvested = 0; // tracks Corn harvested in the active wave for Golden Corn Silo
 
-  // Battle Cats style rechargeable Cluck Cannon (0..1)
+  // Rechargeable Cluck Cannon (0..1) + Active Cannon Loadout Buff Timers
   public cannonCharge = 0.5;
   public cannonFlash = 0;
+  public cannonDamageBoostTimer = 0;
+  public cannonCornBoostTimer = 0;
+  public cannonTimeStopVisualTimer = 0;
 
   // Strict 12 CPS sliding 1,000ms window (wall-clock milliseconds)
   private clickTimestampsMs: number[] = [];
@@ -147,13 +189,86 @@ export class ChickenTdEngine {
   public popups: FloatingMapPopup[] = [];
 
   private pendingSpawns: PendingSpawn[] = [];
+  private pendingSpawnIdx = 0;
   private nextEntityId = 1;
 
+  // O(1) lookup & stat caches + zero-allocation 16x11 spatial grid for projectiles/splashes
+  private towerById = new Map<number, PlacedChicken>();
+  private statsCache = new Map<number, EffectiveChickenStats>();
+  private statsCacheBoostActive = false;
+  private spatialBuckets: number[][] = Array.from(
+    { length: SPATIAL_COLS * SPATIAL_ROWS },
+    () => []
+  );
+  private inProjectilePhase = false;
+  private queryStampCounter = 1;
+  private enemyStampById = new Map<number, number>();
+
   public onUiChange: (() => void) | null = null;
+  public onCornChange: (() => void) | null = null;
   public onAutoPeck: ((res: ClickResult) => void) | null = null;
+
+  public invalidateStatsCache(): void {
+    this.statsCache.clear();
+  }
+
+  public getTowerById(id: number): PlacedChicken | undefined {
+    return this.towerById.get(id);
+  }
+
+  private getSpatialCell(x: number, y: number): number {
+    const col = Math.max(0, Math.min(SPATIAL_COLS - 1, (x | 0) >> SPATIAL_CELL_SHIFT));
+    const row = Math.max(0, Math.min(SPATIAL_ROWS - 1, (y | 0) >> SPATIAL_CELL_SHIFT));
+    return row * SPATIAL_COLS + col;
+  }
+
+  private rebuildSpatialGrid(): void {
+    const buckets = this.spatialBuckets;
+    for (let i = 0; i < buckets.length; i++) {
+      buckets[i].length = 0;
+    }
+    const arr = this.enemies;
+    for (let i = 0; i < arr.length; i++) {
+      const e = arr[i];
+      if (e.alive === false) continue;
+      e.gridIdx = i;
+      if (e.x === undefined || e.y === undefined) {
+        syncEnemyPathPosition(e);
+      }
+      buckets[this.getSpatialCell(e.x!, e.y!)].push(i);
+    }
+  }
+
+  private compactAliveEnemies(): void {
+    const arr = this.enemies;
+    let write = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const e = arr[i];
+      if (e.alive !== false) {
+        arr[write++] = e;
+      } else {
+        this.enemyStampById.delete(e.id);
+      }
+    }
+    arr.length = write;
+  }
 
   public getDifficulty(): DifficultyDef {
     return DIFFICULTY_DEFS[this.difficultyId];
+  }
+
+  public getEquippedCannonId(): CannonTypeId {
+    return PROGRESSION.getEquippedCannon();
+  }
+
+  public getEquippedCannonDef(): CannonDef {
+    return CANNON_DEFS[this.getEquippedCannonId()];
+  }
+
+  public equipCannonLoadout(id: CannonTypeId): boolean {
+    if (!PROGRESSION.equipCannon(id)) return false;
+    this.notifyUi();
+    return true;
   }
 
   public isChickenUnlocked(typeId: ChickenTypeId): boolean {
@@ -248,12 +363,33 @@ export class ChickenTdEngine {
       waveClickCounter: this.waveClickCounter,
       waveCornHarvested: this.waveCornHarvested,
       cannonCharge: this.cannonCharge,
+      cannonDamageBoostTimer: this.cannonDamageBoostTimer,
+      cannonCornBoostTimer: this.cannonCornBoostTimer,
+      cannonTimeStopVisualTimer: this.cannonTimeStopVisualTimer,
       frenzyMeter: this.frenzyMeter,
       clickerLevels: { ...this.clickerLevels },
       tdLevels: { ...this.tdLevels },
       towers: this.towers.map((t) => ({ ...t })),
-      enemies: this.enemies.map((e) => ({ ...e })),
-      pendingSpawns: this.pendingSpawns.map((s) => ({ ...s })),
+      enemies: this.enemies
+        .filter((e) => e.alive !== false)
+        .map((e) => ({
+          id: e.id,
+          typeId: e.typeId,
+          hp: e.hp,
+          maxHp: e.maxHp,
+          distance: e.distance,
+          lateralOffset: e.lateralOffset,
+          slowFactor: e.slowFactor,
+          slowTimer: e.slowTimer,
+          freezeTimer: e.freezeTimer,
+          vulnTimer: e.vulnTimer,
+          burnDps: e.burnDps,
+          burnTimer: e.burnTimer,
+          kbCooldown: e.kbCooldown,
+          hitFlash: e.hitFlash,
+          walkPhase: e.walkPhase,
+        })),
+      pendingSpawns: this.pendingSpawns.slice(this.pendingSpawnIdx).map((s) => ({ ...s })),
     };
   }
 
@@ -289,6 +425,9 @@ export class ChickenTdEngine {
       this.waveCornHarvested = Math.max(0, Math.floor(Number(saved.waveCornHarvested ?? 0)));
       this.cannonCharge = Math.max(0, Math.min(1, Number(saved.cannonCharge ?? 0.5)));
       this.cannonFlash = 0;
+      this.cannonDamageBoostTimer = Math.max(0, Number(saved.cannonDamageBoostTimer ?? 0));
+      this.cannonCornBoostTimer = Math.max(0, Number(saved.cannonCornBoostTimer ?? 0));
+      this.cannonTimeStopVisualTimer = Math.max(0, Number(saved.cannonTimeStopVisualTimer ?? 0));
       this.frenzyMeter = Math.max(0, Math.min(1, Number(saved.frenzyMeter ?? 0)));
       this.capHitFlash = 0;
       this.clickTimestampsMs = [];
@@ -305,6 +444,7 @@ export class ChickenTdEngine {
 
       let maxId = 1;
       this.towers = [];
+      this.towerById.clear();
       if (Array.isArray(saved.towers)) {
         for (const t of saved.towers) {
           if (!t || !(t.typeId in CHICKEN_DEFS)) continue;
@@ -325,10 +465,12 @@ export class ChickenTdEngine {
           };
           maxId = Math.max(maxId, cleanTower.id);
           this.towers.push(cleanTower);
+          this.towerById.set(cleanTower.id, cleanTower);
         }
       }
 
       this.enemies = [];
+      this.enemyStampById.clear();
       if (Array.isArray(saved.enemies)) {
         for (const e of saved.enemies) {
           if (!e || !(e.typeId in ENEMY_DEFS)) continue;
@@ -341,18 +483,23 @@ export class ChickenTdEngine {
             lateralOffset: Number(e.lateralOffset ?? 0),
             slowFactor: Math.max(0, Number(e.slowFactor ?? 0)),
             slowTimer: Math.max(0, Number(e.slowTimer ?? 0)),
+            freezeTimer: Math.max(0, Number(e.freezeTimer ?? 0)),
+            vulnTimer: Math.max(0, Number(e.vulnTimer ?? 0)),
             burnDps: Math.max(0, Number(e.burnDps ?? 0)),
             burnTimer: Math.max(0, Number(e.burnTimer ?? 0)),
             kbCooldown: 0,
             hitFlash: 0,
             walkPhase: Number(e.walkPhase ?? 0),
+            alive: true,
           };
+          syncEnemyPathPosition(cleanEnemy);
           maxId = Math.max(maxId, cleanEnemy.id);
           this.enemies.push(cleanEnemy);
         }
       }
 
       this.pendingSpawns = [];
+      this.pendingSpawnIdx = 0;
       if (Array.isArray(saved.pendingSpawns)) {
         for (const s of saved.pendingSpawns) {
           if (!s || !(s.enemyType in ENEMY_DEFS)) continue;
@@ -368,6 +515,7 @@ export class ChickenTdEngine {
       }
 
       this.nextEntityId = maxId + 1;
+      this.invalidateStatsCache();
       this.stands = [];
       for (const t of this.towers) {
         if (t.typeId === 'stand_hen') {
@@ -411,6 +559,9 @@ export class ChickenTdEngine {
     this.waveCornHarvested = 0;
     this.cannonCharge = 0.5;
     this.cannonFlash = 0;
+    this.cannonDamageBoostTimer = 0;
+    this.cannonCornBoostTimer = 0;
+    this.cannonTimeStopVisualTimer = 0;
     this.clickTimestampsMs = [];
     this.autoPeckAccumulator = 0;
     this.frenzyMeter = 0;
@@ -435,13 +586,17 @@ export class ChickenTdEngine {
     };
 
     this.towers = [];
+    this.towerById.clear();
+    this.invalidateStatsCache();
     this.stands = [];
     this.enemies = [];
+    this.enemyStampById.clear();
     this.projectiles = [];
     this.rings = [];
     this.particles = [];
     this.popups = [];
     this.pendingSpawns = [];
+    this.pendingSpawnIdx = 0;
     this.notifyUi();
   }
 
@@ -449,9 +604,22 @@ export class ChickenTdEngine {
     if (this.onUiChange) this.onUiChange();
   }
 
+  private notifyCornOnly(): void {
+    if (this.onCornChange) this.onCornChange();
+    else if (this.onUiChange) this.onUiChange();
+  }
+
   public getCurrentCps(nowPerfMs = performance.now()): number {
-    this.clickTimestampsMs = this.clickTimestampsMs.filter((t) => nowPerfMs - t < 1000);
-    return this.clickTimestampsMs.length;
+    const arr = this.clickTimestampsMs;
+    if (arr.length === 0) return 0;
+    let firstValid = 0;
+    while (firstValid < arr.length && nowPerfMs - arr[firstValid] >= 1000) {
+      firstValid++;
+    }
+    if (firstValid > 0) {
+      arr.splice(0, firstValid);
+    }
+    return arr.length;
   }
 
   public getCurrentFrenzyMultiplier(): number {
@@ -483,15 +651,20 @@ export class ChickenTdEngine {
 
     const waveMult = getCornucopiaWaveMult(this.clickerLevels.cornucopia, this.waveNumber);
     const foremanMult = isAuto ? getForemanMult(this.clickerLevels.roostForeman) : 1.0;
+    const cannonCornMult = this.cannonCornBoostTimer > 0 ? 2.0 : 1.0;
 
     const basketMult = getHarvestBasketMult(this.clickerLevels.harvestBasket);
     const crossedTwelve = Math.floor(this.waveClickCounter / 12) > Math.floor(prevCounter / 12);
     const isMegaCob = basketMult > 0 && crossedTwelve;
-    const megaBonus = isMegaCob ? Math.round(baseVal * basketMult * waveMult * foremanMult) : 0;
+    const megaBonus = isMegaCob
+      ? Math.round(baseVal * basketMult * waveMult * foremanMult * cannonCornMult)
+      : 0;
 
     const earned = Math.max(
       1,
-      Math.round(baseVal * strikeCount * rhythmMult * critMult * waveMult * foremanMult) + megaBonus
+      Math.round(
+        baseVal * strikeCount * rhythmMult * critMult * waveMult * foremanMult * cannonCornMult
+      ) + megaBonus
     );
     this.corn += earned;
     this.totalCornClicked += earned;
@@ -555,7 +728,7 @@ export class ChickenTdEngine {
 
     const res = this.executePeck(false, this.clickTimestampsMs.length);
     this.audio.playHenClick(res.isCrit, res.isMegaCob);
-    this.notifyUi();
+    this.notifyCornOnly();
     return res;
   }
 
@@ -584,6 +757,7 @@ export class ChickenTdEngine {
     queue.sort((a, b) => a.spawnAtWaveTime - b.spawnAtWaveTime);
 
     this.pendingSpawns = queue;
+    this.pendingSpawnIdx = 0;
     this.waveInitialSpawnCount = Math.max(1, queue.length);
     this.waveElapsedSec = 0;
     this.waveCornHarvested = 0;
@@ -596,28 +770,251 @@ export class ChickenTdEngine {
   }
 
   /**
-   * Battle Cats-style Cluck Cannon! Fires a sweeping shockwave beam down the whole path,
-   * knocking back and damaging all active Bugs & Fox Bosses!
+   * Fires the currently equipped Cluck Cannon loadout!
+   * Supports Shockwave, Time-Stop, Damage Boost, Orbital Nova, and Cornstorm!
    */
   public fireCluckCannon(): boolean {
     if (this.status === 'gameover' || this.cannonCharge < 1) return false;
     if (!this.waveActive && this.enemies.length === 0) return false;
 
+    const cannonId = this.getEquippedCannonId();
     this.cannonCharge = 0;
     this.cannonFlash = 1.0;
-    this.audio.playCluckCannon();
+    this.audio.playCluckCannon(cannonId);
 
     const totalLen = getTotalPathLength();
+    const nestPt = getPointAlongPath(totalLen);
+    const hpScale = getWaveHpScale(this.waveNumber);
+
+    if (cannonId === 'time_stop') {
+      // TIME-STOP CANNON: Freezes all enemies solid at 0 speed + temporal rift hit!
+      this.cannonTimeStopVisualTimer = 5.0;
+      for (let d = 0; d <= totalLen; d += 110) {
+        const pt = getPointAlongPath(d);
+        this.spawnRing(pt.x, pt.y, 50, d % 220 === 0 ? '#C084FC' : '#22D3EE');
+        this.spawnPixelBurst(pt.x, pt.y, 5, '#E9D5FF');
+      }
+      this.spawnMapPopup('STOP TIME! 5.0S', nestPt.x, nestPt.y - 34, '#E879F9', 1.2);
+
+      const riftDmg = Math.max(12, Math.round(14 * hpScale));
+      const riftCarrier: ActiveProjectile = {
+        id: this.nextEntityId++,
+        ownerTowerId: -1,
+        style: 'chrono_orb',
+        x: nestPt.x,
+        y: nestPt.y,
+        vx: 0,
+        vy: 0,
+        curveRate: 0,
+        rotation: 0,
+        damage: riftDmg,
+        pierceLeft: 9999,
+        splashRadius: 9999,
+        slowFactor: 0.55,
+        slowDuration: 6.5,
+        burnDps: 0,
+        foxDamageMult: 1.35,
+        knockback: 0,
+        savageCritChance: 0,
+        armorPiercing: true,
+        canHitCamo: true,
+        hitEnemyIds: null,
+        age: 0,
+        maxLifetime: 0.05,
+        color: '#C084FC',
+      };
+      const initialCount = this.enemies.length;
+      for (let i = 0; i < initialCount; i++) {
+        const e = this.enemies[i];
+        if (e.alive === false) continue;
+        this.damageEnemy(e, riftDmg, riftCarrier);
+      }
+      // Freeze every surviving enemy (and any newly split child bugs!) at 0 speed!
+      for (let i = 0; i < this.enemies.length; i++) {
+        const e = this.enemies[i];
+        if (e.alive === false) continue;
+        const dur = ENEMY_DEFS[e.typeId].isFoxBoss ? 3.8 : 5.0;
+        e.freezeTimer = Math.max(e.freezeTimer, dur);
+      }
+      this.compactAliveEnemies();
+      this.notifyUi();
+      return true;
+    }
+
+    if (cannonId === 'damage_boost') {
+      // DAMAGE BOOST CANNON: 2.0x Damage & +35% Attack Speed to ALL Chickens for 8.0s!
+      this.cannonDamageBoostTimer = 8.0;
+      this.invalidateStatsCache();
+      for (const t of this.towers) {
+        this.spawnRing(t.x, t.y, 38, '#F97316');
+        this.spawnPixelBurst(t.x, t.y, 6, '#FACC15');
+      }
+      for (let d = 0; d <= totalLen; d += 150) {
+        const pt = getPointAlongPath(d);
+        this.spawnRing(pt.x, pt.y, 40, '#FACC15');
+      }
+      this.spawnMapPopup('2X DMG BOOST! 8S', nestPt.x, nestPt.y - 34, '#FACC15', 1.2);
+
+      const hornDmg = Math.max(12, Math.round(15 * hpScale));
+      const hornCarrier: ActiveProjectile = {
+        id: this.nextEntityId++,
+        ownerTowerId: -1,
+        style: 'solar',
+        x: nestPt.x,
+        y: nestPt.y,
+        vx: 0,
+        vy: 0,
+        curveRate: 0,
+        rotation: 0,
+        damage: hornDmg,
+        pierceLeft: 9999,
+        splashRadius: 9999,
+        slowFactor: 0.25,
+        slowDuration: 1.2,
+        burnDps: 0,
+        foxDamageMult: 1.4,
+        knockback: 28,
+        savageCritChance: 0,
+        armorPiercing: true,
+        canHitCamo: true,
+        hitEnemyIds: null,
+        age: 0,
+        maxLifetime: 0.05,
+        color: '#F97316',
+      };
+      const initialCount = this.enemies.length;
+      for (let i = 0; i < initialCount; i++) {
+        const e = this.enemies[i];
+        if (e.alive === false) continue;
+        e.kbCooldown = 0;
+        this.damageEnemy(e, hornDmg, hornCarrier);
+      }
+      this.compactAliveEnemies();
+      this.notifyUi();
+      return true;
+    }
+
+    if (cannonId === 'orbital_nova') {
+      // ORBITAL NOVA CANNON: 4.5x Antimatter Nuke + Shatters Armor (+35% DMG taken for 8s)!
+      for (let d = 0; d <= totalLen; d += 95) {
+        const pt = getPointAlongPath(d);
+        this.spawnRing(pt.x, pt.y, 56, d % 190 === 0 ? '#F43F5E' : '#FEF08A');
+        this.spawnPixelBurst(pt.x, pt.y, 6, '#FB7185');
+      }
+      this.spawnMapPopup('ORBITAL NOVA!', nestPt.x, nestPt.y - 34, '#FB7185', 1.2);
+
+      const novaDmg = Math.max(80, Math.round(108 * hpScale));
+      const novaBurn = Math.max(15, Math.round(22 * hpScale));
+      const novaCarrier: ActiveProjectile = {
+        id: this.nextEntityId++,
+        ownerTowerId: -1,
+        style: 'antimatter',
+        x: nestPt.x,
+        y: nestPt.y,
+        vx: 0,
+        vy: 0,
+        curveRate: 0,
+        rotation: 0,
+        damage: novaDmg,
+        pierceLeft: 9999,
+        splashRadius: 9999,
+        slowFactor: 0.35,
+        slowDuration: 1.8,
+        burnDps: novaBurn,
+        foxDamageMult: 2.5,
+        knockback: 35,
+        savageCritChance: 0,
+        armorPiercing: true,
+        canHitCamo: true,
+        hitEnemyIds: null,
+        age: 0,
+        maxLifetime: 0.05,
+        color: '#F43F5E',
+      };
+      const initialCount = this.enemies.length;
+      for (let i = 0; i < initialCount; i++) {
+        const e = this.enemies[i];
+        if (e.alive === false) continue;
+        e.kbCooldown = 0;
+        this.damageEnemy(e, novaDmg, novaCarrier);
+      }
+      for (let i = 0; i < this.enemies.length; i++) {
+        const e = this.enemies[i];
+        if (e.alive === false) continue;
+        e.vulnTimer = Math.max(e.vulnTimer, 8.0);
+      }
+      this.compactAliveEnemies();
+      this.notifyUi();
+      return true;
+    }
+
+    if (cannonId === 'cornstorm') {
+      // CORNSTORM CANNON: 90px Mega-Knockback + Instant Corn Windfall + 2x Corn Pecking for 8s!
+      this.cannonCornBoostTimer = 8.0;
+      const basePeck =
+        getBaseCornPerClick(this.clickerLevels.beakPower) *
+        getCornucopiaWaveMult(this.clickerLevels.cornucopia, this.waveNumber);
+      const instantCorn = Math.max(60, Math.round(basePeck * 18 + this.corn * 0.12));
+      this.corn += instantCorn;
+      this.totalCornClicked += instantCorn;
+      this.waveCornHarvested += instantCorn;
+
+      for (let d = 0; d <= totalLen; d += 110) {
+        const pt = getPointAlongPath(d);
+        this.spawnRing(pt.x, pt.y, 50, d % 220 === 0 ? '#4ADE80' : '#FACC15');
+        this.spawnPixelBurst(pt.x, pt.y, 5, '#FEF08A');
+      }
+      this.spawnMapPopup(`+${instantCorn} CORN! 2X 8S`, nestPt.x, nestPt.y - 34, '#4ADE80', 1.2);
+
+      const galeDmg = Math.max(14, Math.round(16 * hpScale));
+      const galeCarrier: ActiveProjectile = {
+        id: this.nextEntityId++,
+        ownerTowerId: -1,
+        style: 'seed',
+        x: nestPt.x,
+        y: nestPt.y,
+        vx: 0,
+        vy: 0,
+        curveRate: 0,
+        rotation: 0,
+        damage: galeDmg,
+        pierceLeft: 9999,
+        splashRadius: 9999,
+        slowFactor: 0.45,
+        slowDuration: 2.0,
+        burnDps: 0,
+        foxDamageMult: 1.35,
+        knockback: 90,
+        savageCritChance: 0,
+        armorPiercing: true,
+        canHitCamo: true,
+        hitEnemyIds: null,
+        age: 0,
+        maxLifetime: 0.05,
+        color: '#4ADE80',
+      };
+      const initialCount = this.enemies.length;
+      for (let i = 0; i < initialCount; i++) {
+        const e = this.enemies[i];
+        if (e.alive === false) continue;
+        e.kbCooldown = 0;
+        this.damageEnemy(e, galeDmg, galeCarrier);
+      }
+      this.compactAliveEnemies();
+      this.notifyUi();
+      return true;
+    }
+
+    // DEFAULT ('shockwave'): Classic Balanced Shockwave Cannon!
     for (let d = 0; d <= totalLen; d += 110) {
       const pt = getPointAlongPath(d);
       this.spawnRing(pt.x, pt.y, 48, d % 220 === 0 ? '#22D3EE' : '#FACC15');
       this.spawnPixelBurst(pt.x, pt.y, 4, '#FEF08A');
     }
 
-    const nestPt = getPointAlongPath(totalLen);
-    this.spawnMapPopup('CLUCK CANNON!', nestPt.x, nestPt.y - 34, '#22D3EE', 1.2);
+    this.spawnMapPopup('SHOCKWAVE CANNON!', nestPt.x, nestPt.y - 34, '#22D3EE', 1.2);
 
-    const waveDmg = Math.max(18, Math.round(24 * getWaveHpScale(this.waveNumber)));
+    const waveDmg = Math.max(18, Math.round(24 * hpScale));
     const cannonCarrier: ActiveProjectile = {
       id: this.nextEntityId++,
       ownerTowerId: -1,
@@ -639,25 +1036,27 @@ export class ChickenTdEngine {
       savageCritChance: 0,
       armorPiercing: true,
       canHitCamo: true,
-      hitEnemyIds: new Set<number>(),
+      hitEnemyIds: null,
       age: 0,
       maxLifetime: 0.05,
       color: '#22D3EE',
     };
 
-    const snapshot = [...this.enemies];
-    for (const e of snapshot) {
-      if (!this.enemies.includes(e)) continue;
+    const initialCount = this.enemies.length;
+    for (let i = 0; i < initialCount; i++) {
+      const e = this.enemies[i];
+      if (e.alive === false) continue;
       e.kbCooldown = 0; // Cannon always overrides knockback cooldown!
       this.damageEnemy(e, waveDmg, cannonCarrier);
     }
 
+    this.compactAliveEnemies();
     this.notifyUi();
     return true;
   }
 
   public getPendingWaveEnemyTotal(): number {
-    return this.pendingSpawns.length + this.enemies.length;
+    return Math.max(0, this.pendingSpawns.length - this.pendingSpawnIdx) + this.enemies.length;
   }
 
   /**
@@ -697,7 +1096,7 @@ export class ChickenTdEngine {
   }
 
   /**
-   * Computes combined Bloons-style nearby Support Aura buffs for a placed tower.
+   * Computes combined nearby Support Aura buffs for a placed tower.
    * Same support typeId does NOT stack with copies of itself (uses best tier in range);
    * distinct support types combine additively so positioning multiple support classes is rewarding & balanced!
    */
@@ -786,6 +1185,14 @@ export class ChickenTdEngine {
   }
 
   public getEffectiveChickenStats(tower: PlacedChicken): EffectiveChickenStats {
+    const boostActiveNow = this.cannonDamageBoostTimer > 0;
+    if (boostActiveNow !== this.statsCacheBoostActive) {
+      this.statsCacheBoostActive = boostActiveNow;
+      this.statsCache.clear();
+    }
+    const cached = this.statsCache.get(tower.id);
+    if (cached) return cached;
+
     const def = CHICKEN_DEFS[tower.typeId];
     const base = def.tiers[tower.tier];
     const mutTier = PROGRESSION.getMutation(tower.typeId);
@@ -806,11 +1213,18 @@ export class ChickenTdEngine {
     const mutCrit = mutDef ? mutDef.bonusCritChance : 0;
     const mutKb = mutDef ? mutDef.bonusKnockback : 0;
 
+    const cannonDmgMult = boostActiveNow ? 2.0 : 1.0;
+    const cannonRateMult = boostActiveNow ? 1.35 : 1.0;
+
     // Support towers use their own non-recursive aura range so two support towers don't loop infinitely
     const supRangeMult = def.isSupport ? 1.0 : 1 + sup.rangeBonus;
     const rangeMult = (1 + this.tdLevels.eagleRoost * 0.08) * mutRange * supRangeMult;
     const rateMult =
-      (1 + this.tdLevels.caffeinatedFeed * 0.11) * mutRate * plusRateMult * (1 + sup.fireRateBonus);
+      (1 + this.tdLevels.caffeinatedFeed * 0.11) *
+      mutRate *
+      plusRateMult *
+      (1 + sup.fireRateBonus) *
+      cannonRateMult;
     const bonusPierce = Math.ceil(this.tdLevels.razorTalons / 2) + mutPierce + sup.bonusPierce;
     const foxMult =
       base.foxDamageMult *
@@ -818,18 +1232,10 @@ export class ChickenTdEngine {
       mutFox *
       (1 + sup.foxDamageBonus);
     const hasCamo = base.camoSight || mutCamo || sup.grantsCamo || this.tdLevels.eagleRoost >= 3;
-    const basicPeckSet = new Set<ChickenTypeId>([
-      'bantam',
-      'pecker',
-      'honey',
-      'boomerang',
-      'chilly',
-      'ninja',
-    ]);
     const hasArmorPierce =
-      sup.grantsArmorPierce || !basicPeckSet.has(tower.typeId) || tower.tier >= 2;
+      sup.grantsArmorPierce || !BASIC_PECK_SET.has(tower.typeId) || tower.tier >= 2;
 
-    const rawDamage = base.damage * mutDmg * plusDmgMult * (1 + sup.damageBonus);
+    const rawDamage = base.damage * mutDmg * plusDmgMult * (1 + sup.damageBonus) * cannonDmgMult;
     const effectiveDamage =
       base.damage <= 0
         ? 0
@@ -837,9 +1243,11 @@ export class ChickenTdEngine {
         ? Math.round(rawDamage * 10) / 10
         : Math.round(rawDamage * 100) / 100;
     const effectiveBurnDps =
-      Math.round(base.burnDps * mutDmg * plusDmgMult * (1 + sup.damageBonus) * 10) / 10;
+      Math.round(
+        base.burnDps * mutDmg * plusDmgMult * (1 + sup.damageBonus) * cannonDmgMult * 10
+      ) / 10;
 
-    return {
+    const computed: EffectiveChickenStats = {
       ...base,
       effectiveDamage,
       effectiveBurnDps,
@@ -856,6 +1264,8 @@ export class ChickenTdEngine {
       plusLevel: plusLv,
       supportBuffCount: sup.count,
     };
+    this.statsCache.set(tower.id, computed);
+    return computed;
   }
 
   public placeChicken(typeId: ChickenTypeId, x: number, y: number): PlacedChicken | null {
@@ -866,30 +1276,13 @@ export class ChickenTdEngine {
     if (!canPlaceChickenAt(x, y, this.towers)) return null;
 
     this.corn -= cost;
-    const strongDefaults = new Set<ChickenTypeId>([
-      'ranger',
-      'pirate',
-      'mecha',
-      'cyber_sniper',
-      'gundam',
-      'samurai_shogun',
-      'stand_hen',
-      'yukimura_shadow',
-      'star_dread',
-      'bahamut_wyrm',
-      'chronos_empress',
-      'omega_god',
-      'gaia_creator',
-      'void_singularity',
-      'cat_god_supreme',
-    ]);
     const placed: PlacedChicken = {
       id: this.nextEntityId++,
       typeId,
       x,
       y,
       tier: 0,
-      targetMode: strongDefaults.has(typeId) ? 'strong' : 'first',
+      targetMode: STRONG_DEFAULT_SET.has(typeId) ? 'strong' : 'first',
       angle: 0,
       cooldown: 0,
       recoil: 0,
@@ -897,6 +1290,8 @@ export class ChickenTdEngine {
       totalSpent: cost,
     };
     this.towers.push(placed);
+    this.towerById.set(placed.id, placed);
+    this.invalidateStatsCache();
     if (typeId === 'stand_hen') {
       this.getOrCreateStand(placed);
       this.spawnRing(x, y, 42, '#C084FC');
@@ -911,7 +1306,7 @@ export class ChickenTdEngine {
   }
 
   public upgradeChickenTower(towerId: number): boolean {
-    const tower = this.towers.find((t) => t.id === towerId);
+    const tower = this.towerById.get(towerId);
     if (!tower || tower.tier >= 3) return false;
     const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
     const upgCost = this.getTowerUpgradeCost(tower.typeId, nextTierIdx);
@@ -920,6 +1315,7 @@ export class ChickenTdEngine {
     this.corn -= upgCost;
     tower.tier = nextTierIdx;
     tower.totalSpent += upgCost;
+    this.invalidateStatsCache();
     this.spawnRing(tower.x, tower.y, 46, '#4ADE80');
     this.spawnPixelBurst(tower.x, tower.y, 12, '#4ADE80');
     this.spawnMapPopup(`TIER ${nextTierIdx + 1}!`, tower.x, tower.y - 24, '#FDE047', 1.0);
@@ -932,6 +1328,8 @@ export class ChickenTdEngine {
     const idx = this.towers.findIndex((t) => t.id === towerId);
     if (idx === -1) return 0;
     const [removed] = this.towers.splice(idx, 1);
+    this.towerById.delete(removed.id);
+    this.invalidateStatsCache();
     this.stands = this.stands.filter((s) => s.ownerTowerId !== removed.id);
     const refund = Math.round(removed.totalSpent * 0.7);
     this.corn += refund;
@@ -976,6 +1374,7 @@ export class ChickenTdEngine {
 
     this.corn -= cost;
     this.tdLevels[id] = lvl + 1;
+    this.invalidateStatsCache();
 
     if (id === 'fortifiedNest') {
       this.maxEggs += 8;
@@ -991,7 +1390,8 @@ export class ChickenTdEngine {
     const def = ENEMY_DEFS[typeId];
     const hpScale = getWaveHpScale(this.waveNumber) * this.getDifficulty().enemyHpMult;
     const scaledHp = Math.max(1, Math.round(def.maxHp * hpScale));
-    this.enemies.push({
+    const idx = this.enemies.length;
+    const created: ActiveEnemy = {
       id: this.nextEntityId++,
       typeId,
       hp: scaledHp,
@@ -1000,12 +1400,21 @@ export class ChickenTdEngine {
       lateralOffset: def.isFoxBoss ? 0 : (Math.random() - 0.5) * 14,
       slowFactor: 0,
       slowTimer: 0,
+      freezeTimer: 0,
+      vulnTimer: 0,
       burnDps: 0,
       burnTimer: 0,
       kbCooldown: 0,
       hitFlash: 0,
       walkPhase: Math.random() * Math.PI * 2,
-    });
+      alive: true,
+      gridIdx: idx,
+    };
+    syncEnemyPathPosition(created);
+    this.enemies.push(created);
+    if (this.inProjectilePhase) {
+      this.spatialBuckets[this.getSpatialCell(created.x!, created.y!)].push(idx);
+    }
   }
 
   private buildDefeatSummary(killerTypeId: EnemyTypeId): RoundEndSummary {
@@ -1017,7 +1426,9 @@ export class ChickenTdEngine {
     let bossName: string | null = null;
     let bossHpPct: number | null = null;
 
-    const activeFoxes = this.enemies.filter((e) => ENEMY_DEFS[e.typeId].isFoxBoss);
+    const activeFoxes = this.enemies.filter(
+      (e) => e.alive !== false && ENEMY_DEFS[e.typeId].isFoxBoss
+    );
     if (ENEMY_DEFS[killerTypeId].isFoxBoss) {
       bossName = ENEMY_DEFS[killerTypeId].name;
       const sameType = activeFoxes.find((f) => f.typeId === killerTypeId);
@@ -1031,6 +1442,7 @@ export class ChickenTdEngine {
       bossHpPct = Math.max(1, Math.round((topBoss.hp / topBoss.maxHp) * 100));
     }
 
+    const remainingSpawns = Math.max(0, this.pendingSpawns.length - this.pendingSpawnIdx);
     const spawnedRatio =
       this.waveInitialSpawnCount > 0
         ? Math.max(
@@ -1038,7 +1450,7 @@ export class ChickenTdEngine {
             Math.min(
               99,
               Math.round(
-                ((this.waveInitialSpawnCount - this.pendingSpawns.length) /
+                ((this.waveInitialSpawnCount - remainingSpawns) /
                   this.waveInitialSpawnCount) *
                   100
               )
@@ -1100,9 +1512,15 @@ export class ChickenTdEngine {
   }
 
   private simulateStep(dt: number): void {
+    // Tick active Cluck Cannon buff timers
+    this.cannonDamageBoostTimer = Math.max(0, this.cannonDamageBoostTimer - dt);
+    this.cannonCornBoostTimer = Math.max(0, this.cannonCornBoostTimer - dt);
+    this.cannonTimeStopVisualTimer = Math.max(0, this.cannonTimeStopVisualTimer - dt);
+
     // 0. Farmhand Auto-Peckers + Cluck Cannon Charging during active waves!
     if (this.waveActive) {
-      this.cannonCharge = Math.min(1, this.cannonCharge + dt / CLUCK_CANNON_CHARGE_SEC);
+      const chargeSec = this.getEquippedCannonDef().chargeSec;
+      this.cannonCharge = Math.min(1, this.cannonCharge + dt / chargeSec);
       const autoRate = getFarmhandAutoRate(this.clickerLevels.farmhandChicks);
       if (autoRate > 0) {
         this.autoPeckAccumulator += autoRate * dt;
@@ -1114,26 +1532,39 @@ export class ChickenTdEngine {
       }
     }
 
-    // 1. Spawn queued wave enemies
+    // 1. Spawn queued wave enemies (O(1) cursor instead of Array.shift())
     if (this.waveActive) {
       this.waveElapsedSec += dt;
       while (
-        this.pendingSpawns.length > 0 &&
-        this.pendingSpawns[0].spawnAtWaveTime <= this.waveElapsedSec
+        this.pendingSpawnIdx < this.pendingSpawns.length &&
+        this.pendingSpawns[this.pendingSpawnIdx].spawnAtWaveTime <= this.waveElapsedSec
       ) {
-        const next = this.pendingSpawns.shift()!;
+        const next = this.pendingSpawns[this.pendingSpawnIdx++];
         this.spawnEnemy(next.enemyType, 0);
       }
     }
 
     // 2. Move enemies, tick DoTs, check Nest leaks
-    for (let i = this.enemies.length - 1; i >= 0; i--) {
+    const totalPathLen = getTotalPathLength();
+    const speedScale = getWaveSpeedScale(this.waveNumber) * this.getDifficulty().enemySpeedMult;
+    const moveCount = this.enemies.length;
+    let leakedOrBurned = false;
+
+    for (let i = 0; i < moveCount; i++) {
       const e = this.enemies[i];
+      if (e.alive === false) continue;
       const def = ENEMY_DEFS[e.typeId];
 
       e.hitFlash = Math.max(0, e.hitFlash - dt * 6);
       e.kbCooldown = Math.max(0, e.kbCooldown - dt);
-      e.walkPhase += dt * (def.isFoxBoss ? 6 : 12);
+      if (e.freezeTimer > 0) {
+        e.freezeTimer = Math.max(0, e.freezeTimer - dt);
+      } else {
+        e.walkPhase += dt * (def.isFoxBoss ? 6 : 12);
+      }
+      if (e.vulnTimer > 0) {
+        e.vulnTimer = Math.max(0, e.vulnTimer - dt);
+      }
 
       if (e.slowTimer > 0) {
         e.slowTimer -= dt;
@@ -1142,22 +1573,22 @@ export class ChickenTdEngine {
 
       if (e.burnTimer > 0) {
         e.burnTimer -= dt;
-        const mutMult = 1.0;
-        e.hp -= e.burnDps * mutMult * dt;
+        e.hp -= e.burnDps * dt;
         if (e.hp <= 0) {
-          this.popEnemyAtIndex(i);
+          this.defeatEnemy(e);
+          leakedOrBurned = true;
           continue;
         }
       }
 
       const effectiveSlow = def.isFoxBoss ? e.slowFactor * 0.55 : e.slowFactor;
-      const speedScale = getWaveSpeedScale(this.waveNumber) * this.getDifficulty().enemySpeedMult;
-      const moveSpeed = def.speed * speedScale * (1 - Math.min(0.72, effectiveSlow));
+      const moveSpeed =
+        e.freezeTimer > 0 ? 0 : def.speed * speedScale * (1 - Math.min(0.72, effectiveSlow));
       e.distance += moveSpeed * dt;
 
-      const totalPathLen = getTotalPathLength();
       if (e.distance >= totalPathLen) {
-        this.enemies.splice(i, 1);
+        e.alive = false;
+        leakedOrBurned = true;
         this.eggs = Math.max(0, this.eggs - def.eggDamage);
         const nestPt = getPointAlongPath(totalPathLen);
         this.spawnMapPopup(`-${def.eggDamage} EGG`, nestPt.x, nestPt.y - 26, '#EF4444', 1.15);
@@ -1168,6 +1599,7 @@ export class ChickenTdEngine {
           this.eggs = 0;
           this.waveActive = false;
           this.status = 'gameover';
+          this.compactAliveEnemies();
           this.lastDefeatSummary = this.buildDefeatSummary(def.id);
           this.audio.playDefeatJingle();
           this.notifyUi();
@@ -1176,16 +1608,25 @@ export class ChickenTdEngine {
           this.audio.playEggLeak();
           this.notifyUi();
         }
+      } else {
+        syncEnemyPathPosition(e);
       }
     }
 
+    if (leakedOrBurned) {
+      this.compactAliveEnemies();
+    }
+
     // 3. Tower targeting & projectile / pulse / Stand firing
-    for (const tower of this.towers) {
+    let towerDirectKillPossible = false;
+    for (let tIdx = 0; tIdx < this.towers.length; tIdx++) {
+      const tower = this.towers[tIdx];
       tower.recoil = Math.max(0, tower.recoil - dt * 5);
       tower.cooldown = Math.max(0, tower.cooldown - dt);
 
       if (tower.typeId === 'stand_hen') {
         this.updateStandUserTower(tower, dt);
+        towerDirectKillPossible = true;
         continue;
       }
 
@@ -1197,7 +1638,12 @@ export class ChickenTdEngine {
         if (this.waveActive && tower.cooldown <= 0) {
           tower.cooldown = 2.4;
           tower.recoil = 0.75;
-          this.spawnRing(tower.x, tower.y, Math.min(64, Math.round(this.getSupportAuraRadius(tower) * 0.42)), '#FDE047');
+          this.spawnRing(
+            tower.x,
+            tower.y,
+            Math.min(64, Math.round(this.getSupportAuraRadius(tower) * 0.42)),
+            '#FDE047'
+          );
         }
         continue;
       }
@@ -1208,8 +1654,9 @@ export class ChickenTdEngine {
       const target = this.pickTargetForTower(tower, stats);
       if (!target) continue;
 
-      const targetPos = getPointAlongPath(target.distance, target.lateralOffset);
-      const baseAngle = Math.atan2(targetPos.y - tower.y, targetPos.x - tower.x);
+      const tx = target.x!;
+      const ty = target.y!;
+      const baseAngle = Math.atan2(ty - tower.y, tx - tower.x);
       tower.angle = baseAngle;
       tower.cooldown = 1 / Math.max(0.2, stats.effectiveFireRate);
       tower.recoil = 1.0;
@@ -1228,12 +1675,12 @@ export class ChickenTdEngine {
         this.spawnRing(tower.x, tower.y, stats.effectiveRange, ringCol);
         if (isQuasar) {
           this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.65), '#22D3EE');
-          this.spawnPixelBurst(tower.x, tower.y, 12, '#22D3EE');
+          this.spawnPixelBurst(tower.x, tower.y, 8, '#22D3EE');
         } else if (isTremor) {
           this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.55), '#E2E8F0');
-          this.spawnPixelBurst(tower.x, tower.y, 10, '#93C5FD');
+          this.spawnPixelBurst(tower.x, tower.y, 7, '#93C5FD');
         } else {
-          this.spawnPixelBurst(tower.x, tower.y, 8, '#FDE047');
+          this.spawnPixelBurst(tower.x, tower.y, 6, '#FDE047');
         }
         const pulseCarrier: ActiveProjectile = {
           id: this.nextEntityId++,
@@ -1256,24 +1703,28 @@ export class ChickenTdEngine {
           savageCritChance: stats.effectiveCritChance,
           armorPiercing: true,
           canHitCamo: stats.effectiveCamo,
-          hitEnemyIds: new Set<number>(),
+          hitEnemyIds: null,
           age: 0,
           maxLifetime: 0.05,
           color: def.accentColor,
         };
         let hits = 0;
-        const sonicTargets = [...this.enemies];
-        for (const e of sonicTargets) {
+        const snapLen = this.enemies.length;
+        for (let i = 0; i < snapLen; i++) {
           if (hits >= stats.effectivePierce) break;
-          if (!this.enemies.includes(e)) continue;
+          const e = this.enemies[i];
+          if (e.alive === false) continue;
           const eDef = ENEMY_DEFS[e.typeId];
           if (eDef.isCamo && !stats.effectiveCamo) continue;
-          const pos = getPointAlongPath(e.distance, e.lateralOffset);
-          if (Math.hypot(pos.x - tower.x, pos.y - tower.y) <= stats.effectiveRange + eDef.radius) {
+          const dx = e.x! - tower.x;
+          const dy = e.y! - tower.y;
+          const maxR = stats.effectiveRange + eDef.radius;
+          if (dx * dx + dy * dy <= maxR * maxR) {
             this.damageEnemy(e, stats.effectiveDamage, pulseCarrier);
             hits++;
           }
         }
+        towerDirectKillPossible = true;
         continue;
       }
 
@@ -1282,21 +1733,24 @@ export class ChickenTdEngine {
       const isBoomerang = def.projectileStyle === 'boomerang';
 
       for (let m = 0; m < count; m++) {
+        if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
         const angOffset = count === 1 ? 0 : (m - (count - 1) / 2) * spreadStep;
         const ang = baseAngle + angOffset - (isBoomerang ? 0.34 : 0);
         const speed = stats.projectileSpeed;
         const maxLife = isBoomerang
           ? (stats.effectiveRange * 2.05) / speed
           : (stats.effectiveRange + 75) / speed;
+        const cosA = Math.cos(ang);
+        const sinA = Math.sin(ang);
 
         this.projectiles.push({
           id: this.nextEntityId++,
           ownerTowerId: tower.id,
           style: def.projectileStyle,
-          x: tower.x + Math.cos(ang) * 14,
-          y: tower.y + Math.sin(ang) * 14,
-          vx: Math.cos(ang) * speed,
-          vy: Math.sin(ang) * speed,
+          x: tower.x + cosA * 14,
+          y: tower.y + sinA * 14,
+          vx: cosA * speed,
+          vy: sinA * speed,
           curveRate: isBoomerang ? 2.15 : 0,
           rotation: ang,
           damage: stats.effectiveDamage,
@@ -1310,7 +1764,7 @@ export class ChickenTdEngine {
           savageCritChance: stats.effectiveCritChance,
           armorPiercing,
           canHitCamo: stats.effectiveCamo,
-          hitEnemyIds: new Set<number>(),
+          hitEnemyIds: null,
           age: 0,
           maxLifetime: maxLife,
           color: def.accentColor,
@@ -1318,87 +1772,141 @@ export class ChickenTdEngine {
       }
     }
 
-    // 4. Advance projectiles & resolve collisions
-    for (let pIdx = this.projectiles.length - 1; pIdx >= 0; pIdx--) {
-      const p = this.projectiles[pIdx];
-      p.age += dt;
+    if (towerDirectKillPossible) {
+      this.compactAliveEnemies();
+    }
 
-      if (p.curveRate !== 0) {
-        const curAng = Math.atan2(p.vy, p.vx) + p.curveRate * dt;
-        const spd = Math.hypot(p.vx, p.vy);
-        p.vx = Math.cos(curAng) * spd;
-        p.vy = Math.sin(curAng) * spd;
-      }
+    // 4. Advance projectiles & resolve collisions via 16x11 Spatial Grid
+    if (this.projectiles.length > 0) {
+      this.rebuildSpatialGrid();
+      this.inProjectilePhase = true;
+      const buckets = this.spatialBuckets;
+      let writeProj = 0;
 
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      if (p.style === 'shuriken' || p.style === 'boomerang' || p.style === 'black_hole') {
-        p.rotation += dt * 18;
-      } else {
-        p.rotation = Math.atan2(p.vy, p.vx);
-      }
+      for (let pIdx = 0; pIdx < this.projectiles.length; pIdx++) {
+        const p = this.projectiles[pIdx];
+        p.age += dt;
+        if (p.age >= p.maxLifetime) continue;
 
-      if (p.age >= p.maxLifetime) {
-        this.projectiles.splice(pIdx, 1);
-        continue;
-      }
+        if (p.curveRate !== 0) {
+          const curAng = Math.atan2(p.vy, p.vx) + p.curveRate * dt;
+          const spd = Math.hypot(p.vx, p.vy);
+          p.vx = Math.cos(curAng) * spd;
+          p.vy = Math.sin(curAng) * spd;
+        }
 
-      let hitSomething = false;
-      const candidates = [...this.enemies];
-      for (const e of candidates) {
-        if (p.hitEnemyIds.has(e.id) || !this.enemies.includes(e)) continue;
-        const eDef = ENEMY_DEFS[e.typeId];
-        if (eDef.isCamo && !p.canHitCamo) continue;
-        const ePos = getPointAlongPath(e.distance, e.lateralOffset);
-        const extraRadius = p.splashRadius > 0 || p.style === 'feather_slash' ? 11 : 8;
-        const hitDist = eDef.radius + extraRadius;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (p.style === 'shuriken' || p.style === 'boomerang' || p.style === 'black_hole') {
+          p.rotation += dt * 18;
+        } else {
+          p.rotation = Math.atan2(p.vy, p.vx);
+        }
 
-        if (Math.hypot(p.x - ePos.x, p.y - ePos.y) <= hitDist) {
-          p.hitEnemyIds.add(e.id);
-          hitSomething = true;
+        if (this.enemies.length > 0) {
+          const cCol = Math.max(0, Math.min(SPATIAL_COLS - 1, (p.x | 0) >> SPATIAL_CELL_SHIFT));
+          const cRow = Math.max(0, Math.min(SPATIAL_ROWS - 1, (p.y | 0) >> SPATIAL_CELL_SHIFT));
+          const rMin = cRow > 0 ? cRow - 1 : 0;
+          const rMax = cRow < SPATIAL_ROWS - 1 ? cRow + 1 : SPATIAL_ROWS - 1;
+          const cMin = cCol > 0 ? cCol - 1 : 0;
+          const cMax = cCol < SPATIAL_COLS - 1 ? cCol + 1 : SPATIAL_COLS - 1;
+          const extraRadius = p.splashRadius > 0 || p.style === 'feather_slash' ? 11 : 8;
 
-          if (p.splashRadius > 0 && p.pierceLeft <= 1) {
-            this.applySplashHit(p, ePos.x, ePos.y);
-            p.pierceLeft = 0;
-          } else if (p.splashRadius > 0) {
-            this.applySplashHit(p, ePos.x, ePos.y);
-            p.pierceLeft--;
-          } else {
-            this.damageEnemy(e, p.damage, p);
-            p.pierceLeft--;
+          for (let r = rMin; r <= rMax && p.pierceLeft > 0; r++) {
+            const rowBase = r * SPATIAL_COLS;
+            for (let c = cMin; c <= cMax && p.pierceLeft > 0; c++) {
+              const bucket = buckets[rowBase + c];
+              // Snapshot bucket length so newly split child bugs don't get double-pierced in same cell scan
+              const bLen = bucket.length;
+              for (let b = 0; b < bLen; b++) {
+                const e = this.enemies[bucket[b]];
+                if (!e || e.alive === false) continue;
+                if (p.hitEnemyIds !== null && p.hitEnemyIds.has(e.id)) continue;
+                const eDef = ENEMY_DEFS[e.typeId];
+                if (eDef.isCamo && !p.canHitCamo) continue;
+
+                const ex = e.x!;
+                const ey = e.y!;
+                const dx = p.x - ex;
+                const dy = p.y - ey;
+                const hitDist = eDef.radius + extraRadius;
+
+                if (dx * dx + dy * dy <= hitDist * hitDist) {
+                  if (p.pierceLeft > 1) {
+                    if (p.hitEnemyIds === null) p.hitEnemyIds = new Set<number>();
+                    p.hitEnemyIds.add(e.id);
+                  }
+
+                  if (p.splashRadius > 0) {
+                    this.applySplashHit(p, ex, ey);
+                    p.pierceLeft--;
+                  } else {
+                    this.damageEnemy(e, p.damage, p);
+                    p.pierceLeft--;
+                  }
+
+                  if (p.pierceLeft <= 0) {
+                    break;
+                  }
+                }
+              }
+            }
           }
+        }
 
-          if (p.pierceLeft <= 0) {
-            break;
-          }
+        if (p.pierceLeft > 0) {
+          this.projectiles[writeProj++] = p;
         }
       }
 
-      if (hitSomething && p.pierceLeft <= 0) {
-        this.projectiles.splice(pIdx, 1);
+      this.projectiles.length = writeProj;
+      this.inProjectilePhase = false;
+      this.compactAliveEnemies();
+    }
+
+    // 5. Update pixel rings, particles & floating popups (in-place compaction, zero array allocations)
+    let writeRing = 0;
+    for (let i = 0; i < this.rings.length; i++) {
+      const r = this.rings[i];
+      r.age += dt;
+      if (r.age < r.lifetime) {
+        this.rings[writeRing++] = r;
       }
     }
+    this.rings.length = writeRing;
 
-    // 5. Update pixel rings, particles & floating popups
-    for (const r of this.rings) r.age += dt;
-    this.rings = this.rings.filter((r) => r.age < r.lifetime);
-
-    for (const pt of this.particles) {
+    let writePt = 0;
+    for (let i = 0; i < this.particles.length; i++) {
+      const pt = this.particles[i];
       pt.age += dt;
-      pt.x += pt.vx * dt;
-      pt.y += pt.vy * dt;
+      if (pt.age < pt.lifetime) {
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        this.particles[writePt++] = pt;
+      }
     }
-    this.particles = this.particles.filter((pt) => pt.age < pt.lifetime);
+    this.particles.length = writePt;
 
-    for (const pop of this.popups) {
+    let writePop = 0;
+    for (let i = 0; i < this.popups.length; i++) {
+      const pop = this.popups[i];
       pop.age += dt;
-      pop.y += pop.vy * dt;
+      if (pop.age < pop.lifetime) {
+        pop.y += pop.vy * dt;
+        this.popups[writePop++] = pop;
+      }
     }
-    this.popups = this.popups.filter((pop) => pop.age < pop.lifetime);
+    this.popups.length = writePop;
 
     // 6. Check Wave Complete! (Clicker locks immediately when wave ends!)
-    if (this.waveActive && this.pendingSpawns.length === 0 && this.enemies.length === 0) {
+    if (
+      this.waveActive &&
+      this.pendingSpawnIdx >= this.pendingSpawns.length &&
+      this.enemies.length === 0
+    ) {
       this.waveActive = false;
+      this.pendingSpawns = [];
+      this.pendingSpawnIdx = 0;
       this.clickTimestampsMs = [];
       this.autoPeckAccumulator = 0;
 
@@ -1408,7 +1916,7 @@ export class ChickenTdEngine {
         const dividend = Math.max(1, Math.round(this.waveCornHarvested * siloRate));
         this.corn += dividend;
         this.totalCornClicked += dividend;
-        const nestPt = getPointAlongPath(getTotalPathLength());
+        const nestPt = getPointAlongPath(totalPathLen);
         this.spawnMapPopup(`SILO +${dividend} CORN!`, nestPt.x, nestPt.y - 30, '#FACC15', 1.1);
         this.spawnPixelBurst(nestPt.x, nestPt.y, 10, '#FACC15');
         this.audio.playUpgrade();
@@ -1469,11 +1977,12 @@ export class ChickenTdEngine {
 
     stand.targetEnemyId = target.id;
     const targetDef = ENEMY_DEFS[target.typeId];
-    const targetPos = getPointAlongPath(target.distance, target.lateralOffset);
-    tower.angle = Math.atan2(targetPos.y - tower.y, targetPos.x - tower.x);
+    const tx = target.x!;
+    const ty = target.y!;
+    tower.angle = Math.atan2(ty - tower.y, tx - tower.x);
 
-    const dx = targetPos.x - stand.x;
-    const dy = targetPos.y - stand.y;
+    const dx = tx - stand.x;
+    const dy = ty - stand.y;
     const dist = Math.hypot(dx, dy);
     if (dist > 0.5) {
       stand.angle = Math.atan2(dy, dx);
@@ -1489,7 +1998,7 @@ export class ChickenTdEngine {
     const punchReach = targetDef.radius + 32;
     if (dist > punchReach) {
       stand.state = 'charging';
-      if (Math.random() < dt * 12) {
+      if (Math.random() < dt * 10) {
         this.spawnPixelBurst(stand.x, stand.y, 1, tower.tier === 3 ? '#FEF08A' : '#C084FC');
       }
       return;
@@ -1510,8 +2019,8 @@ export class ChickenTdEngine {
       id: this.nextEntityId++,
       ownerTowerId: tower.id,
       style: 'stand_fist',
-      x: targetPos.x,
-      y: targetPos.y,
+      x: tx,
+      y: ty,
       vx: 0,
       vy: 0,
       curveRate: 0,
@@ -1527,7 +2036,7 @@ export class ChickenTdEngine {
       savageCritChance: stats.effectiveCritChance,
       armorPiercing: true,
       canHitCamo: stats.effectiveCamo,
-      hitEnemyIds: new Set<number>(),
+      hitEnemyIds: null,
       age: 0,
       maxLifetime: 0.05,
       color: isRequiem ? '#FACC15' : '#C084FC',
@@ -1538,25 +2047,28 @@ export class ChickenTdEngine {
     let hits = 1;
 
     if (stats.splashRadius > 0 && hits < stats.effectivePierce) {
-      const cleaveCandidates = [...this.enemies];
-      for (const e of cleaveCandidates) {
+      const snapLen = this.enemies.length;
+      for (let i = 0; i < snapLen; i++) {
         if (hits >= stats.effectivePierce) break;
-        if (e.id === targetIdBeforeHit || !this.enemies.includes(e)) continue;
+        const e = this.enemies[i];
+        if (e.alive === false || e.id === targetIdBeforeHit) continue;
         const eDef = ENEMY_DEFS[e.typeId];
         if (eDef.isCamo && !stats.effectiveCamo) continue;
-        const pos = getPointAlongPath(e.distance, e.lateralOffset);
-        if (Math.hypot(pos.x - targetPos.x, pos.y - targetPos.y) <= stats.splashRadius + eDef.radius) {
+        const cdx = e.x! - tx;
+        const cdy = e.y! - ty;
+        const maxR = stats.splashRadius + eDef.radius;
+        if (cdx * cdx + cdy * cdy <= maxR * maxR) {
           this.damageEnemy(e, stats.effectiveDamage, punchCarrier);
           hits++;
         }
       }
     }
 
-    this.spawnPixelBurst(targetPos.x, targetPos.y, 4, isRequiem ? '#FEF08A' : '#E879F9');
+    this.spawnPixelBurst(tx, ty, 3, isRequiem ? '#FEF08A' : '#E879F9');
     if (stand.punchCount % 2 === 0) {
       this.spawnRing(
-        targetPos.x,
-        targetPos.y,
+        tx,
+        ty,
         Math.round(stats.splashRadius * 0.65),
         isRequiem ? '#FACC15' : '#C084FC'
       );
@@ -1572,19 +2084,30 @@ export class ChickenTdEngine {
   ): ActiveEnemy | null {
     let best: ActiveEnemy | null = null;
     let bestScore = -Infinity;
+    const tx = tower.x;
+    const ty = tower.y;
+    const baseRange = stats.effectiveRange;
+    const mode = tower.targetMode;
 
-    for (const e of this.enemies) {
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (e.alive === false) continue;
       const def = ENEMY_DEFS[e.typeId];
       if (def.isCamo && !stats.effectiveCamo) continue;
 
-      const pos = getPointAlongPath(e.distance, e.lateralOffset);
-      const distToTower = Math.hypot(pos.x - tower.x, pos.y - tower.y);
-      if (distToTower > stats.effectiveRange + def.radius * 0.5) continue;
+      if (e.x === undefined || e.y === undefined) {
+        syncEnemyPathPosition(e);
+      }
+      const dx = e.x! - tx;
+      const dy = e.y! - ty;
+      const maxRange = baseRange + def.radius * 0.5;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > maxRange * maxRange) continue;
 
       let score = 0;
-      if (tower.targetMode === 'first') score = e.distance;
-      else if (tower.targetMode === 'last') score = -e.distance;
-      else if (tower.targetMode === 'close') score = -distToTower;
+      if (mode === 'first') score = e.distance;
+      else if (mode === 'last') score = -e.distance;
+      else if (mode === 'close') score = -distSq;
       else score = def.maxHp * 1000 + e.distance;
 
       if (score > bestScore) {
@@ -1635,49 +2158,92 @@ export class ChickenTdEngine {
         ? '#F97316'
         : '#FDE047';
     this.spawnRing(cx, cy, proj.splashRadius, ringCol);
-    this.spawnPixelBurst(cx, cy, 6, ringCol);
+    this.spawnPixelBurst(cx, cy, 4, ringCol);
 
-    const splashTargets = [...this.enemies];
-    for (const e of splashTargets) {
-      if (!this.enemies.includes(e)) continue;
-      const def = ENEMY_DEFS[e.typeId];
-      if (def.isCamo && !proj.canHitCamo) continue;
-      const pos = getPointAlongPath(e.distance, e.lateralOffset);
-      if (Math.hypot(pos.x - cx, pos.y - cy) <= proj.splashRadius + def.radius) {
-        this.damageEnemy(e, proj.damage, proj);
+    if (this.inProjectilePhase) {
+      // Fast O(local cells) splash lookup via 16x11 spatial grid!
+      const reach = proj.splashRadius + 46;
+      const cMin = Math.max(0, ((cx - reach) | 0) >> SPATIAL_CELL_SHIFT);
+      const cMax = Math.min(SPATIAL_COLS - 1, ((cx + reach) | 0) >> SPATIAL_CELL_SHIFT);
+      const rMin = Math.max(0, ((cy - reach) | 0) >> SPATIAL_CELL_SHIFT);
+      const rMax = Math.min(SPATIAL_ROWS - 1, ((cy + reach) | 0) >> SPATIAL_CELL_SHIFT);
+      const stamp = ++this.queryStampCounter;
+      const maxExistingId = this.nextEntityId - 1;
+      const buckets = this.spatialBuckets;
+
+      for (let r = rMin; r <= rMax; r++) {
+        const rowBase = r * SPATIAL_COLS;
+        for (let c = cMin; c <= cMax; c++) {
+          const bucket = buckets[rowBase + c];
+          const bLen = bucket.length;
+          for (let b = 0; b < bLen; b++) {
+            const e = this.enemies[bucket[b]];
+            if (!e || e.alive === false || e.id > maxExistingId) continue;
+            if (this.enemyStampById.get(e.id) === stamp) continue;
+            this.enemyStampById.set(e.id, stamp);
+
+            const def = ENEMY_DEFS[e.typeId];
+            if (def.isCamo && !proj.canHitCamo) continue;
+            const dx = e.x! - cx;
+            const dy = e.y! - cy;
+            const maxR = proj.splashRadius + def.radius;
+            if (dx * dx + dy * dy <= maxR * maxR) {
+              this.damageEnemy(e, proj.damage, proj);
+            }
+          }
+        }
+      }
+    } else {
+      const snapLen = this.enemies.length;
+      for (let i = 0; i < snapLen; i++) {
+        const e = this.enemies[i];
+        if (e.alive === false) continue;
+        const def = ENEMY_DEFS[e.typeId];
+        if (def.isCamo && !proj.canHitCamo) continue;
+        const dx = e.x! - cx;
+        const dy = e.y! - cy;
+        const maxR = proj.splashRadius + def.radius;
+        if (dx * dx + dy * dy <= maxR * maxR) {
+          this.damageEnemy(e, proj.damage, proj);
+        }
       }
     }
   }
 
   private damageEnemy(e: ActiveEnemy, rawDamage: number, proj: ActiveProjectile): void {
-    const liveIdx = this.enemies.indexOf(e);
-    if (liveIdx === -1) return;
+    if (e.alive === false) return;
     const def = ENEMY_DEFS[e.typeId];
     if (def.isCamo && !proj.canHitCamo) return;
+
+    if (e.x === undefined || e.y === undefined) {
+      syncEnemyPathPosition(e);
+    }
 
     let dmg = rawDamage;
     if (def.isFoxBoss) {
       dmg *= proj.foxDamageMult;
     }
-    if (def.isArmored && !proj.armorPiercing) {
+    if (def.isArmored && !proj.armorPiercing && e.vulnTimer <= 0) {
       dmg = Math.max(0.25, dmg * 0.45);
+    }
+    if (e.vulnTimer > 0) {
+      dmg *= 1.35;
     }
 
     // Battle Cats SAVAGE BLOW Critical Strike (3.0x damage)!
     const isSavageCrit = proj.savageCritChance > 0 && Math.random() < proj.savageCritChance;
     if (isSavageCrit) {
       dmg *= 3.0;
-      const pos = getPointAlongPath(e.distance, e.lateralOffset);
-      this.spawnPixelBurst(pos.x, pos.y, 7, '#FACC15');
+      this.spawnPixelBurst(e.x!, e.y!, 5, '#FACC15');
       if (Math.random() < 0.35 || def.isFoxBoss) {
-        this.spawnMapPopup('SAVAGE!', pos.x, pos.y - 16, '#FEF08A', 1.0);
+        this.spawnMapPopup('SAVAGE!', e.x!, e.y! - 16, '#FEF08A', 1.0);
       }
       this.audio.playSavageCrit();
     }
 
     const dealt = Math.min(Math.max(0, e.hp), dmg);
     if (proj.ownerTowerId > 0) {
-      const owner = this.towers.find((t) => t.id === proj.ownerTowerId);
+      const owner = this.towerById.get(proj.ownerTowerId);
       if (owner) {
         owner.totalPopDamage += dealt;
       }
@@ -1688,9 +2254,17 @@ export class ChickenTdEngine {
 
     // Battle Cats Knockback (pushes enemy backward along the path with brief KB immunity)!
     if (proj.knockback > 0 && e.kbCooldown <= 0 && e.hp > 0) {
+      const oldCell = this.inProjectilePhase ? this.getSpatialCell(e.x!, e.y!) : -1;
       const kbDist = def.isFoxBoss ? proj.knockback * 0.38 : proj.knockback;
       e.distance = Math.max(0, e.distance - kbDist);
       e.kbCooldown = 0.45;
+      syncEnemyPathPosition(e);
+      if (this.inProjectilePhase && e.gridIdx !== undefined) {
+        const newCell = this.getSpatialCell(e.x!, e.y!);
+        if (newCell !== oldCell) {
+          this.spatialBuckets[newCell].push(e.gridIdx);
+        }
+      }
     }
 
     if (proj.slowFactor > 0) {
@@ -1703,16 +2277,20 @@ export class ChickenTdEngine {
     }
 
     if (e.hp <= 0) {
-      const idxNow = this.enemies.indexOf(e);
-      if (idxNow !== -1) this.popEnemyAtIndex(idxNow);
+      this.defeatEnemy(e);
     }
   }
 
-  private popEnemyAtIndex(index: number): void {
-    const [popped] = this.enemies.splice(index, 1);
-    if (!popped) return;
+  private defeatEnemy(popped: ActiveEnemy): void {
+    if (popped.alive === false) return;
+    popped.alive = false;
+
     const def = ENEMY_DEFS[popped.typeId];
-    const pos = getPointAlongPath(popped.distance, popped.lateralOffset);
+    if (popped.x === undefined || popped.y === undefined) {
+      syncEnemyPathPosition(popped);
+    }
+    const px = popped.x!;
+    const py = popped.y!;
 
     this.totalBugsPopped++;
     this.audio.playBugPop(def.isFoxBoss);
@@ -1745,15 +2323,15 @@ export class ChickenTdEngine {
           : '#F97316';
       const popLabel =
         popped.typeId === 'fox_cosmic'
-          ? 'COSMIC POPPED!'
+          ? 'COSMIC SLAIN!'
           : popped.typeId === 'fox_phoenix'
-          ? 'PHOENIX POPPED!'
-          : 'FOX POPPED!';
-      this.spawnRing(pos.x, pos.y, def.radius * 2.2, popCol);
-      this.spawnPixelBurst(pos.x, pos.y, 20, def.bodyColor);
-      this.spawnMapPopup(popLabel, pos.x, pos.y - 18, '#FDE047', 1.05);
+          ? 'PHOENIX SLAIN!'
+          : 'FOX SLAIN!';
+      this.spawnRing(px, py, def.radius * 2.2, popCol);
+      this.spawnPixelBurst(px, py, 16, def.bodyColor);
+      this.spawnMapPopup(popLabel, px, py - 18, '#FDE047', 1.05);
     } else {
-      this.spawnPixelBurst(pos.x, pos.y, 6, def.bodyColor);
+      this.spawnPixelBurst(px, py, 4, def.bodyColor);
     }
 
     let childIdx = 0;
@@ -1767,14 +2345,16 @@ export class ChickenTdEngine {
   }
 
   private spawnRing(x: number, y: number, maxRadius: number, color: string): void {
-    if (this.rings.length > 42) this.rings.shift();
+    if (this.rings.length >= MAX_ACTIVE_RINGS) return;
     this.rings.push({ x, y, maxRadius, color, age: 0, lifetime: 0.24 });
   }
 
   private spawnPixelBurst(x: number, y: number, count: number, color: string): void {
-    for (let i = 0; i < count; i++) {
-      if (this.particles.length > 160) this.particles.shift();
-      const ang = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+    const remainingSlots = MAX_ACTIVE_PARTICLES - this.particles.length;
+    if (remainingSlots <= 0) return;
+    const toSpawn = Math.min(count, remainingSlots);
+    for (let i = 0; i < toSpawn; i++) {
+      const ang = (Math.PI * 2 * i) / toSpawn + (Math.random() - 0.5) * 0.5;
       const spd = 35 + Math.random() * 75;
       this.particles.push({
         x,
@@ -1796,7 +2376,27 @@ export class ChickenTdEngine {
     color: string,
     scale = 1
   ): void {
-    if (this.popups.length > 26) this.popups.shift();
+    if (this.popups.length >= MAX_ACTIVE_POPUPS) {
+      // Overwrite oldest popup in-place instead of Array.shift()
+      let oldestIdx = 0;
+      let oldestAge = -1;
+      for (let i = 0; i < this.popups.length; i++) {
+        if (this.popups[i].age > oldestAge) {
+          oldestAge = this.popups[i].age;
+          oldestIdx = i;
+        }
+      }
+      const slot = this.popups[oldestIdx];
+      slot.text = text;
+      slot.x = x;
+      slot.y = y;
+      slot.vy = -36;
+      slot.color = color;
+      slot.scale = scale;
+      slot.age = 0;
+      slot.lifetime = 0.72;
+      return;
+    }
     this.popups.push({
       text,
       x,

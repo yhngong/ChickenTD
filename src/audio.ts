@@ -1,10 +1,11 @@
-import { MutationTier } from './types';
+import { CannonTypeId, MutationTier } from './types';
 
 export class ChickenAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private isMuted = false;
   private lastPopPerfMs = 0;
+  private lastBossPopPerfMs = 0;
   private lastCritPerfMs = 0;
 
   private ensureContext(): AudioContext | null {
@@ -98,13 +99,14 @@ export class ChickenAudioEngine {
 
   public playBugPop(isFoxBoss: boolean): void {
     const now = performance.now();
-    if (!isFoxBoss && now - this.lastPopPerfMs < 38) return;
-    this.lastPopPerfMs = now;
-
     if (isFoxBoss) {
+      if (now - this.lastBossPopPerfMs < 75) return;
+      this.lastBossPopPerfMs = now;
       this.tone('sawtooth', 190, 55, 0.28, 0.26, 0);
       this.tone('triangle', 420, 140, 0.22, 0.2, 0.03);
     } else {
+      if (now - this.lastPopPerfMs < 38) return;
+      this.lastPopPerfMs = now;
       const pitch = 520 + Math.random() * 240;
       this.tone('sine', pitch, pitch * 1.45, 0.045, 0.11, 0);
     }
@@ -118,10 +120,35 @@ export class ChickenAudioEngine {
     this.tone('triangle', 1046, 1568, 0.11, 0.18, 0.035);
   }
 
-  public playCluckCannon(): void {
-    this.tone('sawtooth', 880, 110, 0.42, 0.28, 0);
-    this.tone('square', 520, 65, 0.48, 0.22, 0.04);
-    this.tone('triangle', 1320, 440, 0.3, 0.22, 0.08);
+  public playCluckCannon(cannonId: CannonTypeId = 'shockwave'): void {
+    if (cannonId === 'time_stop') {
+      // Dramatic Chrono Time-Stop pitch-warp + clock-halt chime!
+      this.tone('sawtooth', 960, 58, 0.52, 0.28, 0);
+      this.tone('sine', 440, 42, 0.56, 0.26, 0.04);
+      this.tone('triangle', 1174.66, 587.33, 0.14, 0.22, 0.1);
+      this.tone('triangle', 880, 440, 0.22, 0.22, 0.22);
+    } else if (cannonId === 'damage_boost') {
+      // Heroic blazing War-Horn overdrive fanfare!
+      this.tone('sawtooth', 392, 523.25, 0.14, 0.24, 0);
+      this.tone('sawtooth', 523.25, 659.25, 0.14, 0.26, 0.09);
+      this.tone('square', 659.25, 1046.5, 0.34, 0.22, 0.18);
+      this.tone('triangle', 1046.5, 1318.5, 0.36, 0.26, 0.18);
+    } else if (cannonId === 'orbital_nova') {
+      // Orbital antimatter beam charge + thunderous detonation!
+      this.tone('sine', 320, 1480, 0.12, 0.22, 0);
+      this.tone('sawtooth', 1240, 52, 0.54, 0.3, 0.1);
+      this.tone('square', 640, 48, 0.58, 0.24, 0.12);
+    } else if (cannonId === 'cornstorm') {
+      // Golden Cornstorm knockback gale + bright coin-like arpeggio!
+      this.tone('sawtooth', 720, 120, 0.34, 0.24, 0);
+      this.tone('triangle', 587.33, 880, 0.12, 0.24, 0.06);
+      this.tone('triangle', 880, 1174.66, 0.14, 0.24, 0.15);
+      this.tone('triangle', 1174.66, 1567.98, 0.24, 0.26, 0.24);
+    } else {
+      this.tone('sawtooth', 880, 110, 0.42, 0.28, 0);
+      this.tone('square', 520, 65, 0.48, 0.22, 0.04);
+      this.tone('triangle', 1320, 440, 0.3, 0.22, 0.08);
+    }
   }
 
   public playWaveStart(): void {

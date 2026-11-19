@@ -1,4 +1,6 @@
 import {
+  CannonDef,
+  CannonTypeId,
   ChickenTowerDef,
   ChickenTypeId,
   ClickerUpgradeId,
@@ -15,6 +17,78 @@ export const STARTING_CORN = 150;
 export const STARTING_EGGS = 25;
 export const MAX_CPS_CAP = 12;
 export const CAMPAIGN_WAVES = 25;
+
+// ==================== 5 CLUCK CANNON LOADOUTS (BUY WITH GEM EGGS) ====================
+export const CANNON_ORDER: readonly CannonTypeId[] = [
+  'shockwave',
+  'time_stop',
+  'damage_boost',
+  'orbital_nova',
+  'cornstorm',
+];
+
+export const CANNON_DEFS: Record<CannonTypeId, CannonDef> = {
+  shockwave: {
+    id: 'shockwave',
+    name: 'Shockwave Cannon',
+    shortLabel: 'SHOCKWAVE',
+    iconId: 'cannon',
+    gemEggCost: 0,
+    chargeSec: 22,
+    accentColor: '#22D3EE',
+    badgeText: 'BLAST + KNOCKBACK',
+    description:
+      'Sweeps a full-lane shockwave beam that deals wave-scaled damage, 68px knockback & 58% slow!',
+  },
+  time_stop: {
+    id: 'time_stop',
+    name: 'Time-Stop Cannon',
+    shortLabel: 'TIME STOP',
+    iconId: 'cannon_timestop',
+    gemEggCost: 2,
+    chargeSec: 24,
+    accentColor: '#C084FC',
+    badgeText: 'STOP TIME (5.0S)',
+    description:
+      'Stops time across the map! Freezes all Bugs solid at 0 speed for 5.0s (Fox Bosses 3.8s) + rift hit!',
+  },
+  damage_boost: {
+    id: 'damage_boost',
+    name: 'Damage Boost Cannon',
+    shortLabel: 'DMG BOOST',
+    iconId: 'cannon_dmgboost',
+    gemEggCost: 2,
+    chargeSec: 24,
+    accentColor: '#F97316',
+    badgeText: '2X DMG + 35% SPD (8S)',
+    description:
+      'Supercharges ALL Chicken Troops with 2.0x Damage & +35% Attack Speed for 8.0s + shock burst!',
+  },
+  orbital_nova: {
+    id: 'orbital_nova',
+    name: 'Orbital Nova Cannon',
+    shortLabel: 'NOVA BEAM',
+    iconId: 'cannon_nova',
+    gemEggCost: 3,
+    chargeSec: 28,
+    accentColor: '#F43F5E',
+    badgeText: '4.5X NUKE + SHATTER',
+    description:
+      'Calls down a 4.5x antimatter beam (2.5x vs Foxes) that shatters armor & boosts enemy damage taken +35% for 8s!',
+  },
+  cornstorm: {
+    id: 'cornstorm',
+    name: 'Cornstorm Cannon',
+    shortLabel: 'CORNSTORM',
+    iconId: 'cannon_cornstorm',
+    gemEggCost: 3,
+    chargeSec: 22,
+    accentColor: '#4ADE80',
+    badgeText: '2X CORN + 90PX KB',
+    description:
+      '90px mega-knockback gale + instant Corn windfall & 2.0x Henhouse/Farmhand Corn yield for 8.0s!',
+  },
+};
 
 // ==================== 4 SELECTABLE DIFFICULTIES ====================
 export const DIFFICULTY_ORDER: readonly DifficultyId[] = [
@@ -139,7 +213,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'bantam',
     name: 'Brawler Bantam',
     role: 'Close Melee Flurry',
-    hotkey: '1',
     baseCost: 95,
     featherColor: '#FEF2F2',
     bellyColor: '#FECACA',
@@ -222,7 +295,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'pecker',
     name: 'Pecker Hen',
     role: 'Fast Seed Shooter',
-    hotkey: '2',
     baseCost: 120,
     featherColor: '#FFF7EA',
     bellyColor: '#FFE5BD',
@@ -300,12 +372,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 3. HONEYCOMB HEN — Bloons Glue-Gunner style sticky slow
+  // 3. HONEYCOMB HEN — Sticky honey crowd-control sprayer
   honey: {
     id: 'honey',
     name: 'Honeycomb Hen',
-    role: 'Sticky Glue Gunner',
-    hotkey: '3',
+    role: 'Sticky Honey Sprayer',
     baseCost: 175,
     featherColor: '#FEF08A',
     bellyColor: '#FDE047',
@@ -388,7 +459,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'boomerang',
     name: 'Outback Hen',
     role: 'Curving Boomerang',
-    hotkey: '4',
     baseCost: 210,
     featherColor: '#FDE68A',
     bellyColor: '#FDBA74',
@@ -413,7 +483,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Throws curving pixel boomerangs that slice 5 bugs in an arc.',
       },
       {
-        tierName: 'Kylie Glaive',
+        tierName: 'Ironbark Curveblade',
         upgradeCost: 185,
         damage: 2,
         fireRate: 1.85,
@@ -430,7 +500,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Sharper hardwood edge carves through 8 bugs per throw.',
       },
       {
-        tierName: 'Red-Hot Ricochet',
+        tierName: 'Ember-Edge Ricochet',
         upgradeCost: 430,
         damage: 3.5,
         fireRate: 2.35,
@@ -447,7 +517,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Twin glowing boomerangs slice 12 armored pests + 2.5 burn DPS!',
       },
       {
-        tierName: 'Bionic Outback Lord',
+        tierName: 'Cyclone Outback King',
         upgradeCost: 1020,
         damage: 7,
         fireRate: 3.4,
@@ -461,7 +531,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         burnDps: 5,
         foxDamageMult: 1.85,
         camoSight: true,
-        description: '3 hyper-speed glaives carve 18 bugs with Camo Sight!',
+        description: '3 hyper-speed boomerangs carve 18 bugs with Camo Sight!',
       },
     ],
   },
@@ -471,7 +541,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'chilly',
     name: 'Silkie Frost-Hen',
     role: 'Crowd Slow & Chill',
-    hotkey: '5',
     baseCost: 220,
     featherColor: '#E0F7FF',
     bellyColor: '#BAE6FD',
@@ -549,12 +618,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 6. PLAGUE PULLET — Alchemist corrosive splash & high DoT
+  // 6. PLAGUE PULLET — Corrosive acid splash & high DoT
   alchemist: {
     id: 'alchemist',
     name: 'Plague Pullet',
     role: 'Corrosive Acid Flask',
-    hotkey: '6',
     baseCost: 260,
     featherColor: '#D1FAE5',
     bellyColor: '#6EE7B7',
@@ -613,7 +681,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Twin flasks melt Armored Beetles and Foxes at 14 DPS!',
       },
       {
-        tierName: 'Grand Alchemist',
+        tierName: 'Grand Apothecary',
         upgradeCost: 1240,
         damage: 12,
         fireRate: 2.1,
@@ -637,7 +705,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'ranger',
     name: 'Ranger Rooster',
     role: 'Long-Range Fox Sniper',
-    hotkey: '7',
     baseCost: 270,
     featherColor: '#FDE68A',
     bellyColor: '#FCD34D',
@@ -720,7 +787,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'lobber',
     name: 'Orpington Lobber',
     role: 'Explosive Egg Mortar',
-    hotkey: '8',
     baseCost: 320,
     featherColor: '#FDBA74',
     bellyColor: '#FED7AA',
@@ -802,8 +868,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
   wizard: {
     id: 'wizard',
     name: 'Arcane Wyandotte',
-    role: 'Lightning Archmage',
-    hotkey: '9',
+    role: 'Storm Rune Mage',
     baseCost: 350,
     featherColor: '#E9D5FF',
     bellyColor: '#C084FC',
@@ -862,7 +927,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Triple thunderbolts shock groups and scorch Foxes!',
       },
       {
-        tierName: 'Grand Archcluck',
+        tierName: 'Tempest Runemaster',
         upgradeCost: 1560,
         damage: 14,
         fireRate: 3.3,
@@ -881,12 +946,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // SUPPORT #1: ROOST BEACON (Bloons Monkey Village homage! Buffs Range, Speed, Camo & Armor-Pierce!)
+  // SUPPORT #1: ROOST BEACON (Watchtower Support! Buffs Range, Speed, Camo & Armor-Pierce!)
   roost_beacon: {
     id: 'roost_beacon',
     name: 'Roost Beacon',
-    role: 'Support Aura Village',
-    hotkey: '-',
+    role: 'Support Watchtower',
     baseCost: 380,
     featherColor: '#FEF3C7',
     bellyColor: '#FDE68A',
@@ -895,7 +959,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     isSupport: true,
     tiers: [
       {
-        tierName: 'Jungle Drum-Hen',
+        tierName: 'War-Drum Lookout',
         upgradeCost: 0,
         damage: 0,
         fireRate: 0.5,
@@ -924,7 +988,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'AURA: Nearby Chickens gain +16% Attack Speed & +15% Range!',
       },
       {
-        tierName: 'Radar Scanner Roost',
+        tierName: 'Lantern Watchtower',
         upgradeCost: 340,
         damage: 0,
         fireRate: 0.6,
@@ -953,7 +1017,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'AURA: Grants CAMO SIGHT, +22% Speed, +20% Range & +1 Pierce!',
       },
       {
-        tierName: 'MIB Command Coop',
+        tierName: 'Tactical Command Coop',
         upgradeCost: 780,
         damage: 0,
         fireRate: 0.7,
@@ -982,7 +1046,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'AURA: Grants ARMOR-PIERCE + Camo, +30% Spd, +18% DMG & +2 Pierce!',
       },
       {
-        tierName: 'Homeland Roost Citadel',
+        tierName: 'Grand Roost Citadel',
         upgradeCost: 1950,
         damage: 14,
         fireRate: 2.2,
@@ -1008,7 +1072,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
           bonusCritChance: 0.05,
           bonusKnockback: 0,
         },
-        description: 'AURA: +42% Spd, +32% DMG, +32% Rng, MIB/Camo + Ballista Flare!',
+        description: 'AURA: +42% Spd, +32% DMG, +32% Rng, Armor-Pierce/Camo + Ballista Flare!',
       },
     ],
   },
@@ -1018,7 +1082,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'ninja',
     name: 'Shinobi Chick',
     role: 'Camo Shuriken Master',
-    hotkey: '0',
     baseCost: 390,
     featherColor: '#E2E8F0',
     bellyColor: '#CBD5E1',
@@ -1101,7 +1164,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'pirate',
     name: 'Buccaneer Broiler',
     role: 'Heavy Fox Cannon',
-    hotkey: 'Q',
     baseCost: 430,
     featherColor: '#CBD5E1',
     bellyColor: '#F8FAFC',
@@ -1184,7 +1246,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'bard',
     name: 'Mariachi Rooster',
     role: '360° Sonic Shockwave',
-    hotkey: 'W',
     baseCost: 490,
     featherColor: '#FEF3C7',
     bellyColor: '#FDE68A',
@@ -1262,12 +1323,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // SUPPORT #2: ESPRESSO BREW-HEN (Bloons Berserker Brew Alchemist homage! Buffs Damage, Pierce & Fox mult!)
+  // SUPPORT #2: ESPRESSO BREW-HEN (Barista Support! Buffs Damage, Pierce & Fox mult!)
   brew_hen: {
     id: 'brew_hen',
     name: 'Espresso Brew-Hen',
-    role: 'Support Alch-Brew',
-    hotkey: '=',
+    role: 'Support Roast Barista',
     baseCost: 640,
     featherColor: '#FFF7ED',
     bellyColor: '#FDBA74',
@@ -1305,7 +1365,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'AURA: Brews +20% Damage, +8% Speed & +1 Pierce for nearby Chickens!',
       },
       {
-        tierName: 'Stronger Stimulant',
+        tierName: 'Double-Shot Espresso',
         upgradeCost: 540,
         damage: 4,
         fireRate: 1.5,
@@ -1334,7 +1394,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'AURA: +32% Damage, +14% Speed, +2 Pierce, +22% vs Foxes & Armor-Pierce!',
       },
       {
-        tierName: 'Berserker Roast',
+        tierName: 'Frenzy Dark-Roast',
         upgradeCost: 1180,
         damage: 8,
         fireRate: 1.85,
@@ -1363,7 +1423,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'AURA: +46% Damage, +20% Spd, +3 Pierce, +34% vs Foxes & 7% Crit!',
       },
       {
-        tierName: 'Permanent Brewmaster',
+        tierName: 'Grand Barista Roaster',
         upgradeCost: 2750,
         damage: 16,
         fireRate: 2.35,
@@ -1389,7 +1449,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
           bonusCritChance: 0.12,
           bonusKnockback: 0,
         },
-        description: 'PERMABREW AURA: +65% DMG, +28% Spd, +5 Pierce, +50% Boss & 12% Crit!',
+        description: 'BARISTA AURA: +65% DMG, +28% Spd, +5 Pierce, +50% Boss & 12% Crit!',
       },
     ],
   },
@@ -1398,8 +1458,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
   phoenix: {
     id: 'phoenix',
     name: 'Sun Chantecler',
-    role: 'Super Solar Rooster',
-    hotkey: 'E',
+    role: 'Solar Flare Rooster',
     baseCost: 780,
     featherColor: '#FEF08A',
     bellyColor: '#FDE047',
@@ -1441,7 +1500,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Superheated solar bolts deal 5.5 AoE damage at 6.8/s!',
       },
       {
-        tierName: 'Twin Sun-God',
+        tierName: 'Twin Solar Sovereign',
         upgradeCost: 1480,
         damage: 9,
         fireRate: 7.8,
@@ -1482,7 +1541,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'mecha',
     name: 'Cyber-Cluck 9000',
     role: 'Twin Laser Railgun',
-    hotkey: 'R',
     baseCost: 950,
     featherColor: '#E2E8F0',
     bellyColor: '#94A3B8',
@@ -1567,7 +1625,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'macho_cat',
     name: 'Macho Cat-Hen',
     role: 'Knockback Paw Brawler',
-    hotkey: 'T',
     baseCost: 1150,
     featherColor: '#FFFFFF',
     bellyColor: '#F1F5F9',
@@ -1658,7 +1715,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'eraser_tank',
     name: 'Eraser Shield-Hen',
     role: '360° Tremor Wall',
-    hotkey: 'Y',
     baseCost: 1500,
     featherColor: '#F8FAFC',
     bellyColor: '#CBD5E1',
@@ -1745,7 +1801,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'tesla',
     name: 'Tesla Cochin',
     role: 'Gigavolt Storm Coil',
-    hotkey: 'U',
     baseCost: 1900,
     featherColor: '#E0F2FE',
     bellyColor: '#7DD3FC',
@@ -1828,7 +1883,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'kasli_oracle',
     name: 'Surge Priestess',
     role: 'Ritual Surge Caster',
-    hotkey: 'I',
     baseCost: 2600,
     featherColor: '#F8FAFC',
     bellyColor: '#E2E8F0',
@@ -1917,7 +1971,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'chrono',
     name: 'Chrono Leghorn',
     role: 'Time-Warp Disruptor',
-    hotkey: 'O',
     baseCost: 3800,
     featherColor: '#FEF9C3',
     bellyColor: '#99F6E4',
@@ -1995,12 +2048,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // SUPPORT #3: OVERCLOCK ENGIE-HEN (Gem Egg Support @ 4,400 Corn — Bloons Overclock/Ultraboost homage!)
+  // SUPPORT #3: OVERCLOCK ENGIE-HEN (Gem Egg Support @ 4,400 Corn — Dynamo Speed Tuner!)
   overclock_engie: {
     id: 'overclock_engie',
     name: 'Overclock Engie-Hen',
-    role: 'Support Speed Overclock',
-    hotkey: 'N',
+    role: 'Support Speed Tuner',
     baseCost: 4400,
     featherColor: '#FEF9C3',
     bellyColor: '#FDE047',
@@ -2096,7 +2148,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'OVERCLOCK AURA: +52% Fire Rate, +38% DMG & +24% Range to allies!',
       },
       {
-        tierName: '10x Ultraboost Chief',
+        tierName: 'Hyper-Dynamo Chief',
         upgradeCost: 17500,
         damage: 110,
         fireRate: 5.2,
@@ -2122,7 +2174,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
           bonusCritChance: 0.12,
           bonusKnockback: 14,
         },
-        description: 'ULTRABOOST AURA: +72% Fire Rate, +55% DMG, +30% Rng & +6 Pierce!',
+        description: 'DYNAMO AURA: +72% Fire Rate, +55% DMG, +30% Rng & +6 Pierce!',
       },
     ],
   },
@@ -2132,7 +2184,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'cyber_sniper',
     name: 'Hacker Nerd-Hen',
     role: 'Orbital Slow Sniper',
-    hotkey: 'P',
     baseCost: 5200,
     featherColor: '#E2E8F0',
     bellyColor: '#BBF7D0',
@@ -2217,7 +2268,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'gundam',
     name: 'Gund-Hen RX-78',
     role: 'Mecha Ion Buster',
-    hotkey: 'A',
     baseCost: 7600,
     featherColor: '#F8FAFC',
     bellyColor: '#93C5FD',
@@ -2300,7 +2350,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'samurai_shogun',
     name: 'Musashi Blade-Hen',
     role: 'Savage Crit Ronin',
-    hotkey: 'S',
     baseCost: 10800,
     featherColor: '#FEF2F2',
     bellyColor: '#FECDD3',
@@ -2384,12 +2433,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 23. JOJO CLUCKSTAR — Summoned Stand Brawler
+  // 23. STAR CRUSADER — Summoned Stand Brawler
   stand_hen: {
     id: 'stand_hen',
-    name: 'JoJo Cluckstar',
+    name: 'Star Crusader',
     role: 'Summoned Stand Brawler',
-    hotkey: 'D',
     baseCost: 15000,
     featherColor: '#FEF3C7',
     bellyColor: '#FDE68A',
@@ -2431,7 +2479,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Faster Stand dash speed, wider shockwave punches & 3.5x Boss pummeling!',
       },
       {
-        tierName: 'Za Hen-do: Time-Skip',
+        tierName: 'Astral Time-Skip',
         upgradeCost: 26000,
         damage: 165,
         fireRate: 8.2,
@@ -2448,7 +2496,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Stand warps to targets at 840 spd with 58% Time-Skip punch barrages!',
       },
       {
-        tierName: 'Cluckiem Over-Heaven',
+        tierName: 'Crusader Over-Heaven',
         upgradeCost: 55000,
         damage: 310,
         fireRate: 10.0,
@@ -2472,7 +2520,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'necro_lich',
     name: 'Necro-Cluck Lich',
     role: 'Soul-Flame Summoner',
-    hotkey: 'F',
     baseCost: 21500,
     featherColor: '#ECFDF5',
     bellyColor: '#A7F3D0',
@@ -2559,7 +2606,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'valkyrie',
     name: 'Valkyrie Brahma',
     role: 'Celestial Spear Storm',
-    hotkey: 'G',
     baseCost: 30000,
     featherColor: '#FFFBEB',
     bellyColor: '#FDE68A',
@@ -2642,7 +2688,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'idol_diva',
     name: 'Shrine Idol-Hen',
     role: 'Support Crit & Shot Idol',
-    hotkey: 'M',
     baseCost: 36000,
     featherColor: '#FDF2F8',
     bellyColor: '#FBCFE8',
@@ -2738,7 +2783,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'IDOL AURA: +68% DMG, +38% Spd, +20% Crit & +58% Boss Damage!',
       },
       {
-        tierName: 'Celestial Encore Temple',
+        tierName: 'Celestial Encore Shrine',
         upgradeCost: 135000,
         damage: 390,
         fireRate: 6.2,
@@ -2764,7 +2809,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
           bonusCritChance: 0.25,
           bonusKnockback: 26,
         },
-        description: 'TEMPLE AURA: +1 MULTISHOT, +92% DMG, +48% Spd & +25% Crit to allies!',
+        description: 'SHRINE AURA: +1 MULTISHOT, +92% DMG, +48% Spd & +25% Crit to allies!',
       },
     ],
   },
@@ -2774,7 +2819,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'yukimura_shadow',
     name: 'Shadow Yukimura',
     role: 'Immortal Fox Assassin',
-    hotkey: 'H',
     baseCost: 44000,
     featherColor: '#334155',
     bellyColor: '#94A3B8',
@@ -2863,7 +2907,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'star_dread',
     name: 'Star-Cluck Armada',
     role: 'Antimatter Fleet Nuke',
-    hotkey: 'J',
     baseCost: 60000,
     featherColor: '#E0F2FE',
     bellyColor: '#BAE6FD',
@@ -2946,7 +2989,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'bahamut_wyrm',
     name: 'Awakened Baha-Cluck',
     role: 'Abyssal Dragon Nuker',
-    hotkey: 'K',
     baseCost: 88000,
     featherColor: '#1E293B',
     bellyColor: '#67E8F9',
@@ -3037,7 +3079,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'quasar',
     name: 'Quasar Serama',
     role: '360° Supernova Pulse',
-    hotkey: 'L',
     baseCost: 120000,
     featherColor: '#FAE8FF',
     bellyColor: '#F0ABFC',
@@ -3120,7 +3161,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'chronos_empress',
     name: 'Empress Chronos',
     role: 'Time-Freeze Goddess',
-    hotkey: 'Z',
     baseCost: 175000,
     featherColor: '#FFFBEB',
     bellyColor: '#FEF08A',
@@ -3209,7 +3249,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'omega_god',
     name: 'Omnicluck Prime',
     role: 'Apex Cosmic Egg-God',
-    hotkey: 'X',
     baseCost: 250000,
     featherColor: '#FFFFFF',
     bellyColor: '#FEF08A',
@@ -3292,7 +3331,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'gaia_creator',
     name: 'Gaia Mother-Hen',
     role: 'Prismatic World-Tree',
-    hotkey: 'C',
     baseCost: 380000,
     featherColor: '#ECFCCB',
     bellyColor: '#FEF08A',
@@ -3382,7 +3420,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'void_singularity',
     name: 'Singularity Hen',
     role: 'Black-Hole Horizon',
-    hotkey: 'V',
     baseCost: 620000,
     featherColor: '#312E81',
     bellyColor: '#C084FC',
@@ -3473,7 +3510,6 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     id: 'cat_god_supreme',
     name: 'Golden Cluck-God',
     role: 'Supreme Battle Deity',
-    hotkey: 'B',
     baseCost: 1000000,
     featherColor: '#FEF9C3',
     bellyColor: '#FACC15',
@@ -3561,8 +3597,8 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
 };
 
 /**
- * Bloons-style layered Bugs + MOAB-class Giant Fox Bosses!
- * NOTE: Zero money is awarded on pop — all income comes strictly from the Clicker during waves!
+ * Multi-stage Bug swarms + Giant Fox Bosses!
+ * NOTE: Zero Corn is awarded on defeat — all income comes strictly from the Clicker during waves!
  */
 export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
   ant: {
@@ -3709,7 +3745,7 @@ export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = {
     childrenOnPop: [{ type: 'scorpion', count: 2 }],
   },
 
-  // ==================== 9 MOAB-CLASS GIANT FOX BOSSES ("BLIMPS") ====================
+  // ==================== 9 GIANT FOX BOSSES ====================
   fox_scout: {
     id: 'fox_scout',
     name: 'Red Scout Fox',
@@ -4081,7 +4117,7 @@ const HANDCRAFTED_WAVES: readonly WaveDefinition[] = [
   {
     waveNumber: 2,
     title: 'Aphid March',
-    callout: 'Blue Aphids pop into Red Ants — just like Bloons layers!',
+    callout: 'Blue Aphids split into fast Red Ants when defeated!',
     groups: [
       { enemyType: 'ant', count: 10, intervalSec: 0.85, startDelaySec: 0.3 },
       { enemyType: 'aphid', count: 8, intervalSec: 1.0, startDelaySec: 5.5 },
@@ -4135,7 +4171,7 @@ const HANDCRAFTED_WAVES: readonly WaveDefinition[] = [
   {
     waveNumber: 8,
     title: 'BOSS: Red Scout Fox!',
-    callout: '[FOX BOSS ALERT] High HP blimp-class predator — bursts into 4 Iron Beetles!',
+    callout: '[FOX BOSS ALERT] Heavy apex predator — unleashes 4 Iron Beetles when defeated!',
     groups: [
       { enemyType: 'hornet', count: 14, intervalSec: 0.55, startDelaySec: 0.3 },
       { enemyType: 'fox_scout', count: 1, intervalSec: 3.0, startDelaySec: 6.5 },
@@ -4214,7 +4250,7 @@ const HANDCRAFTED_WAVES: readonly WaveDefinition[] = [
   {
     waveNumber: 16,
     title: 'BOSS: Wraith Camo-Fox!',
-    callout: '[DDT-CLASS STEALTH BOSS] High-speed Camo + Armored Wraith Foxes incoming!',
+    callout: '[STEALTH FOX BOSS] High-speed Camo + Armored Wraith Foxes incoming!',
     groups: [
       { enemyType: 'void_scarab', count: 18, intervalSec: 0.42, startDelaySec: 0.2 },
       { enemyType: 'fox_timber', count: 3, intervalSec: 2.5, startDelaySec: 2.0 },
