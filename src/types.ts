@@ -217,7 +217,8 @@ export type PixelIconId =
   | 'sound_off'
   | 'rules'
   | 'menu'
-  | 'idle_chick';
+  | 'idle_chick'
+  | 'download_app';
 
 export interface SupportAuraSpec {
   damageBonus: number; // e.g. 0.25 = +25% ally damage

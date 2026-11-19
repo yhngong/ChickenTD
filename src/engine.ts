@@ -1200,8 +1200,8 @@ export class ChickenTdEngine {
     const plusLv = PROGRESSION.getPlusLevel(tower.typeId);
     const sup = this.computeSupportBuffsForTower(tower);
 
-    const plusDmgMult = 1 + plusLv * 0.04;
-    const plusRateMult = 1 + Math.min(0.6, plusLv * 0.015);
+    const plusDmgMult = 1 + plusLv * 0.03;
+    const plusRateMult = 1 + Math.min(0.45, plusLv * 0.01125);
 
     const mutDmg = mutDef ? mutDef.damageMult : 1.0;
     const mutRate = mutDef ? mutDef.fireRateMult : 1.0;

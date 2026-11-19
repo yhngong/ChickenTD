@@ -44,6 +44,10 @@ canvas {
   image-rendering: crisp-edges;
 }
 
+img {
+  object-fit: contain;
+}
+
 button {
   font-family: var(--font-px-body);
   cursor: pointer;
@@ -202,29 +206,38 @@ button {
 }
 
 #stage-panel {
+  min-width: 0;
   min-height: 0;
+  container-type: size;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
+  background: #0d150f;
+  border: 3px solid #2b4230;
+  box-shadow: 0 5px 0 var(--pixel-shadow);
+  padding: 4px;
+  overflow: hidden;
 }
 
 #canvas-frame {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: min(100%, calc(100cqh * 460 / 300));
+  aspect-ratio: 460 / 300;
+  max-width: 100%;
+  max-height: 100%;
   background: #101912;
-  border: 4px solid var(--panel-border);
-  box-shadow: 0 5px 0 var(--pixel-shadow);
+  border: 3px solid var(--panel-border);
+  box-shadow: 0 4px 0 var(--pixel-shadow);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 #td-canvas {
   width: 100%;
   height: 100%;
-  object-fit: fill;
   display: block;
   cursor: crosshair;
 }
@@ -457,8 +470,8 @@ button {
 }
 
 .hen-scene-img {
-  width: 112px;
-  height: 62px;
+  width: 120px;
+  height: 66px;
   display: block;
   margin: 0 auto 3px;
   pointer-events: none;
@@ -2886,4 +2899,126 @@ button {
   background: #3b131b;
   border-color: #f43f5e;
   color: #fecdd3;
+}
+
+/* ==================== RESPONSIVE ASPECT-RATIO & APP INSTALL MODAL ==================== */
+@media (max-width: 960px) {
+  html,
+  body {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100%;
+  }
+
+  #app-root {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  #top-hud {
+    flex-wrap: wrap;
+  }
+
+  .hud-stats {
+    flex-wrap: wrap;
+  }
+
+  #game-layout {
+    grid-template-columns: 1fr;
+  }
+
+  #stage-panel {
+    container-type: normal;
+    width: 100%;
+    padding: 4px;
+  }
+
+  #canvas-frame {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 460 / 300;
+  }
+
+  #command-sidebar {
+    min-height: 540px;
+  }
+}
+
+.app-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #0c4a6e;
+  border: 3px solid #38bdf8;
+  box-shadow: 0 4px 0 var(--pixel-shadow);
+  color: #e0f2fe;
+  padding: 10px 12px;
+  font-family: var(--font-px-head);
+  font-size: 10px;
+}
+
+.app-cta-btn:hover {
+  background: #075985;
+  border-color: #7dd3fc;
+}
+
+.app-install-box {
+  max-width: 540px;
+  background: #141e28;
+  border-color: #38bdf8;
+}
+
+.app-install-intro {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.app-option-card {
+  background: #0f172a;
+  border: 2px solid #334155;
+  box-shadow: 0 3px 0 var(--pixel-shadow);
+  padding: 11px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-option-title {
+  font-family: var(--font-px-head);
+  font-size: 10px;
+  color: var(--gold-bright);
+}
+
+.app-option-desc {
+  font-size: 10px;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.app-manual-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  padding: 8px 10px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #e2e8f0;
+}
+
+.app-manual-steps strong {
+  color: #7dd3fc;
+}
+
+.app-full-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }

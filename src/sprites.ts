@@ -761,6 +761,30 @@ const UI_ICON_GRIDS: Record<PixelIconId, { rows: string[]; pal: Record<string, s
       '..............',
     ],
   },
+  download_app: {
+    pal: {
+      O: OUTLINE,
+      C: '#38BDF8',
+      H: '#E0F2FE',
+      G: '#4ADE80',
+      Y: '#FACC15',
+      D: '#1E293B',
+    },
+    rows: [
+      '.....OOOO.....',
+      '.....OGGO.....',
+      '.....OGGO.....',
+      '...OOOGGOOO...',
+      '....OGGGGO....',
+      '.....OGGO.....',
+      '.OOOO.OO.OOOO.',
+      '.OCHH....HHCO.',
+      '.OCCDDDDDDCCO.',
+      '.OCCYYYYYYCCO.',
+      '.OOOOOOOOOOOO.',
+      '..............',
+    ],
+  },
 };
 
 // ==================== 2. KAWAII PIXEL CHICKEN GENERATOR (34 ULTRA-CUTE BORBS + STAND!) ====================

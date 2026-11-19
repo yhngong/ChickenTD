@@ -2,8 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#131c15" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ChickenTD" />
     <title>ChickenTD — 16-Bit Pixel Clicker x Battle Cats Tower Defense</title>
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -93,6 +101,15 @@
           >
             <img id="icon-menu-idle" class="px-icon px-icon-sm" alt="" />
             <span>GO IDLE</span>
+          </button>
+          <button
+            id="btn-menu-app"
+            class="app-cta-btn menu-side-btn"
+            type="button"
+            title="Install ChickenTD as a standalone Desktop/Mobile App or download the offline portable file!"
+          >
+            <img id="icon-menu-app" class="px-icon px-icon-sm" alt="" />
+            <span id="lbl-menu-app">GET APP</span>
           </button>
           <button id="btn-menu-rules" class="secondary-modal-btn menu-side-btn" type="button">
             HOW TO PLAY
@@ -784,6 +801,52 @@
             CLOSE [ESC]
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- INSTALL / DOWNLOAD STANDALONE APP MODAL -->
+    <div id="app-install-modal" class="modal-backdrop secret-code-backdrop hidden">
+      <div class="modal-box app-install-box">
+        <h2 class="modal-heading">
+          <img id="icon-app-modal" class="px-icon px-icon-md" alt="" />
+          <span>RUN CHICKENTD AS AN APP</span>
+        </h2>
+        <p class="app-install-intro">
+          Play ChickenTD in its own standalone window with offline support &mdash; or download a
+          single portable file you can open anywhere!
+        </p>
+
+        <div class="app-option-card">
+          <div class="app-option-title">1. INSTALL DESKTOP / MOBILE APP (STANDALONE WINDOW)</div>
+          <p id="app-pwa-desc" class="app-option-desc">
+            Adds ChickenTD to your Dock, Start Menu, or Home Screen with its own app window and
+            100% offline play.
+          </p>
+          <button id="btn-pwa-install-now" class="primary-modal-btn app-full-btn hidden" type="button">
+            INSTALL CHICKENTD APP NOW
+          </button>
+          <div id="app-pwa-manual-steps" class="app-manual-steps">
+            <div><strong>CHROME / EDGE / BRAVE:</strong> Click the <strong>Install ChickenTD</strong> icon on the right side of the address bar.</div>
+            <div><strong>MAC SAFARI:</strong> Open <strong>File &rarr; Add to Dock...</strong></div>
+            <div><strong>IPHONE / IPAD:</strong> Tap <strong>Share &rarr; Add to Home Screen</strong>.</div>
+          </div>
+        </div>
+
+        <div class="app-option-card">
+          <div class="app-option-title">2. DOWNLOAD PORTABLE OFFLINE FILE (.HTML)</div>
+          <p class="app-option-desc">
+            Downloads the entire game bundled into a single <strong>ChickenTD.html</strong> file
+            (~290 KB). Double-click it anytime on Mac, Windows, or Linux &mdash; zero internet needed!
+          </p>
+          <button id="btn-download-portable" class="gem-cta-btn app-full-btn" type="button">
+            <img id="icon-btn-portable" class="px-icon px-icon-sm" alt="" />
+            <span id="lbl-download-portable">DOWNLOAD OFFLINE FILE (CHICKENTD.HTML)</span>
+          </button>
+        </div>
+
+        <button id="btn-close-app-modal" class="secondary-modal-btn app-full-btn" type="button">
+          CLOSE [ESC]
+        </button>
       </div>
     </div>
 

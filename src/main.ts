@@ -55,6 +55,8 @@ const btnMenuStart = document.getElementById('btn-menu-start') as HTMLButtonElem
 const btnMenuResume = document.getElementById('btn-menu-resume') as HTMLButtonElement;
 const btnMenuEndRun = document.getElementById('btn-menu-end-run') as HTMLButtonElement;
 const btnMenuIdle = document.getElementById('btn-menu-idle') as HTMLButtonElement;
+const btnMenuApp = document.getElementById('btn-menu-app') as HTMLButtonElement;
+const lblMenuApp = document.getElementById('lbl-menu-app') as HTMLElement;
 const btnMenuRules = document.getElementById('btn-menu-rules') as HTMLButtonElement;
 
 // Gem Egg Capsule Shop Elements
@@ -86,6 +88,8 @@ const btnCutsceneAgain8 = document.getElementById('btn-cutscene-again-8') as HTM
 const btnCutsceneDone = document.getElementById('btn-cutscene-done') as HTMLButtonElement;
 
 // HUD & Stage Elements
+const stagePanel = document.getElementById('stage-panel') as HTMLElement;
+const canvasFrame = document.getElementById('canvas-frame') as HTMLDivElement;
 const canvas = document.getElementById('td-canvas') as HTMLCanvasElement;
 const brandSubText = document.getElementById('brand-sub-text') as HTMLElement;
 const hudCorn = document.getElementById('hud-corn') as HTMLElement;
@@ -204,6 +208,15 @@ const secretCodeFeedback = document.getElementById('secret-code-feedback') as HT
 const btnRedeemCode = document.getElementById('btn-redeem-code') as HTMLButtonElement;
 const btnCloseCodeModal = document.getElementById('btn-close-code-modal') as HTMLButtonElement;
 
+// Standalone App Install / Portable Offline Download Modal Elements
+const appInstallModal = document.getElementById('app-install-modal') as HTMLDivElement;
+const appPwaDesc = document.getElementById('app-pwa-desc') as HTMLElement;
+const btnPwaInstallNow = document.getElementById('btn-pwa-install-now') as HTMLButtonElement;
+const appPwaManualSteps = document.getElementById('app-pwa-manual-steps') as HTMLDivElement;
+const btnDownloadPortable = document.getElementById('btn-download-portable') as HTMLButtonElement;
+const lblDownloadPortable = document.getElementById('lbl-download-portable') as HTMLElement;
+const btnCloseAppModal = document.getElementById('btn-close-app-modal') as HTMLButtonElement;
+
 function setText(el: HTMLElement, next: string): void {
   if (el.textContent !== next) {
     el.textContent = next;
@@ -233,6 +246,9 @@ function initStaticPixelIcons(): void {
   setImg('icon-shop-idle', bantamIconUrl);
   setImg('icon-idle-title-chick', bantamIconUrl);
   setImg('icon-idle-gem-egg', PIXEL_ATLAS.getIconUrl('gem_egg'));
+  setImg('icon-menu-app', PIXEL_ATLAS.getIconUrl('download_app'));
+  setImg('icon-app-modal', PIXEL_ATLAS.getIconUrl('download_app'));
+  setImg('icon-btn-portable', PIXEL_ATLAS.getIconUrl('download_app'));
   setImg('icon-clicker-corn', PIXEL_ATLAS.getIconUrl('corn'));
   setImg('icon-tab-troops', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-tab-clicker', PIXEL_ATLAS.getIconUrl('corn'));
@@ -779,7 +795,7 @@ function renderRevealedSlotHtml(
     const detailLine = isSingleHero
       ? outcome.mutationUpgraded
         ? `${rolledDef.subtitle}: ${rolledDef.summary}`
-        : `Kept ${activeDef.name} Mutation + Level Up (+${outcome.plusLevel}: +${outcome.plusLevel * 4}% DMG)!`
+        : `Kept ${activeDef.name} Mutation + Level Up (+${outcome.plusLevel}: +${outcome.plusLevel * 3}% DMG)!`
       : outcome.mutationUpgraded
       ? `${activeDef.summary}`
       : `ACTIVE: ${activeDef.name.toUpperCase()} (+${outcome.plusLevel})`;
@@ -987,12 +1003,43 @@ function closeCutsceneModal(): void {
   renderGemEggShop();
 }
 
+// ==================== STRICT 460:300 STAGE ASPECT RATIO FIT ====================
+function syncStageAspectRatio(): void {
+  if (typeof window === 'undefined') return;
+  if (window.innerWidth <= 960) {
+    canvasFrame.style.width = '';
+    canvasFrame.style.height = '';
+    return;
+  }
+  // Subtract stage-panel padding (4px * 2 = 8px) so canvas-frame fits cleanly with zero overflow
+  const availW = Math.max(0, stagePanel.clientWidth - 8);
+  const availH = Math.max(0, stagePanel.clientHeight - 8);
+  if (availW <= 0 || availH <= 0) return;
+
+  const targetRatio = PIXEL_CANVAS_W / PIXEL_CANVAS_H; // 460 / 300
+  let fitW = availW;
+  let fitH = Math.round(fitW / targetRatio);
+  if (fitH > availH) {
+    fitH = availH;
+    fitW = Math.round(fitH * targetRatio);
+  }
+  canvasFrame.style.width = `${fitW}px`;
+  canvasFrame.style.height = `${fitH}px`;
+}
+
+if (typeof ResizeObserver !== 'undefined') {
+  const stageResizeObs = new ResizeObserver(() => syncStageAspectRatio());
+  stageResizeObs.observe(stagePanel);
+}
+window.addEventListener('resize', syncStageAspectRatio);
+
 // ==================== GAMEPLAY LAUNCH & RESUME ====================
 function launchSelectedRun(): void {
   selectedTowerId = null;
   ghost.typeId = null;
   placementBanner.classList.add('hidden');
   secretCodeModal.classList.add('hidden');
+  appInstallModal.classList.add('hidden');
   hasStartedRun = true;
   inMainMenu = false;
   inGemShop = false;
@@ -1000,16 +1047,19 @@ function launchSelectedRun(): void {
   gemShopScreen.classList.add('hidden');
   engine.startNewRun(pendingMapId, pendingDifficultyId);
   renderer.setMap(pendingMapId);
+  syncStageAspectRatio();
   refreshFullUi();
 }
 
 function resumeActiveRun(): void {
   if (!hasStartedRun || engine.status === 'gameover') return;
   secretCodeModal.classList.add('hidden');
+  appInstallModal.classList.add('hidden');
   inMainMenu = false;
   inGemShop = false;
   mainMenuScreen.classList.add('hidden');
   gemShopScreen.classList.add('hidden');
+  syncStageAspectRatio();
   refreshFullUi();
 }
 
@@ -2077,6 +2127,135 @@ secretCodeInput.addEventListener('keydown', (e) => {
   }
 });
 
+// ==================== PWA STANDALONE APP INSTALL & PORTABLE OFFLINE DOWNLOAD ====================
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+let deferredInstallPrompt: BeforeInstallPromptEvent | null = null;
+
+function isRunningStandaloneApp(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    Boolean((navigator as unknown as { standalone?: boolean }).standalone) ||
+    window.location.protocol === 'file:'
+  );
+}
+
+function syncAppInstallUi(): void {
+  if (isRunningStandaloneApp()) {
+    setText(lblMenuApp, 'OFFLINE FILE');
+    appPwaDesc.textContent =
+      'ChickenTD is already running in standalone / offline mode! You can also save a portable .html copy below.';
+    btnPwaInstallNow.classList.add('hidden');
+    appPwaManualSteps.classList.add('hidden');
+  } else if (deferredInstallPrompt) {
+    setText(lblMenuApp, 'INSTALL APP');
+    appPwaDesc.textContent =
+      'One-click install ready! Adds ChickenTD directly to your Applications / Dock / Start Menu / Home Screen:';
+    btnPwaInstallNow.classList.remove('hidden');
+    appPwaManualSteps.classList.add('hidden');
+  } else {
+    setText(lblMenuApp, 'GET APP');
+    btnPwaInstallNow.classList.add('hidden');
+    appPwaManualSteps.classList.remove('hidden');
+  }
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e as BeforeInstallPromptEvent;
+  syncAppInstallUi();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  syncAppInstallUi();
+});
+
+if (
+  'serviceWorker' in navigator &&
+  (window.location.protocol === 'https:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1')
+) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+btnMenuApp.addEventListener('click', () => {
+  btnMenuApp.blur();
+  engine.audio.playUpgrade();
+  syncAppInstallUi();
+  appInstallModal.classList.remove('hidden');
+});
+
+btnCloseAppModal.addEventListener('click', () => {
+  engine.audio.playUpgrade();
+  appInstallModal.classList.add('hidden');
+});
+
+appInstallModal.addEventListener('click', (e) => {
+  if (e.target === appInstallModal) {
+    appInstallModal.classList.add('hidden');
+  }
+});
+
+btnPwaInstallNow.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  engine.audio.playUpgrade();
+  await deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice.catch(() => null);
+  deferredInstallPrompt = null;
+  syncAppInstallUi();
+});
+
+btnDownloadPortable.addEventListener('click', async () => {
+  engine.audio.playUpgrade();
+  setText(lblDownloadPortable, 'PREPARING OFFLINE FILE...');
+  btnDownloadPortable.disabled = true;
+  try {
+    let htmlPayload = '';
+    if (window.location.protocol !== 'file:') {
+      const res = await fetch('./ChickenTD-Standalone.html', { cache: 'no-cache' }).catch(
+        () => null
+      );
+      if (res && res.ok) {
+        const txt = await res.text();
+        if (txt.includes('id="td-canvas"') && txt.includes('<style>')) {
+          htmlPayload = txt;
+        }
+      }
+    }
+    if (!htmlPayload) {
+      // Fallback if running from local file:// or dev server
+      htmlPayload = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    }
+    const blob = new Blob([htmlPayload], { type: 'text/html;charset=utf-8' });
+    const dlUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = dlUrl;
+    a.download = 'ChickenTD.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(dlUrl), 3000);
+    setText(lblDownloadPortable, 'DOWNLOADED CHICKENTD.HTML!');
+  } catch {
+    setText(lblDownloadPortable, 'DOWNLOAD OFFLINE FILE (CHICKENTD.HTML)');
+  } finally {
+    btnDownloadPortable.disabled = false;
+    window.setTimeout(() => {
+      setText(lblDownloadPortable, 'DOWNLOAD OFFLINE FILE (CHICKENTD.HTML)');
+    }, 2600);
+  }
+});
+
+syncAppInstallUi();
+syncStageAspectRatio();
+
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
 
@@ -2084,6 +2263,14 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       e.preventDefault();
       closeSecretCodeModal();
+    }
+    return;
+  }
+
+  if (!appInstallModal.classList.contains('hidden')) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      appInstallModal.classList.add('hidden');
     }
     return;
   }
