@@ -31,7 +31,7 @@ export const GEM_EGG_COST_EACH = 1; // 1 Egg = 1 Gem Egg, 4 Eggs = 4x, 8 Eggs = 
 
 export const SECRET_PROMO_CODES: Readonly<Record<string, number>> = {
   GEMEGGS: 8,
-  ADMINSLOPLOL: 1024,
+  DEVSLOPEGGS: 1024,
 };
 
 export type RedeemCodeResult =
