@@ -570,10 +570,14 @@ button {
 
 .shop-tabs {
   display: grid;
-  grid-template-columns: 1.18fr 0.88fr 0.82fr 1.05fr;
+  grid-template-columns: 1.24fr 0.88fr 0.88fr;
   border-bottom: 3px solid var(--panel-border);
   background: #141f17;
   flex-shrink: 0;
+}
+
+.shop-tabs.has-sandbox {
+  grid-template-columns: 1.15fr 0.98fr 0.84fr 0.82fr;
 }
 
 .shop-tab {
@@ -1113,11 +1117,11 @@ button {
 
 .menu-diff-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 780px) {
   .menu-diff-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3079,4 +3083,222 @@ button {
   background: #3b0764;
   border-color: #e879f9;
   color: #f5d0fe;
+}
+
+/* ==================== SANDBOX MODE & ENEMY SUMMONER ==================== */
+.diff-card-btn.sandbox-mode {
+  border-color: #0891b2;
+  background: #0f2533;
+}
+
+.diff-card-btn.sandbox-mode.selected {
+  background: #0c3547;
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px #67e8f9, 0 4px 0 var(--pixel-shadow);
+}
+
+.clicker-top-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sandbox-jump-btn {
+  background: #0e7490;
+  border: 2px solid #67e8f9;
+  color: #ecfeff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+}
+
+.sandbox-jump-btn:hover {
+  background: #0891b2;
+}
+
+.sandbox-tab-btn {
+  color: #67e8f9;
+}
+
+.sandbox-tab-btn.active {
+  background: #0e3a4c;
+  color: #fef08a;
+}
+
+.sandbox-summon-toolbar {
+  background: #101d24;
+  border: 2px solid #0891b2;
+  padding: 6px 7px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sandbox-tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sandbox-tool-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: #67e8f9;
+  white-space: nowrap;
+}
+
+.sandbox-pill-group {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.sandbox-pill-btn {
+  background: #1e293b;
+  border: 2px solid #475569;
+  color: #e2e8f0;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+}
+
+.sandbox-pill-btn:hover {
+  border-color: #22d3ee;
+}
+
+.sandbox-pill-btn.active {
+  background: #0e7490;
+  border-color: #67e8f9;
+  color: #ffffff;
+}
+
+.sandbox-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.sandbox-action-btn {
+  padding: 5px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  border: 2px solid #64748b;
+  box-shadow: 0 2px 0 var(--pixel-shadow);
+  color: #ffffff;
+}
+
+.sandbox-action-btn.danger {
+  background: #7f1d1d;
+  border-color: #f87171;
+}
+
+.sandbox-action-btn.danger:hover {
+  background: #991b1b;
+}
+
+.sandbox-action-btn.accent {
+  background: #0e7490;
+  border-color: #67e8f9;
+}
+
+.sandbox-action-btn.accent:hover {
+  background: #0891b2;
+}
+
+.sandbox-sec-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #93c5fd;
+  letter-spacing: 0.5px;
+  margin: 4px 0 5px;
+}
+
+.sandbox-sec-label.fox-sec {
+  color: #fde047;
+  margin-top: 9px;
+}
+
+.sandbox-enemy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.sandbox-enemy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #18261d;
+  border: 2px solid #35523d;
+  box-shadow: 0 2px 0 var(--pixel-shadow);
+  padding: 5px 6px;
+  text-align: left;
+  color: #ffffff;
+}
+
+.sandbox-enemy-btn:hover {
+  background: #213729;
+  border-color: #22d3ee;
+}
+
+.sandbox-enemy-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--pixel-shadow);
+}
+
+.sandbox-enemy-btn.fox-boss-card {
+  background: #261a14;
+  border-color: #9a3412;
+}
+
+.sandbox-enemy-btn.fox-boss-card:hover {
+  background: #362218;
+  border-color: #facc15;
+}
+
+.sbx-enemy-portrait {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  background: #0f172a;
+  border: 1px solid #334155;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.sbx-enemy-meta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sbx-enemy-name {
+  font-size: 9px;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sbx-enemy-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8px;
+  color: #cbd5e1;
+  flex-wrap: wrap;
+}
+
+.sbx-trait-tag {
+  padding: 0 3px;
+  font-size: 7px;
+  font-weight: 700;
+  background: #0f172a;
+  border: 1px solid currentColor;
 }

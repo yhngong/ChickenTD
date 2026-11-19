@@ -1,5 +1,6 @@
 import './style.css';
 import {
+  BUG_ENEMY_IDS,
   CAMPAIGN_WAVES,
   CANNON_DEFS,
   CANNON_ORDER,
@@ -9,6 +10,7 @@ import {
   DIFFICULTY_DEFS,
   DIFFICULTY_ORDER,
   ENEMY_DEFS,
+  FOX_BOSS_IDS,
   GEM_EGG_CHICKEN_IDS,
   getBaseCornPerClick,
   getCornucopiaWaveMult,
@@ -36,7 +38,14 @@ import {
   PIXEL_CANVAS_W,
 } from './renderer';
 import { PIXEL_ATLAS } from './sprites';
-import { CannonTypeId, ChickenTypeId, DifficultyId, EggRollOutcome, MapId } from './types';
+import {
+  CannonTypeId,
+  ChickenTypeId,
+  DifficultyId,
+  EggRollOutcome,
+  EnemyTypeId,
+  MapId,
+} from './types';
 
 // Main Menu Elements
 const mainMenuScreen = document.getElementById('main-menu-screen') as HTMLDivElement;
@@ -97,6 +106,7 @@ const hudEggs = document.getElementById('hud-eggs') as HTMLElement;
 const hudWave = document.getElementById('hud-wave') as HTMLElement;
 const hudPops = document.getElementById('hud-pops') as HTMLElement;
 const hudBattleEggs = document.getElementById('hud-battle-eggs') as HTMLElement;
+const hudSavedEggPill = document.getElementById('hud-saved-egg-pill') as HTMLDivElement;
 
 const btnSpeed = document.getElementById('btn-speed') as HTMLButtonElement;
 const lblSpeed = document.getElementById('lbl-speed') as HTMLElement;
@@ -148,6 +158,8 @@ const btnInspClose = document.getElementById('btn-insp-close') as HTMLButtonElem
 
 // Clicker Elements
 const clickerCard = document.getElementById('clicker-card') as HTMLDivElement;
+const lblClickerTitle = document.getElementById('lbl-clicker-title') as HTMLElement;
+const btnOpenSummonQuick = document.getElementById('btn-open-summon-quick') as HTMLButtonElement;
 const cpsBadge = document.getElementById('cps-badge') as HTMLElement;
 const btnHenClick = document.getElementById('btn-hen-click') as HTMLButtonElement;
 const henSceneImg = document.getElementById('hen-scene-img') as HTMLImageElement;
@@ -160,9 +172,23 @@ const frenzyLabel = document.getElementById('frenzy-label') as HTMLElement;
 const basketLabel = document.getElementById('basket-label') as HTMLElement;
 const meterFrenzyFill = document.getElementById('meter-frenzy-fill') as HTMLDivElement;
 
-// Shop & Wave Elements
+// Shop, Sandbox Summoner & Wave Elements
+const shopTabsBar = document.getElementById('shop-tabs-bar') as HTMLDivElement;
+const btnTabSummon = document.getElementById('btn-tab-summon') as HTMLButtonElement;
 const lblTabTroops = document.getElementById('lbl-tab-troops') as HTMLElement;
 const troopGrid = document.getElementById('troop-grid') as HTMLDivElement;
+const sandboxQtyGroup = document.getElementById('sandbox-qty-group') as HTMLDivElement;
+const sandboxWaveLbl = document.getElementById('sandbox-wave-lbl') as HTMLElement;
+const btnSbxWMinus10 = document.getElementById('btn-sbx-w-minus10') as HTMLButtonElement;
+const btnSbxWMinus1 = document.getElementById('btn-sbx-w-minus1') as HTMLButtonElement;
+const btnSbxWPlus1 = document.getElementById('btn-sbx-w-plus1') as HTMLButtonElement;
+const btnSbxWPlus10 = document.getElementById('btn-sbx-w-plus10') as HTMLButtonElement;
+const btnSbxW25 = document.getElementById('btn-sbx-w25') as HTMLButtonElement;
+const btnSbxW50 = document.getElementById('btn-sbx-w50') as HTMLButtonElement;
+const btnSbxClear = document.getElementById('btn-sbx-clear') as HTMLButtonElement;
+const btnSbxCannon = document.getElementById('btn-sbx-cannon') as HTMLButtonElement;
+const sandboxBugGrid = document.getElementById('sandbox-bug-grid') as HTMLDivElement;
+const sandboxFoxGrid = document.getElementById('sandbox-fox-grid') as HTMLDivElement;
 const clickerUpgList = document.getElementById('clicker-upg-list') as HTMLDivElement;
 const tdUpgList = document.getElementById('td-upg-list') as HTMLDivElement;
 const btnStartWave = document.getElementById('btn-start-wave') as HTMLButtonElement;
@@ -249,6 +275,7 @@ function initStaticPixelIcons(): void {
   setImg('icon-btn-portable', PIXEL_ATLAS.getIconUrl('download_app'));
   setImg('icon-clicker-corn', PIXEL_ATLAS.getIconUrl('corn'));
   setImg('icon-tab-troops', PIXEL_ATLAS.getIconUrl('chicken'));
+  setImg('icon-tab-summon', PIXEL_ATLAS.getIconUrl('fox'));
   setImg('icon-tab-clicker', PIXEL_ATLAS.getIconUrl('corn'));
   setImg('icon-tab-td', PIXEL_ATLAS.getIconUrl('shield'));
   setImg('icon-shop-cannon-armory', PIXEL_ATLAS.getIconUrl('cannon'));
@@ -378,7 +405,9 @@ function renderMainMenu(): void {
 
   const canResume = hasStartedRun && engine.status !== 'gameover';
   if (canResume) {
-    btnMenuResume.textContent = `RESUME (WAVE ${engine.waveNumber})`;
+    btnMenuResume.textContent = engine.isSandboxMode()
+      ? `RESUME (SANDBOX W${engine.waveNumber})`
+      : `RESUME (WAVE ${engine.waveNumber})`;
     btnMenuResume.classList.remove('hidden');
     btnMenuEndRun.classList.remove('hidden');
   } else {
@@ -416,7 +445,9 @@ function renderMainMenu(): void {
     const isSel = dId === pendingDifficultyId;
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = `diff-card-btn${isSel ? ' selected' : ''}`;
+    card.className = `diff-card-btn${dId === 'sandbox' ? ' sandbox-mode' : ''}${
+      isSel ? ' selected' : ''
+    }`;
     card.innerHTML = `
       <div class="diff-card-top">
         <span class="diff-card-name">${dDef.name}</span>
@@ -448,6 +479,14 @@ function renderGemEggShop(): void {
     ? `ACTIVE RUN LOCKED TO ${engine.getEquippedCannonDef().shortLabel} • SELECTION APPLIES TO NEW GAMES`
     : 'BUY WITH GEM EGGS • LOCKED ONCE A GAME STARTS!';
   collectionHeading.textContent = `CHICKEN ROSTER & MUTATIONS (${unlockedCount} / ${CHICKEN_ORDER.length} UNLOCKED)`;
+  const supportTotal = CHICKEN_ORDER.filter((id) => CHICKEN_DEFS[id].isSupport).length;
+  for (const fBtn of document.querySelectorAll<HTMLButtonElement>('.coll-filter-btn')) {
+    const f = fBtn.dataset.filter;
+    if (f === 'all') fBtn.textContent = `ALL (${CHICKEN_ORDER.length})`;
+    else if (f === 'gacha') fBtn.textContent = `GEM EGG EXCLUSIVE (${GEM_EGG_CHICKEN_IDS.length})`;
+    else if (f === 'starter') fBtn.textContent = `STARTERS (${STARTER_CHICKEN_IDS.length})`;
+    else if (f === 'support') fBtn.textContent = `SUPPORT (${supportTotal})`;
+  }
 
   btnBuyEgg1.disabled = savedEggs < 1;
   btnBuyEgg4.disabled = savedEggs < 4;
@@ -834,7 +873,7 @@ function finalizeCutsceneState(): void {
   const mutCount = count - newCount;
 
   if (justForgedCompleteCluck) {
-    cutsceneTitle.textContent = 'ALL 38 OWNED — THE COMPLETE CLUCK FORGED!';
+    cutsceneTitle.textContent = `ALL ${REQUIRED_FOR_COMPLETE_CLUCK_IDS.length} OWNED — THE COMPLETE CLUCK FORGED!`;
     cutsceneSubtitle.textContent =
       'TERRARIA ZENITH PINNACLE UNLOCKED! (MASTERED <-> AETHER SWAPPABLE IN SHOP & INSPECTOR)';
   } else {
@@ -1072,6 +1111,9 @@ function launchSelectedRun(): void {
   gemShopScreen.classList.add('hidden');
   engine.startNewRun(pendingMapId, pendingDifficultyId);
   renderer.setMap(pendingMapId);
+  if (!engine.isSandboxMode() && activeShopTab === 'summon') {
+    switchShopTab('troops');
+  }
   syncStageAspectRatio();
   refreshFullUi();
 }
@@ -1450,9 +1492,13 @@ function populateDefeatEndscreen(): void {
     defeatBossFill.style.width = `${rep.waveProgressPercent}%`;
   }
 
-  defeatEggsEarned.textContent = `+${rep.eggsEarnedThisRun.toLocaleString()} ${
-    rep.eggsEarnedThisRun === 1 ? 'GEM EGG' : 'GEM EGGS'
-  } EARNED!`;
+  if (engine.isSandboxMode()) {
+    defeatEggsEarned.textContent = '0 GEM EGGS (SANDBOX MODE)';
+  } else {
+    defeatEggsEarned.textContent = `+${rep.eggsEarnedThisRun.toLocaleString()} ${
+      rep.eggsEarnedThisRun === 1 ? 'GEM EGG' : 'GEM EGGS'
+    } EARNED!`;
+  }
   defeatEggsBank.textContent = `OWNED: ${rep.totalSavedEggs.toLocaleString()} GEM EGGS`;
   defeatRemainderText.textContent = `${rep.newBugRemainder.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} KILLS`;
   defeatRemainderFill.style.width = `${Math.min(
@@ -1462,7 +1508,7 @@ function populateDefeatEndscreen(): void {
 
   defeatStatWave.textContent = rep.freeplay ? `WAVE ${rep.waveReached} (FREE)` : `WAVE ${rep.waveReached} / ${CAMPAIGN_WAVES}`;
   defeatStatBugs.textContent = rep.totalBugsKilledThisRun.toLocaleString();
-  defeatStatCorn.textContent = formatCompactCost(rep.totalCornHarvested);
+  defeatStatCorn.textContent = engine.isSandboxMode() ? 'INF' : formatCompactCost(rep.totalCornHarvested);
 
   if (rep.mvpUnitId) {
     const mvpDef = CHICKEN_DEFS[rep.mvpUnitId];
@@ -1479,8 +1525,89 @@ function populateDefeatEndscreen(): void {
     rep.totalSavedEggs > 0 ? `SHOP (${rep.totalSavedEggs})` : 'SHOP';
 }
 
+let activeShopTab: 'troops' | 'summon' | 'clicker' | 'td' = 'troops';
+let sandboxSpawnQty = 1;
+let lastSandboxRenderedWave = -1;
+
+function buildSandboxEnemyButton(eId: EnemyTypeId): HTMLButtonElement {
+  const def = ENEMY_DEFS[eId];
+  const spr = PIXEL_ATLAS.getEnemySprite(eId);
+  const hp = engine.getEnemyScaledHp(eId);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `sandbox-enemy-btn${def.isFoxBoss ? ' fox-boss-card' : ''}`;
+  btn.dataset.enemyId = eId;
+  btn.title = `Summon ${def.name} (HP: ${hp.toLocaleString()} at Wave ${engine.waveNumber}, Speed: ${def.speed})`;
+
+  const tags: string[] = [];
+  if (def.isFoxBoss) tags.push('<span class="sbx-trait-tag" style="color:#facc15">FOX</span>');
+  if (def.isCamo) tags.push('<span class="sbx-trait-tag" style="color:#c084fc">CAMO</span>');
+  if (def.isArmored) tags.push('<span class="sbx-trait-tag" style="color:#94a3b8">ARMOR</span>');
+
+  btn.innerHTML = `
+    <img class="sbx-enemy-portrait" src="${spr?.portraitUrl ?? ''}" alt="" />
+    <div class="sbx-enemy-meta">
+      <div class="sbx-enemy-name">${def.name}</div>
+      <div class="sbx-enemy-sub">
+        <span class="sbx-hp-lbl" style="color:#67e8f9">HP ${formatCompactCost(hp)}</span>
+        ${tags.join('')}
+      </div>
+    </div>
+  `;
+  btn.addEventListener('click', () => {
+    engine.summonSandboxEnemy(eId, sandboxSpawnQty);
+  });
+  return btn;
+}
+
+function renderSandboxSummoner(): void {
+  if (!engine.isSandboxMode()) return;
+  setText(sandboxWaveLbl, `WAVE ${engine.waveNumber} HP`);
+  const activeCount = engine.enemies.length;
+  setText(
+    btnSbxClear,
+    activeCount > 0 ? `CLEAR ENEMIES (${activeCount})` : 'CLEAR ENEMIES'
+  );
+
+  if (sandboxBugGrid.childElementCount === 0) {
+    const bugFrag = document.createDocumentFragment();
+    for (const id of BUG_ENEMY_IDS) {
+      bugFrag.appendChild(buildSandboxEnemyButton(id));
+    }
+    sandboxBugGrid.appendChild(bugFrag);
+
+    const foxFrag = document.createDocumentFragment();
+    for (const id of FOX_BOSS_IDS) {
+      foxFrag.appendChild(buildSandboxEnemyButton(id));
+    }
+    sandboxFoxGrid.appendChild(foxFrag);
+    lastSandboxRenderedWave = engine.waveNumber;
+    return;
+  }
+
+  if (lastSandboxRenderedWave !== engine.waveNumber) {
+    lastSandboxRenderedWave = engine.waveNumber;
+    const allBtns = document.querySelectorAll<HTMLButtonElement>('#tab-summon .sandbox-enemy-btn');
+    for (const btn of allBtns) {
+      const eId = btn.dataset.enemyId as EnemyTypeId | undefined;
+      if (!eId || !(eId in ENEMY_DEFS)) continue;
+      const hp = engine.getEnemyScaledHp(eId);
+      const hpSpan = btn.querySelector<HTMLElement>('.sbx-hp-lbl');
+      if (hpSpan) hpSpan.textContent = `HP ${formatCompactCost(hp)}`;
+      btn.title = `Summon ${ENEMY_DEFS[eId].name} (HP: ${hp.toLocaleString()} at Wave ${engine.waveNumber}, Speed: ${ENEMY_DEFS[eId].speed})`;
+    }
+  }
+}
+
 function updateHudBattleEggsLive(): void {
   const saved = PROGRESSION.getEggs();
+  if (engine.isSandboxMode()) {
+    setText(hudBattleEggs, `${saved.toLocaleString()} (OFF)`);
+    hudSavedEggPill.title = 'Sandbox Mode: Enemy kills do NOT count towards Gem Eggs!';
+    return;
+  }
+  hudSavedEggPill.title =
+    'Earn 1 Gem Egg per 1,000 Enemies killed! Open your Gem Eggs in the Main Menu.';
   const unbanked = Math.max(0, engine.totalBugsPopped - engine.bugsBankedThisRun);
   const pendingFromRun = Math.floor((PROGRESSION.getBugKillRemainder() + unbanked) / BUGS_PER_EGG);
   setText(
@@ -1492,24 +1619,50 @@ function updateHudBattleEggsLive(): void {
 }
 
 function refreshFullUi(): void {
+  const isSandbox = engine.isSandboxMode();
   const mapName = MAP_DEFS[engine.mapId].name.toUpperCase();
   const diffBadge = engine.getDifficulty().badge;
   setText(brandSubText, `${mapName} • ${diffBadge}`);
 
-  setText(hudCorn, engine.corn.toLocaleString());
-  setText(hudEggs, `${engine.eggs} / ${engine.maxEggs}`);
+  setText(hudCorn, isSandbox ? 'INF' : engine.corn.toLocaleString());
+  setText(hudEggs, isSandbox ? 'INF' : `${engine.eggs} / ${engine.maxEggs}`);
   setText(
     hudWave,
-    engine.freeplayUnlocked
+    isSandbox
+      ? `W${engine.waveNumber} (SBX)`
+      : engine.freeplayUnlocked
       ? `${engine.waveNumber} (FREE)`
       : `${Math.min(engine.waveNumber, CAMPAIGN_WAVES)} / ${CAMPAIGN_WAVES}`
   );
   setText(hudPops, engine.totalBugsPopped.toLocaleString());
   updateHudBattleEggsLive();
+  if (engine.isSandboxMode() && activeShopTab === 'summon') {
+    const activeCount = engine.enemies.length;
+    setText(
+      btnSbxClear,
+      activeCount > 0 ? `CLEAR ENEMIES (${activeCount})` : 'CLEAR ENEMIES'
+    );
+  }
+
+  shopTabsBar.classList.toggle('has-sandbox', isSandbox);
+  btnTabSummon.classList.toggle('hidden', !isSandbox);
+  btnOpenSummonQuick.classList.toggle('hidden', !isSandbox);
+  setText(lblClickerTitle, isSandbox ? 'SANDBOX (INF CORN)' : 'HENHOUSE CLICKER');
+  if (!isSandbox && activeShopTab === 'summon') {
+    switchShopTab('troops');
+  }
 
   const waveDef = getWaveDefinition(engine.waveNumber, engine.difficultyId);
-  setText(bannerTitle, `WAVE ${waveDef.waveNumber}: ${waveDef.title.toUpperCase()}`);
-  setText(bannerDesc, waveDef.callout);
+  if (isSandbox && !engine.waveActive) {
+    setText(bannerTitle, `SANDBOX LAB (WAVE ${engine.waveNumber} HP)`);
+    setText(
+      bannerDesc,
+      'Infinite Corn! Open the SUMMON tab to spawn any Bug or Fox Boss (0 Gem Egg progress).'
+    );
+  } else {
+    setText(bannerTitle, `WAVE ${waveDef.waveNumber}: ${waveDef.title.toUpperCase()}`);
+    setText(bannerDesc, waveDef.callout);
+  }
 
   const baseClick = getBaseCornPerClick(engine.clickerLevels.beakPower);
   const waveMult = getCornucopiaWaveMult(engine.clickerLevels.cornucopia, engine.waveNumber);
@@ -1517,7 +1670,9 @@ function refreshFullUi(): void {
   const autoRate = getFarmhandAutoRate(engine.clickerLevels.farmhandChicks);
   setText(
     clickMainLabel,
-    autoRate > 0
+    isSandbox
+      ? `INF CORN ACTIVE • TEST +${effectiveBasePeck.toLocaleString()}/PECK`
+      : autoRate > 0
       ? `+${effectiveBasePeck.toLocaleString()} / PECK • AUTO ${autoRate.toFixed(1)}/S`
       : `+${effectiveBasePeck.toLocaleString()} BASE CORN / CLICK`
   );
@@ -1526,7 +1681,9 @@ function refreshFullUi(): void {
     clickerCard.classList.remove('locked');
     setText(
       clickStatusNote,
-      autoRate > 0
+      isSandbox
+        ? 'SANDBOX WAVE RUNNING — KILLS GIVE 0 GEM EGGS!'
+        : autoRate > 0
         ? `WAVE ACTIVE — 12 CPS CLICK + ${autoRate.toFixed(1)}/S FARMHANDS!`
         : 'WAVE ACTIVE — CLICK UP TO 12 CPS FOR CORN!'
     );
@@ -1534,6 +1691,12 @@ function refreshFullUi(): void {
     setText(btnStartWave, `WAVE ${waveDef.waveNumber} ACTIVE (${rem} LEFT)`);
     btnStartWave.classList.add('wave-running');
     btnStartWave.disabled = true;
+  } else if (isSandbox) {
+    clickerCard.classList.remove('locked');
+    setText(clickStatusNote, 'SUMMON ANY ENEMY BELOW OR RUN WAVE • 0 GEM EGGS');
+    setText(btnStartWave, `>> RUN WAVE ${waveDef.waveNumber} IN SANDBOX`);
+    btnStartWave.classList.remove('wave-running');
+    btnStartWave.disabled = false;
   } else {
     clickerCard.classList.add('locked');
     setText(clickStatusNote, 'LOCKED BETWEEN WAVES — START WAVE TO CLICK!');
@@ -1543,6 +1706,7 @@ function refreshFullUi(): void {
   }
 
   renderTroopCards();
+  renderSandboxSummoner();
   renderUpgradeLists();
   renderInspector();
   updateLiveClickerMeters();
@@ -1574,7 +1738,7 @@ engine.onCornChange = syncLiveShopAffordability;
 
 function syncLiveShopAffordability(): void {
   const cornNow = engine.corn;
-  setText(hudCorn, cornNow.toLocaleString());
+  setText(hudCorn, engine.isSandboxMode() ? 'INF' : cornNow.toLocaleString());
 
   if (cornNow !== lastAffordCorn) {
     lastAffordCorn = cornNow;
@@ -1693,6 +1857,13 @@ function updateLiveClickerMeters(): void {
 
   setText(hudPops, engine.totalBugsPopped.toLocaleString());
   updateHudBattleEggsLive();
+  if (engine.isSandboxMode() && activeShopTab === 'summon') {
+    const activeCount = engine.enemies.length;
+    setText(
+      btnSbxClear,
+      activeCount > 0 ? `CLEAR ENEMIES (${activeCount})` : 'CLEAR ENEMIES'
+    );
+  }
 
   if (engine.waveActive) {
     syncLiveShopAffordability();
@@ -1804,14 +1975,46 @@ btnHenClick.addEventListener('keydown', (e) => {
   }
 });
 
-function switchShopTab(which: 'troops' | 'clicker' | 'td'): void {
+function switchShopTab(which: 'troops' | 'summon' | 'clicker' | 'td'): void {
+  if (which === 'summon' && !engine.isSandboxMode()) {
+    which = 'troops';
+  }
+  activeShopTab = which;
   document.querySelectorAll<HTMLButtonElement>('.shop-tab').forEach((t) => {
     t.classList.toggle('active', t.dataset.tab === which);
   });
   document.getElementById('tab-troops')!.classList.toggle('hidden', which !== 'troops');
+  document.getElementById('tab-summon')!.classList.toggle('hidden', which !== 'summon');
   document.getElementById('tab-clicker')!.classList.toggle('hidden', which !== 'clicker');
   document.getElementById('tab-td')!.classList.toggle('hidden', which !== 'td');
+  if (which === 'summon') {
+    renderSandboxSummoner();
+  }
 }
+
+btnOpenSummonQuick.addEventListener('click', () => {
+  engine.audio.playUpgrade();
+  switchShopTab('summon');
+});
+
+sandboxQtyGroup.querySelectorAll<HTMLButtonElement>('.sandbox-pill-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    sandboxSpawnQty = Math.max(1, Number(btn.dataset.qty ?? '1'));
+    sandboxQtyGroup
+      .querySelectorAll('.sandbox-pill-btn')
+      .forEach((b) => b.classList.toggle('active', b === btn));
+    engine.audio.playUpgrade();
+  });
+});
+
+btnSbxWMinus10.addEventListener('click', () => engine.setSandboxWaveNumber(engine.waveNumber - 10));
+btnSbxWMinus1.addEventListener('click', () => engine.setSandboxWaveNumber(engine.waveNumber - 1));
+btnSbxWPlus1.addEventListener('click', () => engine.setSandboxWaveNumber(engine.waveNumber + 1));
+btnSbxWPlus10.addEventListener('click', () => engine.setSandboxWaveNumber(engine.waveNumber + 10));
+btnSbxW25.addEventListener('click', () => engine.setSandboxWaveNumber(25));
+btnSbxW50.addEventListener('click', () => engine.setSandboxWaveNumber(50));
+btnSbxClear.addEventListener('click', () => engine.clearSandboxEnemies());
+btnSbxCannon.addEventListener('click', () => engine.instantChargeSandboxCannon());
 
 btnCluckCannon.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -1825,7 +2028,8 @@ btnCluckCannon.addEventListener('click', (e) => {
 // Shop tab switching
 document.querySelectorAll<HTMLButtonElement>('.shop-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
-    const which = (tab.dataset.tab as 'troops' | 'clicker' | 'td') ?? 'troops';
+    const which =
+      (tab.dataset.tab as 'troops' | 'summon' | 'clicker' | 'td') ?? 'troops';
     switchShopTab(which);
   });
 });

@@ -930,6 +930,40 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
     px(bx - 3, by + 1, '#FACC15', 4, 8);
     px(bx - 2, by + 2, '#FFFFFF', 3, 5);
     px(bx - 3, by - 1, '#F43F5E', 2, 2);
+  } else if (typeId === 'paladin_crusader') {
+    // Royal white & gold templar cloak
+    px(bx - 3, by + 2, OUTLINE, 5, 8);
+    px(bx - 2, by + 3, '#F8FAFC', 3, 6);
+    px(bx - 2, by + 7, '#F59E0B', 3, 2);
+  } else if (typeId === 'leviathan_kraken') {
+    // Bioluminescent deep-sea Kraken tentacles
+    px(bx - 4, by + 1, OUTLINE, 5, 9);
+    px(bx - 3, by + 2, '#0F766E', 3, 7);
+    px(bx - 3, by + 3, '#22D3EE', 1, 5);
+  } else if (typeId === 'archangel_seraph') {
+    // 6-Winged Golden-Tipped Seraphim Pinions
+    px(bx - 4, by - 1, OUTLINE, 6, 11);
+    px(bx - 3, by, '#FFFFFF', 4, 3);
+    px(bx - 3, by + 4, '#FEF08A', 4, 2);
+    px(bx - 3, by + 7, '#F59E0B', 3, 2);
+  } else if (typeId === 'mech_zilla') {
+    // Neon-cyan glowing Kaiju dorsal plates!
+    px(bx - 4, by, OUTLINE, 5, 10);
+    px(bx - 3, by + 1, '#22D3EE', 3, 2);
+    px(bx - 3, by + 4, '#38BDF8', 3, 2);
+    px(bx - 3, by + 7, '#06B6D4', 3, 2);
+  } else if (typeId === 'solar_emperor') {
+    // Blazing Dyson-Star Corona Halo behind Helios Sun-Emperor!
+    px(bx - 4, by - 2, OUTLINE, 6, 11);
+    px(bx - 3, by - 1, '#EA580C', 4, 9);
+    px(bx - 2, by, '#FACC15', 3, 7);
+    px(bx - 1, by + 2, '#FFFFFF', 2, 3);
+  } else if (typeId === 'eternity_weaver') {
+    // Iridescent Astral Rift Dragon Wings!
+    px(bx - 4, by - 1, OUTLINE, 6, 11);
+    px(bx - 3, by, '#A855F7', 4, 4);
+    px(bx - 3, by + 4, '#22D3EE', 4, 3);
+    px(bx - 2, by + 7, '#F472B6', 3, 2);
   } else if (typeId === 'complete_cluck') {
     // Terraria Zenith Floating Rainbow Sword-Fan Halo behind The Complete Cluck!
     px(bx - 4, by - 2, OUTLINE, 6, 11);
@@ -1388,6 +1422,189 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       px(bx + 12, by + 4, '#F472B6', 4, 2);
       px(17, 2, '#38BDF8', 2, 3);
       px(18, 1, '#FEF08A', 2, 1);
+      break;
+    }
+    case 'sling_chick': {
+      // Pebbleshot Chick: sporty green backwards cap + wooden Y-slingshot!
+      px(bx + 2, by - 2, '#16A34A', 8, 3);
+      px(bx, by - 1, '#15803D', 3, 2); // backwards cap visor
+      px(bx + 4, by - 2, '#86EFAC', 3, 1);
+      // Wooden Y-slingshot + gray river pebble
+      px(bx + 13, by + 7, '#92400E', 2, 3);
+      px(bx + 12, by + 5, '#B45309', 1, 2);
+      px(bx + 15, by + 5, '#B45309', 1, 2);
+      px(bx + 13, by + 5, '#94A3B8', 2, 2);
+      break;
+    }
+    case 'cactus_hen': {
+      // Prickly Cactus-Hen: green saguaro cactus crown + blooming pink desert flower!
+      px(bx + 4, by - 4, OUTLINE, 5, 5);
+      px(bx + 5, by - 3, '#16A34A', 3, 4);
+      px(bx + 2, by - 2, '#15803D', 2, 2);
+      px(bx + 9, by - 2, '#15803D', 2, 2);
+      px(bx + 5, by - 5, '#EC4899', 3, 2); // cute pink cactus blossom!
+      px(bx + 6, by - 5, '#FEF08A', 1, 1);
+      break;
+    }
+    case 'ramen_chef': {
+      // Ramen Chef-Hen: crisp white hachimaki headband + steaming bowl of tonkotsu ramen!
+      px(bx + 2, by, '#FFFFFF', 9, 2);
+      px(bx + 5, by, '#EF4444', 3, 2); // rising-sun chef knot
+      px(bx - 1, by + 1, '#FFFFFF', 2, 2);
+      // Red & gold ramen bowl in front + rising steam!
+      px(bx + 12, by + 7, OUTLINE, 5, 4);
+      px(bx + 13, by + 8, '#DC2626', 3, 2);
+      px(bx + 13, by + 7, '#FDE047', 3, 1); // golden noodles
+      px(bx + 14, by + 4, '#FFFFFF', 1, 2);
+      break;
+    }
+    case 'cowboy_desperado': {
+      // Six-Beak Desperado: wide-brim sheriff cowboy hat + gold badge + silver six-shooter!
+      px(bx, by - 1, '#78350F', 13, 2);
+      px(bx + 3, by - 4, '#92400E', 7, 3);
+      px(bx + 6, by - 3, '#FACC15', 2, 2); // gold sheriff star
+      px(bx + 3, by + 7, '#DC2626', 6, 2); // red outlaw bandana
+      // Silver Peacekeeper Revolver
+      px(bx + 13, by + 6, '#94A3B8', 4, 2);
+      px(bx + 13, by + 8, '#78350F', 2, 2);
+      break;
+    }
+    case 'viking_jarl': {
+      // Berserker Jarl-Hen: horned iron Viking helm + frost-rune bearded axe!
+      px(bx + 2, by - 3, '#64748B', 9, 4);
+      px(bx + 4, by - 2, '#94A3B8', 5, 2);
+      px(bx, by - 5, '#FEF3C7', 2, 3);     // left horn
+      px(bx + 11, by - 5, '#FEF3C7', 2, 3); // right horn
+      // Frost-blue bearded Viking axe
+      px(bx + 13, by + 3, '#78350F', 2, 7);
+      px(bx + 14, by + 3, '#38BDF8', 3, 4);
+      px(bx + 15, by + 4, '#E0F2FE', 2, 2);
+      break;
+    }
+    case 'plague_doctor': {
+      // Miasma Doctor-Hen: dark apothecary top-hat + emerald lens goggles + glowing blight flask!
+      px(bx + 1, by - 1, '#0F172A', 11, 2);
+      px(bx + 3, by - 5, '#1E293B', 7, 4);
+      px(bx + 3, by - 2, '#10B981', 7, 1); // emerald hatband
+      // Bubbling emerald miasma vial
+      px(bx + 12, by + 6, OUTLINE, 5, 5);
+      px(bx + 13, by + 7, '#10B981', 3, 3);
+      px(bx + 14, by + 5, '#6EE7B7', 2, 2);
+      break;
+    }
+    case 'pharaoh_ra': {
+      // Pharaoh Cluck-Ra: blue & gold striped Egyptian Nemes headdress + golden Ankh staff!
+      px(bx + 1, by - 3, '#2563EB', 11, 4);
+      px(bx + 2, by - 2, '#FACC15', 9, 1);
+      px(bx + 1, by, '#FACC15', 2, 4);     // left Nemes lappet
+      px(bx + 6, by - 5, '#EF4444', 2, 2); // royal Uraeus cobra gem
+      // Blazing Golden Ankh Staff
+      px(bx + 14, by + 5, '#FACC15', 2, 5);
+      px(bx + 13, by + 2, '#FDE047', 4, 3);
+      px(bx + 14, by + 3, '#2563EB', 2, 1);
+      break;
+    }
+    case 'storm_dj': {
+      // Bass-Drop DJ Hen: neon cyan headphones + hot-pink synth visor + turntable deck!
+      px(bx + 2, by - 3, '#22D3EE', 9, 2);
+      px(bx + 1, by + 1, '#EC4899', 3, 4); // glowing earcup!
+      px(bx + 6, by + 1, '#EC4899', 6, 2); // hot-pink rave visor brow
+      // Mini Neon Turntable Deck
+      px(bx + 12, by + 7, OUTLINE, 5, 4);
+      px(bx + 13, by + 8, '#38BDF8', 3, 2);
+      px(bx + 14, by + 4, '#FDE047', 2, 2); // floating bass note
+      break;
+    }
+    case 'paladin_crusader': {
+      // Aegis Paladin-Hen: silver great-helm crest with gold cross + radiant holy warhammer!
+      px(bx + 2, by - 3, '#CBD5E1', 9, 4);
+      px(bx + 5, by - 3, '#F59E0B', 3, 4); // golden templar cross crest
+      px(bx + 4, by - 2, '#FACC15', 5, 1);
+      // Sanctified Golden Warhammer
+      px(bx + 14, by + 5, '#92400E', 2, 5);
+      px(bx + 12, by + 2, OUTLINE, 5, 4);
+      px(bx + 13, by + 3, '#FACC15', 3, 2);
+      break;
+    }
+    case 'oni_warlord': {
+      // Crimson Oni-Rooster: twin golden demon horns + wild white mane + spiked iron Kanabo!
+      px(bx + 2, by - 2, '#F8FAFC', 8, 2); // wild shock of white hair
+      px(bx + 3, by - 5, '#FACC15', 2, 4); // left Oni horn
+      px(bx + 8, by - 5, '#FACC15', 2, 4); // right Oni horn
+      // Heavy Spiked Iron Kanabo Club
+      px(bx + 13, by + 2, OUTLINE, 4, 8);
+      px(bx + 14, by + 3, '#475569', 2, 6);
+      px(bx + 16, by + 3, '#FACC15', 1, 1);
+      px(bx + 16, by + 6, '#FACC15', 1, 1);
+      break;
+    }
+    case 'astral_astrologer': {
+      // Starweaver Hen: tall indigo stargazer wizard hat + floating golden astrolabe!
+      px(bx + 1, by - 1, '#312E81', 11, 2);
+      px(bx + 3, by - 4, '#4338CA', 7, 3);
+      px(bx + 5, by - 6, '#6366F1', 4, 2);
+      px(bx + 5, by - 3, '#FDE047', 2, 2); // golden crescent star on hat!
+      // Floating Golden Star-Comet Orb
+      px(bx + 13, by + 4, '#FDE047', 4, 4);
+      px(bx + 14, by + 5, '#FFFFFF', 2, 2);
+      break;
+    }
+    case 'leviathan_kraken': {
+      // Abyssal Kraken-Hen: bioluminescent sea-king crown + cyan abyssal trident!
+      px(bx + 2, by - 3, '#0F766E', 9, 3);
+      px(bx + 3, by - 5, '#22D3EE', 2, 2);
+      px(bx + 6, by - 6, '#67E8F9', 2, 3);
+      px(bx + 9, by - 5, '#22D3EE', 2, 2);
+      // Three-pronged Abyssal Trident
+      px(bx + 14, by + 4, '#0EA5E9', 2, 6);
+      px(bx + 12, by + 1, '#22D3EE', 5, 3);
+      px(bx + 13, by + 1, '#0F172A', 1, 2);
+      px(bx + 15, by + 1, '#0F172A', 1, 2);
+      break;
+    }
+    case 'archangel_seraph': {
+      // Seraphim Cluck-el: floating golden halo ring + blazing celestial halo-spear!
+      px(bx + 3, by - 5, '#F59E0B', 7, 2);
+      px(bx + 4, by - 5, '#FEF08A', 5, 1);
+      // Radiant Golden Seraph Lance
+      px(bx + 14, by + 1, '#FACC15', 2, 9);
+      px(bx + 13, by, '#FFFFFF', 4, 3);
+      px(bx + 14, by - 1, '#F59E0B', 2, 2);
+      break;
+    }
+    case 'mech_zilla': {
+      // Kaiju Cluck-Zilla: armored dark-steel kaiju crest + Cherenkov atomic breath orb!
+      px(bx + 2, by - 3, '#0F172A', 9, 3);
+      px(bx + 4, by - 5, '#22D3EE', 2, 2);
+      px(bx + 7, by - 5, '#38BDF8', 2, 2);
+      // Charging Neon-Cyan Atomic Breath Sphere at beak!
+      px(bx + 13, by + 3, '#0284C7', 4, 4);
+      px(bx + 14, by + 4, '#67E8F9', 3, 2);
+      px(bx + 15, by + 4, '#FFFFFF', 1, 1);
+      break;
+    }
+    case 'solar_emperor': {
+      // Helios Sun-Emperor: 5-rayed golden Sol Invictus crown + captive miniature blazing star!
+      px(bx + 2, by - 3, '#EA580C', 9, 3);
+      px(bx + 3, by - 5, '#FACC15', 2, 3);
+      px(bx + 6, by - 6, '#FEF08A', 2, 4);
+      px(bx + 9, by - 5, '#FACC15', 2, 3);
+      // Captive Miniature Sun in front!
+      px(bx + 12, by + 2, '#EA580C', 5, 5);
+      px(bx + 13, by + 3, '#FDE047', 3, 3);
+      px(bx + 14, by + 4, '#FFFFFF', 1, 1);
+      break;
+    }
+    case 'eternity_weaver': {
+      // Astral Genesis-Wyrm: prismatic continuum horns + twin reality-rift glaives!
+      px(bx + 2, by - 5, '#22D3EE', 2, 4);
+      px(bx + 9, by - 5, '#E879F9', 2, 4);
+      px(bx + 5, by - 4, '#FFFFFF', 3, 2);
+      // Twin Dimensional Rift Crescent Blades!
+      px(bx + 13, by + 1, OUTLINE, 4, 8);
+      px(bx + 14, by + 2, '#A855F7', 2, 6);
+      px(bx + 15, by + 1, '#22D3EE', 2, 3);
+      px(bx + 15, by + 6, '#F472B6', 2, 3);
       break;
     }
     case 'complete_cluck': {

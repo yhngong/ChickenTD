@@ -216,10 +216,11 @@ function pickWeightedUnit(candidates: readonly ChickenTypeId[]): ChickenTypeId {
     const cost = CHICKEN_DEFS[id].baseCost;
     if (cost <= 2000) return 10;
     if (cost <= 12000) return 8.5;
-    if (cost <= 50000) return 6.8;
+    if (cost <= 55000) return 6.8;
     if (cost <= 200000) return 5.0;
-    if (cost <= 500000) return 3.6;
-    return 2.6;
+    if (cost <= 650000) return 3.6;
+    if (cost <= 1200000) return 2.7;
+    return 2.0;
   });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   let roll = Math.random() * totalWeight;

@@ -1310,6 +1310,163 @@ export class MeadowRenderer {
         ctx.fillRect(px - 1, py - 1, 2, 2);
         break;
       }
+      case 'pebble_shot': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#94A3B8';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        ctx.fillStyle = '#E2E8F0';
+        ctx.fillRect(px - 1, py - 1, 1, 1);
+        break;
+      }
+      case 'cactus_needle': {
+        const dx = Math.round(Math.cos(p.rotation) * 2);
+        const dy = Math.round(Math.sin(p.rotation) * 2);
+        ctx.fillStyle = '#15803D';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 3, 3);
+        ctx.fillStyle = '#86EFAC';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px + dx, py + dy, 2, 2);
+        break;
+      }
+      case 'broth_splash': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#EA580C';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'revolver_slug': {
+        const dx = Math.round(Math.cos(p.rotation) * 3);
+        const dy = Math.round(Math.sin(p.rotation) * 3);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 3, 3);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py, 2, 2);
+        break;
+      }
+      case 'viking_axe': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#92400E';
+        ctx.fillRect(px - 1, py - 2, 2, 5);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(px - 2, py - 2, 5, 3);
+        ctx.fillStyle = '#E0F2FE';
+        ctx.fillRect(px - 1, py - 2, 3, 1);
+        break;
+      }
+      case 'miasma_vial': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#10B981';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#A7F3D0';
+        ctx.fillRect(px - 1, py - 2, 2, 2);
+        break;
+      }
+      case 'ankh_beam': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#2563EB';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'holy_hammer': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(px - 2, py - 2, 5, 4);
+        ctx.fillStyle = '#FEF9C3';
+        ctx.fillRect(px - 1, py - 1, 3, 2);
+        break;
+      }
+      case 'kanabo_crush': {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillStyle = '#DC2626';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        break;
+      }
+      case 'star_comet': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#818CF8';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#FDE047';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'abyss_whirl': {
+        ctx.fillStyle = '#0F766E';
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillStyle = '#22D3EE';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#0F172A';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'seraph_lance': {
+        const dx = Math.round(Math.cos(p.rotation) * 5);
+        const dy = Math.round(Math.sin(p.rotation) * 5);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 4, 4);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'atomic_breath': {
+        const dx = Math.round(Math.cos(p.rotation) * 5);
+        const dy = Math.round(Math.sin(p.rotation) * 5);
+        ctx.fillStyle = '#0284C7';
+        ctx.fillRect(px - dx - 2, py - dy - 2, 5, 5);
+        ctx.fillStyle = '#22D3EE';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'corona_flare': {
+        const dx = Math.round(Math.cos(p.rotation) * 5);
+        const dy = Math.round(Math.sin(p.rotation) * 5);
+        ctx.fillStyle = '#EA580C';
+        ctx.fillRect(px - dx - 2, py - dy - 2, 5, 5);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+        break;
+      }
+      case 'rift_slash': {
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        ctx.fillStyle = '#22D3EE';
+        ctx.fillRect(px - dx - 2, py - dy - 2, 5, 5);
+        ctx.fillStyle = '#A855F7';
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#F472B6';
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+        break;
+      }
+      case 'bass_pulse':
+        break;
       case 'zenith_blade': {
         // Terraria Zenith: spinning multi-sword rainbow arcs (or Shimmer-violet Aether blades)!
         const isAether = p.color === '#E879F9';
@@ -1352,7 +1509,13 @@ export class MeadowRenderer {
     // NEST EGGS pixel counter above Nest
     const nx = toPx(mapDef.nestPos.x);
     const ny = toPx(mapDef.nestPos.y) - 17;
-    drawCrispPixelText(ctx, `${engine.eggs} EGGS`, nx, ny, '#FFFBEB');
+    drawCrispPixelText(
+      ctx,
+      engine.isSandboxMode() ? 'INF EGGS' : `${engine.eggs} EGGS`,
+      nx,
+      ny,
+      engine.isSandboxMode() ? '#67E8F9' : '#FFFBEB'
+    );
 
     // Floating combat / upgrade pixel popups
     for (const pop of engine.popups) {

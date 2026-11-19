@@ -30,7 +30,7 @@
               <div class="menu-kicker">16-BIT CLICKER &times; BATTLE CATS TOWER DEFENSE</div>
               <h1 class="menu-logo">CHICKEN<span>TD</span></h1>
               <p class="menu-tagline">
-                39 Pixel Chicken Units &bull; Support Auras &bull; 5 Cluck Cannons &bull; Gem Eggs &amp; Mutations
+                55 Pixel Chicken Units &bull; Support Auras &bull; 5 Cluck Cannons &bull; Gem Eggs &amp; Mutations
               </p>
             </div>
           </div>
@@ -49,7 +49,7 @@
               <img id="icon-menu-gem-egg" class="px-icon px-icon-lg" alt="" />
               <div>
                 <span class="gem-btn-top">SHOP</span>
-                <span id="menu-collection-sub" class="gem-btn-sub">16 / 39 UNITS</span>
+                <span id="menu-collection-sub" class="gem-btn-sub">18 / 55 UNITS</span>
               </div>
             </button>
           </div>
@@ -65,7 +65,7 @@
 
         <section class="menu-section">
           <div class="menu-sec-head">
-            <h2>2. SELECT DIFFICULTY (5 MODES)</h2>
+            <h2>2. SELECT DIFFICULTY / MODE (6 MODES)</h2>
             <span id="menu-diff-summary" class="menu-sec-sub">BARNYARD (NORMAL)</span>
           </div>
           <div id="menu-diff-grid" class="menu-diff-grid"></div>
@@ -203,18 +203,18 @@
           <div id="shop-cannon-grid" class="shop-cannon-grid"></div>
         </section>
 
-        <!-- 39-UNIT CHICKEN GUIDE & MUTATION COLLECTION -->
+        <!-- 55-UNIT CHICKEN GUIDE & MUTATION COLLECTION -->
         <section class="collection-section">
           <div class="collection-head">
             <div class="collection-title-wrap">
               <img id="icon-collection-star" class="px-icon px-icon-sm" alt="" />
-              <h3 id="collection-heading">CHICKEN ROSTER &amp; MUTATIONS (16 / 39 UNLOCKED)</h3>
+              <h3 id="collection-heading">CHICKEN ROSTER &amp; MUTATIONS (18 / 55 UNLOCKED)</h3>
             </div>
             <div class="collection-filters">
-              <button class="coll-filter-btn active" data-filter="all" type="button">ALL (39)</button>
-              <button class="coll-filter-btn" data-filter="gacha" type="button">GEM EGG EXCLUSIVE (22)</button>
-              <button class="coll-filter-btn" data-filter="starter" type="button">STARTERS (16)</button>
-              <button class="coll-filter-btn" data-filter="support" type="button">SUPPORT (4)</button>
+              <button class="coll-filter-btn active" data-filter="all" type="button">ALL (55)</button>
+              <button class="coll-filter-btn" data-filter="gacha" type="button">GEM EGG EXCLUSIVE (36)</button>
+              <button class="coll-filter-btn" data-filter="starter" type="button">STARTERS (18)</button>
+              <button class="coll-filter-btn" data-filter="support" type="button">SUPPORT (6)</button>
               <button class="coll-filter-btn" data-filter="mutated" type="button">MUTATED</button>
             </div>
           </div>
@@ -495,9 +495,14 @@
             <div class="clicker-top-row">
               <span class="clicker-title">
                 <img id="icon-clicker-corn" class="px-icon px-icon-sm" alt="" />
-                HENHOUSE CLICKER
+                <span id="lbl-clicker-title">HENHOUSE CLICKER</span>
               </span>
-              <span id="cps-badge" class="cps-badge">0 / 12 CPS</span>
+              <div class="clicker-top-right">
+                <button id="btn-open-summon-quick" class="sandbox-jump-btn hidden" type="button">
+                  SUMMON &gt;&gt;
+                </button>
+                <span id="cps-badge" class="cps-badge">0 / 12 CPS</span>
+              </div>
             </div>
 
             <button id="btn-hen-click" class="hen-click-pad" type="button">
@@ -532,12 +537,16 @@
             </div>
           </div>
 
-          <!-- 2. TABBED PIXEL SHOP: 39 TROOPS | CLICKER UPGRADES | TD LAB -->
+          <!-- 2. TABBED PIXEL SHOP: 55 TROOPS | SANDBOX SUMMON | CLICKER UPGRADES | TD LAB -->
           <div class="shop-card">
-            <div class="shop-tabs" role="tablist">
+            <div id="shop-tabs-bar" class="shop-tabs" role="tablist">
               <button class="shop-tab active" data-tab="troops" type="button">
                 <img id="icon-tab-troops" class="px-icon px-icon-sm" alt="" />
-                <span id="lbl-tab-troops">TROOPS 16/39</span>
+                <span id="lbl-tab-troops">TROOPS 18/55</span>
+              </button>
+              <button id="btn-tab-summon" class="shop-tab sandbox-tab-btn hidden" data-tab="summon" type="button">
+                <img id="icon-tab-summon" class="px-icon px-icon-sm" alt="" />
+                <span>SUMMON</span>
               </button>
               <button class="shop-tab" data-tab="clicker" type="button">
                 <img id="icon-tab-clicker" class="px-icon px-icon-sm" alt="" />
@@ -551,6 +560,44 @@
 
             <div id="tab-troops" class="shop-body">
               <div id="troop-grid" class="troop-grid"></div>
+            </div>
+
+            <div id="tab-summon" class="shop-body hidden">
+              <div class="sandbox-summon-toolbar">
+                <div class="sandbox-tool-row">
+                  <span class="sandbox-tool-lbl">COUNT</span>
+                  <div id="sandbox-qty-group" class="sandbox-pill-group">
+                    <button type="button" class="sandbox-pill-btn active" data-qty="1">1X</button>
+                    <button type="button" class="sandbox-pill-btn" data-qty="5">5X</button>
+                    <button type="button" class="sandbox-pill-btn" data-qty="10">10X</button>
+                    <button type="button" class="sandbox-pill-btn" data-qty="25">25X</button>
+                    <button type="button" class="sandbox-pill-btn" data-qty="50">50X</button>
+                  </div>
+                </div>
+                <div class="sandbox-tool-row">
+                  <span id="sandbox-wave-lbl" class="sandbox-tool-lbl">WAVE 1 HP</span>
+                  <div class="sandbox-pill-group">
+                    <button type="button" id="btn-sbx-w-minus10" class="sandbox-pill-btn">-10</button>
+                    <button type="button" id="btn-sbx-w-minus1" class="sandbox-pill-btn">-1</button>
+                    <button type="button" id="btn-sbx-w-plus1" class="sandbox-pill-btn">+1</button>
+                    <button type="button" id="btn-sbx-w-plus10" class="sandbox-pill-btn">+10</button>
+                    <button type="button" id="btn-sbx-w25" class="sandbox-pill-btn">W25</button>
+                    <button type="button" id="btn-sbx-w50" class="sandbox-pill-btn">W50</button>
+                  </div>
+                </div>
+                <div class="sandbox-action-row">
+                  <button type="button" id="btn-sbx-clear" class="sandbox-action-btn danger">
+                    CLEAR ENEMIES
+                  </button>
+                  <button type="button" id="btn-sbx-cannon" class="sandbox-action-btn accent">
+                    CHARGE CANNON
+                  </button>
+                </div>
+              </div>
+              <div class="sandbox-sec-label">BUG SWARMS (10) &mdash; CLICK TO SUMMON</div>
+              <div id="sandbox-bug-grid" class="sandbox-enemy-grid"></div>
+              <div class="sandbox-sec-label fox-sec">GIANT FOX BOSSES (9) &mdash; CLICK TO SUMMON</div>
+              <div id="sandbox-fox-grid" class="sandbox-enemy-grid"></div>
             </div>
 
             <div id="tab-clicker" class="shop-body hidden">
@@ -579,9 +626,9 @@
         </h2>
         <ul class="rules-list">
           <li>
-            <strong>39 PIXEL CHICKENS &amp; THE COMPLETE CLUCK:</strong> Start with 16 Chickens up to
-            <em>Cyber-Cluck 9000</em>, unlock 22 more from <strong>Gem Eggs</strong> in the
-            <strong>Shop</strong>, and collect all 38 to forge <strong>The Complete Cluck</strong>
+            <strong>55 PIXEL CHICKENS &amp; THE COMPLETE CLUCK:</strong> Start with 18 Chickens up to
+            <em>Cyber-Cluck 9000</em>, unlock 36 more from <strong>Gem Eggs</strong> in the
+            <strong>Shop</strong>, and collect all 54 to forge <strong>The Complete Cluck</strong>
             (Terraria Zenith blade — swappable between <strong>Mastered</strong> &amp;
             <strong>Aether</strong>)!
           </li>
@@ -613,10 +660,11 @@
             <strong>Camo Sight</strong> (or Epic/Legendary Mutations / Watchtower Roost Lv3).
           </li>
           <li>
-            <strong>5 DIFFICULTIES (INCLUDING TRUE FOX-HUNT!) &amp; IDLE MODE:</strong> Choose from
-            <strong>Easy</strong> up to <strong>Nightmare</strong> (`2.4x` swarms) or
-            <strong>True Fox-Hunt</strong> (`+40%` costs &amp; Fox Bosses ambushing way earlier starting
-            Wave 3!), or click <strong>GO IDLE</strong> (`~1 Gem Egg per 10 mins`)!
+            <strong>6 MODES (INCLUDING TRUE FOX-HUNT &amp; SANDBOX!):</strong> Play
+            <strong>Easy</strong> through <strong>True Fox-Hunt</strong> (`+40%` costs &amp; early
+            Wave 3 Fox Bosses), enter <strong>Sandbox Lab</strong> for <strong>Infinite Corn</strong>
+            &amp; <strong>Summon Any Enemy</strong> (Sandbox kills give `0` Gem Eggs!), or click
+            <strong>GO IDLE</strong> (`~1 Gem Egg per 10 mins`)!
           </li>
         </ul>
         <button id="btn-close-rules" class="primary-modal-btn" type="button">

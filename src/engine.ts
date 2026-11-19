@@ -83,6 +83,8 @@ export interface EffectiveChickenStats extends ChickenTierStats {
 }
 
 export const CLUCK_CANNON_CHARGE_SEC = 22;
+export const SANDBOX_INF_CORN = 999_999_999_999;
+export const MAX_SANDBOX_ENEMIES = 600;
 
 const SPATIAL_COLS = 16;
 const SPATIAL_ROWS = 11;
@@ -95,9 +97,11 @@ const MAX_ACTIVE_POPUPS = 24;
 const BASIC_PECK_SET = new Set<ChickenTypeId>([
   'bantam',
   'pecker',
+  'sling_chick',
   'honey',
   'boomerang',
   'chilly',
+  'cactus_hen',
   'ninja',
 ]);
 
@@ -105,18 +109,26 @@ const STRONG_DEFAULT_SET = new Set<ChickenTypeId>([
   'ranger',
   'pirate',
   'mecha',
+  'cowboy_desperado',
   'cyber_sniper',
   'gundam',
+  'pharaoh_ra',
   'samurai_shogun',
   'stand_hen',
+  'oni_warlord',
   'yukimura_shadow',
   'star_dread',
+  'leviathan_kraken',
   'bahamut_wyrm',
+  'archangel_seraph',
   'chronos_empress',
   'omega_god',
+  'mech_zilla',
   'gaia_creator',
   'void_singularity',
   'cat_god_supreme',
+  'solar_emperor',
+  'eternity_weaver',
   'complete_cluck',
 ]);
 
@@ -259,6 +271,16 @@ export class ChickenTdEngine {
     return DIFFICULTY_DEFS[this.difficultyId];
   }
 
+  public isSandboxMode(): boolean {
+    return this.difficultyId === 'sandbox';
+  }
+
+  public getEnemyScaledHp(typeId: EnemyTypeId): number {
+    const def = ENEMY_DEFS[typeId];
+    const hpScale = getWaveHpScale(this.waveNumber) * this.getDifficulty().enemyHpMult;
+    return Math.max(1, Math.round(def.maxHp * hpScale));
+  }
+
   public getEquippedCannonId(): CannonTypeId {
     return this.equippedCannon;
   }
@@ -299,13 +321,104 @@ export class ChickenTdEngine {
 
   /**
    * Saves any unbanked bug kills from the current round into persistent Eggs storage!
+   * In Sandbox Mode, kills NEVER count towards Gem Eggs or lifetime kill progress.
    */
   public bankPendingRunBugs(): EggBankResult {
+    if (this.isSandboxMode()) {
+      this.bugsBankedThisRun = this.totalBugsPopped;
+      return {
+        bugsAdded: 0,
+        eggsEarned: 0,
+        previousRemainder: PROGRESSION.getBugKillRemainder(),
+        newRemainder: PROGRESSION.getBugKillRemainder(),
+        totalSavedEggs: PROGRESSION.getEggs(),
+      };
+    }
     const delta = Math.max(0, this.totalBugsPopped - this.bugsBankedThisRun);
     this.bugsBankedThisRun = this.totalBugsPopped;
     const res = PROGRESSION.bankBugsAfterRound(delta);
     this.eggsEarnedThisRun += res.eggsEarned;
     return res;
+  }
+
+  /**
+   * Sandbox Mode Only: Summon any Bug or Giant Fox Boss directly at the entrance!
+   */
+  public summonSandboxEnemy(typeId: EnemyTypeId, count = 1): number {
+    if (!this.isSandboxMode() || this.status === 'gameover') return 0;
+    if (!(typeId in ENEMY_DEFS)) return 0;
+    const req = Math.max(1, Math.floor(count));
+    const room = Math.max(0, MAX_SANDBOX_ENEMIES - this.enemies.length);
+    const toSpawn = Math.min(req, room);
+    const entPt = getPointAlongPath(0);
+    if (toSpawn <= 0) {
+      this.spawnMapPopup('MAX ACTIVE!', entPt.x, entPt.y - 22, '#F43F5E', 1.0);
+      this.audio.playBlockedClick();
+      return 0;
+    }
+
+    for (let i = 0; i < toSpawn; i++) {
+      this.spawnEnemy(typeId, Math.min(96, i * 3.5));
+    }
+
+    const def = ENEMY_DEFS[typeId];
+    const col = def.isFoxBoss ? '#FACC15' : '#22D3EE';
+    this.spawnRing(entPt.x, entPt.y, def.isFoxBoss ? 52 : 36, col);
+    this.spawnPixelBurst(entPt.x, entPt.y, def.isFoxBoss ? 12 : 6, col);
+    this.spawnMapPopup(
+      toSpawn > 1 ? `+${toSpawn} ${def.name.toUpperCase()}` : `${def.name.toUpperCase()}!`,
+      entPt.x + 26,
+      entPt.y - 20,
+      col,
+      def.isFoxBoss ? 1.12 : 1.0
+    );
+    this.audio.playPlaceChicken();
+    this.notifyUi();
+    return toSpawn;
+  }
+
+  /**
+   * Sandbox Mode Only: Instantly clear all active enemies, queued spawns, & projectiles.
+   */
+  public clearSandboxEnemies(): number {
+    if (!this.isSandboxMode()) return 0;
+    const cleared =
+      this.enemies.length + Math.max(0, this.pendingSpawns.length - this.pendingSpawnIdx);
+    this.enemies = [];
+    this.enemyStampById.clear();
+    this.pendingSpawns = [];
+    this.pendingSpawnIdx = 0;
+    this.waveActive = false;
+    this.projectiles = [];
+    const nestPt = getPointAlongPath(getTotalPathLength() * 0.5);
+    this.spawnRing(nestPt.x, nestPt.y, 80, '#22D3EE');
+    this.spawnMapPopup('ENEMIES CLEARED!', nestPt.x, nestPt.y - 20, '#22D3EE', 1.15);
+    this.audio.playUpgrade();
+    this.notifyUi();
+    return cleared;
+  }
+
+  /**
+   * Sandbox Mode Only: Set current Wave # (1..999) to test enemy HP/speed scaling at any stage!
+   */
+  public setSandboxWaveNumber(waveNum: number): number {
+    if (!this.isSandboxMode()) return this.waveNumber;
+    this.waveNumber = Math.max(1, Math.min(999, Math.floor(waveNum)));
+    this.freeplayUnlocked = this.waveNumber > CAMPAIGN_WAVES;
+    this.audio.playUpgrade();
+    this.notifyUi();
+    return this.waveNumber;
+  }
+
+  /**
+   * Sandbox Mode Only: Instantly recharge the equipped Cluck Cannon to 100%.
+   */
+  public instantChargeSandboxCannon(): boolean {
+    if (!this.isSandboxMode()) return false;
+    this.cannonCharge = 1.0;
+    this.audio.playUpgrade();
+    this.notifyUi();
+    return true;
   }
 
   /**
@@ -396,10 +509,16 @@ export class ChickenTdEngine {
       this.difficultyId = saved.difficultyId;
       setActiveMap(this.mapId);
 
-      this.corn = Math.max(0, Math.floor(Number(saved.corn ?? 150)));
+      this.corn = this.isSandboxMode()
+        ? SANDBOX_INF_CORN
+        : Math.max(0, Math.floor(Number(saved.corn ?? 150)));
       this.totalCornClicked = Math.max(0, Math.floor(Number(saved.totalCornClicked ?? 0)));
-      this.maxEggs = Math.max(1, Math.floor(Number(saved.maxEggs ?? 25)));
-      this.eggs = Math.max(1, Math.min(this.maxEggs, Math.floor(Number(saved.eggs ?? 25))));
+      this.maxEggs = this.isSandboxMode()
+        ? 999
+        : Math.max(1, Math.floor(Number(saved.maxEggs ?? 25)));
+      this.eggs = this.isSandboxMode()
+        ? 999
+        : Math.max(1, Math.min(this.maxEggs, Math.floor(Number(saved.eggs ?? 25))));
       this.waveNumber = Math.max(1, Math.floor(Number(saved.waveNumber ?? 1)));
       this.waveActive = Boolean(saved.waveActive);
       this.waveElapsedSec = Math.max(0, Number(saved.waveElapsedSec ?? 0));
@@ -540,10 +659,10 @@ export class ChickenTdEngine {
     }
     setActiveMap(this.mapId);
     const diff = this.getDifficulty();
-    this.corn = diff.startingCorn;
+    this.corn = this.isSandboxMode() ? SANDBOX_INF_CORN : diff.startingCorn;
     this.totalCornClicked = 0;
-    this.eggs = diff.startingEggs;
-    this.maxEggs = diff.startingEggs;
+    this.eggs = this.isSandboxMode() ? 999 : diff.startingEggs;
+    this.maxEggs = this.isSandboxMode() ? 999 : diff.startingEggs;
     this.waveNumber = 1;
     this.waveActive = false;
     this.waveElapsedSec = 0;
@@ -559,7 +678,7 @@ export class ChickenTdEngine {
     this.waveClickCounter = 0;
     this.waveCornHarvested = 0;
     this.equippedCannon = PROGRESSION.getEquippedCannon();
-    this.cannonCharge = 0.5;
+    this.cannonCharge = this.isSandboxMode() ? 1.0 : 0.5;
     this.cannonFlash = 0;
     this.cannonDamageBoostTimer = 0;
     this.cannonCornBoostTimer = 0;
@@ -668,7 +787,11 @@ export class ChickenTdEngine {
         baseVal * strikeCount * rhythmMult * critMult * waveMult * foremanMult * cannonCornMult
       ) + megaBonus
     );
-    this.corn += earned;
+    if (this.isSandboxMode()) {
+      this.corn = SANDBOX_INF_CORN;
+    } else {
+      this.corn += earned;
+    }
     this.totalCornClicked += earned;
     this.waveCornHarvested += earned;
 
@@ -700,7 +823,7 @@ export class ChickenTdEngine {
       };
     }
 
-    if (!this.waveActive) {
+    if (!this.waveActive && !this.isSandboxMode()) {
       this.audio.playBlockedClick();
       return {
         accepted: false,
@@ -956,17 +1079,23 @@ export class ChickenTdEngine {
       const basePeck =
         getBaseCornPerClick(this.clickerLevels.beakPower) *
         getCornucopiaWaveMult(this.clickerLevels.cornucopia, this.waveNumber);
-      const instantCorn = Math.max(60, Math.round(basePeck * 18 + this.corn * 0.12));
-      this.corn += instantCorn;
-      this.totalCornClicked += instantCorn;
-      this.waveCornHarvested += instantCorn;
+      let stormPopupText = 'CORNSTORM! 90PX GALE';
+      if (this.isSandboxMode()) {
+        this.corn = SANDBOX_INF_CORN;
+      } else {
+        const instantCorn = Math.max(60, Math.round(basePeck * 18 + this.corn * 0.12));
+        this.corn += instantCorn;
+        this.totalCornClicked += instantCorn;
+        this.waveCornHarvested += instantCorn;
+        stormPopupText = `+${instantCorn} CORN! 2X 8S`;
+      }
 
       for (let d = 0; d <= totalLen; d += 110) {
         const pt = getPointAlongPath(d);
         this.spawnRing(pt.x, pt.y, 50, d % 220 === 0 ? '#4ADE80' : '#FACC15');
         this.spawnPixelBurst(pt.x, pt.y, 5, '#FEF08A');
       }
-      this.spawnMapPopup(`+${instantCorn} CORN! 2X 8S`, nestPt.x, nestPt.y - 34, '#4ADE80', 1.2);
+      this.spawnMapPopup(stormPopupText, nestPt.x, nestPt.y - 34, '#4ADE80', 1.2);
 
       const galeDmg = Math.max(14, Math.round(16 * hpScale));
       const galeCarrier: ActiveProjectile = {
@@ -1293,10 +1422,14 @@ export class ChickenTdEngine {
     if (this.status === 'gameover') return null;
     if (!this.isChickenUnlocked(typeId)) return null;
     const cost = this.getTowerBaseCost(typeId);
-    if (this.corn < cost) return null;
+    if (!this.isSandboxMode() && this.corn < cost) return null;
     if (!canPlaceChickenAt(x, y, this.towers)) return null;
 
-    this.corn -= cost;
+    if (this.isSandboxMode()) {
+      this.corn = SANDBOX_INF_CORN;
+    } else {
+      this.corn -= cost;
+    }
     const placed: PlacedChicken = {
       id: this.nextEntityId++,
       typeId,
@@ -1331,9 +1464,13 @@ export class ChickenTdEngine {
     if (!tower || tower.tier >= 3) return false;
     const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
     const upgCost = this.getTowerUpgradeCost(tower.typeId, nextTierIdx);
-    if (this.corn < upgCost) return false;
+    if (!this.isSandboxMode() && this.corn < upgCost) return false;
 
-    this.corn -= upgCost;
+    if (this.isSandboxMode()) {
+      this.corn = SANDBOX_INF_CORN;
+    } else {
+      this.corn -= upgCost;
+    }
     tower.tier = nextTierIdx;
     tower.totalSpent += upgCost;
     this.invalidateStatsCache();
@@ -1353,9 +1490,15 @@ export class ChickenTdEngine {
     this.invalidateStatsCache();
     this.stands = this.stands.filter((s) => s.ownerTowerId !== removed.id);
     const refund = Math.round(removed.totalSpent * 0.7);
-    this.corn += refund;
-    this.spawnPixelBurst(removed.x, removed.y, 8, '#FACC15');
-    this.spawnMapPopup(`+${refund} CORN`, removed.x, removed.y - 16, '#FACC15', 1.0);
+    if (this.isSandboxMode()) {
+      this.corn = SANDBOX_INF_CORN;
+      this.spawnPixelBurst(removed.x, removed.y, 8, '#22D3EE');
+      this.spawnMapPopup('SOLD', removed.x, removed.y - 16, '#22D3EE', 1.0);
+    } else {
+      this.corn += refund;
+      this.spawnPixelBurst(removed.x, removed.y, 8, '#FACC15');
+      this.spawnMapPopup(`+${refund} CORN`, removed.x, removed.y - 16, '#FACC15', 1.0);
+    }
     this.audio.playUpgrade();
     this.notifyUi();
     return refund;
@@ -1376,9 +1519,13 @@ export class ChickenTdEngine {
     const lvl = this.clickerLevels[id];
     if (lvl >= def.maxLevel) return false;
     const cost = this.getScaledUpgradeCost(def, lvl);
-    if (this.corn < cost) return false;
+    if (!this.isSandboxMode() && this.corn < cost) return false;
 
-    this.corn -= cost;
+    if (this.isSandboxMode()) {
+      this.corn = SANDBOX_INF_CORN;
+    } else {
+      this.corn -= cost;
+    }
     this.clickerLevels[id] = lvl + 1;
     this.audio.playUpgrade();
     this.notifyUi();
@@ -1391,15 +1538,24 @@ export class ChickenTdEngine {
     const lvl = this.tdLevels[id];
     if (lvl >= def.maxLevel) return false;
     const cost = this.getScaledUpgradeCost(def, lvl);
-    if (this.corn < cost) return false;
+    if (!this.isSandboxMode() && this.corn < cost) return false;
 
-    this.corn -= cost;
+    if (this.isSandboxMode()) {
+      this.corn = SANDBOX_INF_CORN;
+    } else {
+      this.corn -= cost;
+    }
     this.tdLevels[id] = lvl + 1;
     this.invalidateStatsCache();
 
     if (id === 'fortifiedNest') {
-      this.maxEggs += 8;
-      this.eggs = Math.min(this.maxEggs, this.eggs + 8);
+      if (this.isSandboxMode()) {
+        this.maxEggs = 999;
+        this.eggs = 999;
+      } else {
+        this.maxEggs += 8;
+        this.eggs = Math.min(this.maxEggs, this.eggs + 8);
+      }
     }
 
     this.audio.playUpgrade();
@@ -1538,10 +1694,12 @@ export class ChickenTdEngine {
     this.cannonCornBoostTimer = Math.max(0, this.cannonCornBoostTimer - dt);
     this.cannonTimeStopVisualTimer = Math.max(0, this.cannonTimeStopVisualTimer - dt);
 
-    // 0. Farmhand Auto-Peckers + Cluck Cannon Charging during active waves!
-    if (this.waveActive) {
+    // 0. Farmhand Auto-Peckers + Cluck Cannon Charging during active waves (or active Sandbox combat)!
+    if (this.waveActive || (this.isSandboxMode() && this.enemies.length > 0)) {
       const chargeSec = this.getEquippedCannonDef().chargeSec;
       this.cannonCharge = Math.min(1, this.cannonCharge + dt / chargeSec);
+    }
+    if (this.waveActive) {
       const autoRate = getFarmhandAutoRate(this.clickerLevels.farmhandChicks);
       if (autoRate > 0) {
         this.autoPeckAccumulator += autoRate * dt;
@@ -1610,24 +1768,32 @@ export class ChickenTdEngine {
       if (e.distance >= totalPathLen) {
         e.alive = false;
         leakedOrBurned = true;
-        this.eggs = Math.max(0, this.eggs - def.eggDamage);
         const nestPt = getPointAlongPath(totalPathLen);
-        this.spawnMapPopup(`-${def.eggDamage} EGG`, nestPt.x, nestPt.y - 26, '#EF4444', 1.15);
-        this.spawnRing(nestPt.x, nestPt.y, 44, '#EF4444');
-        this.spawnPixelBurst(nestPt.x, nestPt.y, 12, '#EF4444');
-
-        if (this.eggs <= 0) {
-          this.eggs = 0;
-          this.waveActive = false;
-          this.status = 'gameover';
-          this.compactAliveEnemies();
-          this.lastDefeatSummary = this.buildDefeatSummary(def.id);
-          this.audio.playDefeatJingle();
-          this.notifyUi();
-          return;
-        } else {
+        if (this.isSandboxMode()) {
+          // Immortal Nest in Sandbox Mode so testing massive boss waves never forces Game Over!
+          this.eggs = 999;
+          this.spawnMapPopup(`LEAK (-${def.eggDamage})`, nestPt.x, nestPt.y - 26, '#38BDF8', 1.05);
+          this.spawnRing(nestPt.x, nestPt.y, 40, '#38BDF8');
           this.audio.playEggLeak();
-          this.notifyUi();
+        } else {
+          this.eggs = Math.max(0, this.eggs - def.eggDamage);
+          this.spawnMapPopup(`-${def.eggDamage} EGG`, nestPt.x, nestPt.y - 26, '#EF4444', 1.15);
+          this.spawnRing(nestPt.x, nestPt.y, 44, '#EF4444');
+          this.spawnPixelBurst(nestPt.x, nestPt.y, 12, '#EF4444');
+
+          if (this.eggs <= 0) {
+            this.eggs = 0;
+            this.waveActive = false;
+            this.status = 'gameover';
+            this.compactAliveEnemies();
+            this.lastDefeatSummary = this.buildDefeatSummary(def.id);
+            this.audio.playDefeatJingle();
+            this.notifyUi();
+            return;
+          } else {
+            this.audio.playEggLeak();
+            this.notifyUi();
+          }
         }
       } else {
         syncEnemyPathPosition(e);
@@ -1684,19 +1850,30 @@ export class ChickenTdEngine {
 
       const armorPiercing = stats.effectiveArmorPierce;
 
-      // Special 360-degree AoE Pulse for Mariachi ('sonic'), Eraser ('tremor_slam'), & Quasar ('quasar_pulse')!
+      // Special 360-degree AoE Pulse for Mariachi ('sonic'), Eraser ('tremor_slam'), DJ ('bass_pulse'), & Quasar ('quasar_pulse')!
       if (
         def.projectileStyle === 'sonic' ||
         def.projectileStyle === 'tremor_slam' ||
+        def.projectileStyle === 'bass_pulse' ||
         def.projectileStyle === 'quasar_pulse'
       ) {
         const isQuasar = def.projectileStyle === 'quasar_pulse';
         const isTremor = def.projectileStyle === 'tremor_slam';
-        const ringCol = isQuasar ? '#F472B6' : isTremor ? '#38BDF8' : '#FB7185';
+        const isBass = def.projectileStyle === 'bass_pulse';
+        const ringCol = isQuasar
+          ? '#F472B6'
+          : isBass
+          ? '#EC4899'
+          : isTremor
+          ? '#38BDF8'
+          : '#FB7185';
         this.spawnRing(tower.x, tower.y, stats.effectiveRange, ringCol);
         if (isQuasar) {
           this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.65), '#22D3EE');
           this.spawnPixelBurst(tower.x, tower.y, 8, '#22D3EE');
+        } else if (isBass) {
+          this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.62), '#22D3EE');
+          this.spawnPixelBurst(tower.x, tower.y, 7, '#FDE047');
         } else if (isTremor) {
           this.spawnRing(tower.x, tower.y, Math.round(stats.effectiveRange * 0.55), '#E2E8F0');
           this.spawnPixelBurst(tower.x, tower.y, 7, '#93C5FD');
@@ -1753,10 +1930,13 @@ export class ChickenTdEngine {
       const spreadStep =
         def.projectileStyle === 'feather_slash'
           ? 0.24
+          : def.projectileStyle === 'cactus_needle'
+          ? 0.19
           : def.projectileStyle === 'zenith_blade'
           ? 0.1
           : 0.13;
-      const isBoomerang = def.projectileStyle === 'boomerang';
+      const isBoomerang =
+        def.projectileStyle === 'boomerang' || def.projectileStyle === 'viking_axe';
       const isZenith = def.projectileStyle === 'zenith_blade';
       const projColor =
         isZenith && stats.mutationTier === 'aether' ? '#E879F9' : def.accentColor;
@@ -1835,7 +2015,10 @@ export class ChickenTdEngine {
         if (
           p.style === 'shuriken' ||
           p.style === 'boomerang' ||
+          p.style === 'viking_axe' ||
+          p.style === 'abyss_whirl' ||
           p.style === 'black_hole' ||
+          p.style === 'rift_slash' ||
           p.style === 'zenith_blade'
         ) {
           p.rotation += dt * (p.style === 'zenith_blade' ? 24 : 18);
@@ -1952,7 +2135,7 @@ export class ChickenTdEngine {
 
       // Golden Corn Silo wave-clear harvest dividend!
       const siloRate = getCornSiloDividendRate(this.clickerLevels.cornSilo);
-      if (siloRate > 0 && this.waveCornHarvested > 0) {
+      if (siloRate > 0 && this.waveCornHarvested > 0 && !this.isSandboxMode()) {
         const dividend = Math.max(1, Math.round(this.waveCornHarvested * siloRate));
         this.corn += dividend;
         this.totalCornClicked += dividend;
@@ -1963,9 +2146,13 @@ export class ChickenTdEngine {
       }
 
       if (this.waveNumber === CAMPAIGN_WAVES && !this.freeplayUnlocked) {
-        this.status = 'victory_prompt';
-        const bankRes = this.bankPendingRunBugs();
-        this.lastVictoryEggsEarned = bankRes.eggsEarned;
+        if (this.isSandboxMode()) {
+          this.freeplayUnlocked = true;
+        } else {
+          this.status = 'victory_prompt';
+          const bankRes = this.bankPendingRunBugs();
+          this.lastVictoryEggsEarned = bankRes.eggsEarned;
+        }
       }
       this.waveNumber++;
       this.notifyUi();
@@ -2160,21 +2347,31 @@ export class ChickenTdEngine {
 
   private applySplashHit(proj: ActiveProjectile, cx: number, cy: number): void {
     const ringCol =
-      proj.style === 'snow'
+      proj.style === 'snow' || proj.style === 'viking_axe'
         ? '#38BDF8'
-        : proj.style === 'acid' || proj.style === 'matrix_beam' || proj.style === 'soul_wisp'
+        : proj.style === 'acid' ||
+          proj.style === 'matrix_beam' ||
+          proj.style === 'soul_wisp' ||
+          proj.style === 'miasma_vial' ||
+          proj.style === 'cactus_needle'
         ? '#34D399'
-        : proj.style === 'honey'
+        : proj.style === 'honey' || proj.style === 'pebble_shot'
         ? '#FBBF24'
         : proj.style === 'plasma' ||
           proj.style === 'tesla_arc' ||
           proj.style === 'surge_pillar' ||
           proj.style === 'bahamut_orb' ||
-          proj.style === 'overclock_bolt'
+          proj.style === 'overclock_bolt' ||
+          proj.style === 'abyss_whirl' ||
+          proj.style === 'atomic_breath'
         ? '#22D3EE'
         : proj.style === 'idol_note'
         ? '#F472B6'
-        : proj.style === 'espresso_splash' || proj.style === 'beacon_flare'
+        : proj.style === 'espresso_splash' ||
+          proj.style === 'beacon_flare' ||
+          proj.style === 'broth_splash' ||
+          proj.style === 'revolver_slug' ||
+          proj.style === 'kanabo_crush'
         ? '#F59E0B'
         : proj.style === 'chrono_orb'
         ? '#2DD4BF'
@@ -2188,13 +2385,19 @@ export class ChickenTdEngine {
         ? '#FB7185'
         : proj.style === 'stand_fist' ||
           proj.style === 'lightning' ||
-          proj.style === 'black_hole'
+          proj.style === 'black_hole' ||
+          proj.style === 'star_comet' ||
+          proj.style === 'rift_slash'
         ? '#C084FC'
         : proj.style === 'genesis_beam' ||
           proj.style === 'valkyrie_spear' ||
           proj.style === 'judgment_ray' ||
           proj.style === 'nature_prism' ||
-          proj.style === 'god_wrath'
+          proj.style === 'god_wrath' ||
+          proj.style === 'holy_hammer' ||
+          proj.style === 'ankh_beam' ||
+          proj.style === 'seraph_lance' ||
+          proj.style === 'corona_flare'
         ? '#FEF08A'
         : proj.burnDps > 0
         ? '#F97316'
@@ -2337,22 +2540,24 @@ export class ChickenTdEngine {
     this.totalBugsPopped++;
     this.audio.playBugPop(def.isFoxBoss);
 
-    // Auto-award & save +1 Gem Egg immediately every 1,000 enemies popped!
-    const currentPool =
-      PROGRESSION.getBugKillRemainder() + (this.totalBugsPopped - this.bugsBankedThisRun);
-    if (currentPool >= BUGS_PER_EGG) {
-      const bankRes = this.bankPendingRunBugs();
-      if (bankRes.eggsEarned > 0) {
-        const nestPt = getPointAlongPath(getTotalPathLength());
-        this.spawnMapPopup(
-          `+${bankRes.eggsEarned} GEM EGG!`,
-          nestPt.x,
-          nestPt.y - 36,
-          '#F472B6',
-          1.15
-        );
-        this.spawnRing(nestPt.x, nestPt.y, 52, '#F472B6');
-        this.audio.playUpgrade();
+    // Auto-award & save +1 Gem Egg immediately every 1,000 enemies popped (NEVER in Sandbox Mode)!
+    if (!this.isSandboxMode()) {
+      const currentPool =
+        PROGRESSION.getBugKillRemainder() + (this.totalBugsPopped - this.bugsBankedThisRun);
+      if (currentPool >= BUGS_PER_EGG) {
+        const bankRes = this.bankPendingRunBugs();
+        if (bankRes.eggsEarned > 0) {
+          const nestPt = getPointAlongPath(getTotalPathLength());
+          this.spawnMapPopup(
+            `+${bankRes.eggsEarned} GEM EGG!`,
+            nestPt.x,
+            nestPt.y - 36,
+            '#F472B6',
+            1.15
+          );
+          this.spawnRing(nestPt.x, nestPt.y, 52, '#F472B6');
+          this.audio.playUpgrade();
+        }
       }
     }
 
@@ -2379,6 +2584,7 @@ export class ChickenTdEngine {
     let childIdx = 0;
     for (const childGroup of def.childrenOnPop) {
       for (let c = 0; c < childGroup.count; c++) {
+        if (this.isSandboxMode() && this.enemies.length >= 900) break;
         const offsetDist = popped.distance - childIdx * 9;
         this.spawnEnemy(childGroup.type, offsetDist);
         childIdx++;
