@@ -37,7 +37,9 @@ export type ChickenTypeId =
   | 'omega_god'
   | 'gaia_creator'
   | 'void_singularity'
-  | 'cat_god_supreme';
+  | 'cat_god_supreme'
+  // === COMPLETIONIST ZENITH PINNACLE UNIT (UNLOCKED BY OWNING ALL 38 OTHERS) ===
+  | 'complete_cluck';
 
 export type ProjectileStyle =
   | 'feather_slash'
@@ -77,9 +79,10 @@ export type ProjectileStyle =
   | 'beacon_flare'
   | 'espresso_splash'
   | 'overclock_bolt'
-  | 'idol_note';
+  | 'idol_note'
+  | 'zenith_blade';
 
-export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary';
+export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary' | 'mastered' | 'aether';
 
 export interface MutationDef {
   id: MutationTier;
@@ -123,7 +126,7 @@ export type EnemyTypeId =
   | 'fox_phoenix'
   | 'fox_cosmic';
 
-export type DifficultyId = 'easy' | 'normal' | 'hard' | 'nightmare';
+export type DifficultyId = 'easy' | 'normal' | 'hard' | 'nightmare' | 'true_fox_hunt';
 
 export type MapId =
   | 'sunny_meadow'
@@ -505,6 +508,7 @@ export interface SavedRunState {
   totalClicksAccepted: number;
   waveClickCounter: number;
   waveCornHarvested: number;
+  equippedCannon?: CannonTypeId;
   cannonCharge: number;
   cannonDamageBoostTimer?: number;
   cannonCornBoostTimer?: number;

@@ -15,6 +15,7 @@ import {
   getFarmhandAutoRate,
   getWaveDefinition,
   MAX_CPS_CAP,
+  REQUIRED_FOR_COMPLETE_CLUCK_IDS,
   STARTER_CHICKEN_IDS,
   TD_UPGRADES,
 } from './data';
@@ -42,10 +43,8 @@ const mainMenuScreen = document.getElementById('main-menu-screen') as HTMLDivEle
 const menuHeroChicken = document.getElementById('menu-hero-chicken') as HTMLImageElement;
 const menuMapGrid = document.getElementById('menu-map-grid') as HTMLDivElement;
 const menuDiffGrid = document.getElementById('menu-diff-grid') as HTMLDivElement;
-const menuCannonGrid = document.getElementById('menu-cannon-grid') as HTMLDivElement;
 const menuMapSummary = document.getElementById('menu-map-summary') as HTMLElement;
 const menuDiffSummary = document.getElementById('menu-diff-summary') as HTMLElement;
-const menuCannonSummary = document.getElementById('menu-cannon-summary') as HTMLElement;
 const menuEggsCount = document.getElementById('menu-eggs-count') as HTMLElement;
 const menuEggsSub = document.getElementById('menu-eggs-sub') as HTMLElement;
 const menuCollectionSub = document.getElementById('menu-collection-sub') as HTMLElement;
@@ -70,6 +69,7 @@ const btnBuyEgg1 = document.getElementById('btn-buy-egg-1') as HTMLButtonElement
 const btnBuyEgg4 = document.getElementById('btn-buy-egg-4') as HTMLButtonElement;
 const btnBuyEgg8 = document.getElementById('btn-buy-egg-8') as HTMLButtonElement;
 const shopCannonHeading = document.getElementById('shop-cannon-heading') as HTMLElement;
+const shopCannonNote = document.getElementById('shop-cannon-note') as HTMLElement;
 const shopCannonGrid = document.getElementById('shop-cannon-grid') as HTMLDivElement;
 const collectionHeading = document.getElementById('collection-heading') as HTMLElement;
 const collectionGrid = document.getElementById('collection-grid') as HTMLDivElement;
@@ -127,7 +127,6 @@ const placementText = document.getElementById('placement-text') as HTMLElement;
 const btnCancelPlace = document.getElementById('btn-cancel-place') as HTMLButtonElement;
 
 const stageCannonCluster = document.getElementById('stage-cannon-cluster') as HTMLDivElement;
-const btnCannonLoadout = document.getElementById('btn-cannon-loadout') as HTMLButtonElement;
 const btnCluckCannon = document.getElementById('btn-cluck-cannon') as HTMLButtonElement;
 const iconCluckCannon = document.getElementById('icon-cluck-cannon') as HTMLImageElement;
 const lblCannonState = document.getElementById('lbl-cannon-state') as HTMLElement;
@@ -141,6 +140,7 @@ const inspTierBadge = document.getElementById('insp-tier-badge') as HTMLElement;
 const inspMutBadge = document.getElementById('insp-mut-badge') as HTMLElement;
 const inspStats = document.getElementById('insp-stats') as HTMLElement;
 const inspNextDesc = document.getElementById('insp-next-desc') as HTMLElement;
+const btnInspZenithMut = document.getElementById('btn-insp-zenith-mut') as HTMLButtonElement;
 const btnInspTarget = document.getElementById('btn-insp-target') as HTMLButtonElement;
 const btnInspUpgrade = document.getElementById('btn-insp-upgrade') as HTMLButtonElement;
 const btnInspSell = document.getElementById('btn-insp-sell') as HTMLButtonElement;
@@ -162,11 +162,9 @@ const meterFrenzyFill = document.getElementById('meter-frenzy-fill') as HTMLDivE
 
 // Shop & Wave Elements
 const lblTabTroops = document.getElementById('lbl-tab-troops') as HTMLElement;
-const lblTabCannon = document.getElementById('lbl-tab-cannon') as HTMLElement;
 const troopGrid = document.getElementById('troop-grid') as HTMLDivElement;
 const clickerUpgList = document.getElementById('clicker-upg-list') as HTMLDivElement;
 const tdUpgList = document.getElementById('td-upg-list') as HTMLDivElement;
-const sidebarCannonList = document.getElementById('sidebar-cannon-list') as HTMLDivElement;
 const btnStartWave = document.getElementById('btn-start-wave') as HTMLButtonElement;
 
 // Modals & Defeat Endscreen Elements
@@ -253,7 +251,6 @@ function initStaticPixelIcons(): void {
   setImg('icon-tab-troops', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-tab-clicker', PIXEL_ATLAS.getIconUrl('corn'));
   setImg('icon-tab-td', PIXEL_ATLAS.getIconUrl('shield'));
-  setImg('icon-tab-cannon', PIXEL_ATLAS.getIconUrl('cannon'));
   setImg('icon-shop-cannon-armory', PIXEL_ATLAS.getIconUrl('cannon'));
   setImg('icon-rules-chicken', PIXEL_ATLAS.getIconUrl('chicken'));
   setImg('icon-victory-trophy', PIXEL_ATLAS.getIconUrl('trophy'));
@@ -326,38 +323,46 @@ function formatCompactCost(n: number): string {
 
 const gemEggIconUrl = PIXEL_ATLAS.getIconUrl('gem_egg');
 
+function handleToggleCompleteCluckMutation(): void {
+  const nextMut = PROGRESSION.toggleCompleteCluckMutation();
+  if (!nextMut) {
+    engine.audio.playBlockedClick();
+    return;
+  }
+  engine.invalidateStatsCache();
+  engine.audio.playEggReveal(nextMut);
+  renderGemEggShop();
+  refreshFullUi();
+}
+
 function handleCannonSelectOrBuy(cId: CannonTypeId): void {
   if (PROGRESSION.isCannonUnlocked(cId)) {
-    if (PROGRESSION.getEquippedCannon() !== cId) {
-      engine.equipCannonLoadout(cId);
-      engine.audio.playUpgrade();
-    } else {
-      engine.audio.playUpgrade();
-    }
+    PROGRESSION.equipCannon(cId);
+    engine.audio.playUpgrade();
   } else {
     if (PROGRESSION.buyCannon(cId)) {
       engine.audio.playEggReveal('epic');
-      engine.equipCannonLoadout(cId);
     } else {
       engine.audio.playBlockedClick();
       return;
     }
   }
+  // Never mutate an active in-progress game's cannon (cannons are locked per run!)
+  if (!hasStartedRun) {
+    engine.equippedCannon = PROGRESSION.getEquippedCannon();
+  }
   renderMainMenu();
   renderGemEggShop();
-  refreshFullUi();
   updateLiveClickerMeters();
 }
 
-// ==================== MAIN MENU & GEM EGG CAPSULE SHOP ====================
+// ==================== MAIN MENU & SHOP ====================
 function renderMainMenu(): void {
   const selMap = MAP_DEFS[pendingMapId];
   const selDiff = DIFFICULTY_DEFS[pendingDifficultyId];
   const eqCannon = CANNON_DEFS[PROGRESSION.getEquippedCannon()];
-  const unlockedCannonCount = PROGRESSION.getUnlockedCannonCount();
   menuMapSummary.textContent = `${selMap.name.toUpperCase()} • ${selMap.badge}`;
   menuDiffSummary.textContent = `${selDiff.name.toUpperCase()} (${selDiff.badge})`;
-  menuCannonSummary.textContent = `${eqCannon.name.toUpperCase()} • ${unlockedCannonCount} / ${CANNON_ORDER.length} UNLOCKED`;
   btnMenuStart.textContent = `>> START BATTLE — ${selMap.name.toUpperCase()} [${selDiff.badge}]`;
 
   const savedEggs = PROGRESSION.getEggs();
@@ -368,7 +373,7 @@ function renderMainMenu(): void {
     savedEggs === 1 ? 'GEM EGG' : 'GEM EGGS'
   }`;
   menuEggsSub.textContent = `${rem.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} KILLS TO NEXT`;
-  menuCollectionSub.textContent = `${unlockedCount}/${CHICKEN_ORDER.length} UNITS • ${unlockedCannonCount}/${CANNON_ORDER.length} CANNONS`;
+  menuCollectionSub.textContent = `${unlockedCount}/${CHICKEN_ORDER.length} UNITS • ${eqCannon.shortLabel}`;
   btnOpenGemShop.classList.toggle('has-eggs', savedEggs >= GEM_EGG_COST_EACH);
 
   const canResume = hasStartedRun && engine.status !== 'gameover';
@@ -426,45 +431,6 @@ function renderMainMenu(): void {
     });
     menuDiffGrid.appendChild(card);
   }
-
-  menuCannonGrid.innerHTML = '';
-  const equippedCannonId = PROGRESSION.getEquippedCannon();
-  for (const cId of CANNON_ORDER) {
-    const cDef = CANNON_DEFS[cId];
-    const unlocked = PROGRESSION.isCannonUnlocked(cId);
-    const isEquipped = unlocked && cId === equippedCannonId;
-    const canAfford = !unlocked && savedEggs >= cDef.gemEggCost;
-    const iconUrl = PIXEL_ATLAS.getIconUrl(cDef.iconId);
-
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = `cannon-card-btn${isEquipped ? ' equipped' : ''}${
-      !unlocked ? ' locked-cannon' : ''
-    }${canAfford ? ' affordable-cannon' : ''}`;
-    card.title = unlocked
-      ? `${cDef.name} (${cDef.chargeSec}s charge) — Click to equip!`
-      : `Buy ${cDef.name} for ${cDef.gemEggCost} Gem Eggs! (${cDef.description})`;
-
-    const statusHtml = isEquipped
-      ? `<span class="cannon-status-pill" style="color:#facc15">EQUIPPED</span>`
-      : unlocked
-      ? `<span class="cannon-status-pill" style="color:#4ade80">EQUIP</span>`
-      : `<span class="cannon-status-pill" style="color:${canAfford ? '#f472b6' : '#94a3b8'}"><img class="px-icon px-icon-sm" src="${gemEggIconUrl}" alt="" />${cDef.gemEggCost}</span>`;
-
-    card.innerHTML = `
-      <div class="cannon-card-top">
-        <div class="cannon-card-title-row">
-          <img class="px-icon px-icon-sm" src="${iconUrl}" alt="" />
-          <span class="cannon-card-name">${cDef.shortLabel}</span>
-        </div>
-        ${statusHtml}
-      </div>
-      <div class="cannon-card-badge" style="color:${cDef.accentColor}">${cDef.badgeText} • ${cDef.chargeSec}S</div>
-      <div class="cannon-card-desc">${cDef.description}</div>
-    `;
-    card.addEventListener('click', () => handleCannonSelectOrBuy(cId));
-    menuCannonGrid.appendChild(card);
-  }
 }
 
 function renderGemEggShop(): void {
@@ -473,10 +439,14 @@ function renderGemEggShop(): void {
   const unlockedCount = PROGRESSION.getUnlockedCount();
   const unlockedCannonCount = PROGRESSION.getUnlockedCannonCount();
   const equippedCannonId = PROGRESSION.getEquippedCannon();
+  const activeRunLocked = hasStartedRun && engine.status !== 'gameover';
 
   shopEggsCount.textContent = savedEggs.toLocaleString();
   shopBugProgress.textContent = `${rem.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()}`;
-  shopCannonHeading.textContent = `CLUCK CANNON ARMORY (${unlockedCannonCount} / ${CANNON_ORDER.length} UNLOCKED)`;
+  shopCannonHeading.textContent = `CLUCK CANNON LOADOUT (${unlockedCannonCount} / ${CANNON_ORDER.length} UNLOCKED)`;
+  shopCannonNote.textContent = activeRunLocked
+    ? `ACTIVE RUN LOCKED TO ${engine.getEquippedCannonDef().shortLabel} • SELECTION APPLIES TO NEW GAMES`
+    : 'BUY WITH GEM EGGS • LOCKED ONCE A GAME STARTS!';
   collectionHeading.textContent = `CHICKEN ROSTER & MUTATIONS (${unlockedCount} / ${CHICKEN_ORDER.length} UNLOCKED)`;
 
   btnBuyEgg1.disabled = savedEggs < 1;
@@ -500,9 +470,13 @@ function renderGemEggShop(): void {
       : 'shop-cannon-action-btn buy-gem';
     const btnDisabled = !unlocked && !canAfford;
     const btnHtml = isEquipped
-      ? 'EQUIPPED'
+      ? activeRunLocked
+        ? 'EQUIPPED (NEXT RUN)'
+        : 'EQUIPPED'
       : unlocked
-      ? 'EQUIP CANNON'
+      ? activeRunLocked
+        ? 'EQUIP (NEXT RUN)'
+        : 'EQUIP CANNON'
       : `<img class="px-icon px-icon-sm" src="${gemEggIconUrl}" alt="" />BUY (${cDef.gemEggCost} GEM ${
           cDef.gemEggCost === 1 ? 'EGG' : 'EGGS'
         })`;
@@ -560,20 +534,62 @@ function renderGemEggShop(): void {
     card.className = `coll-card${!unlocked ? ' locked' : ''}${mut ? ` mut-${mut}` : ''}`;
 
     if (!unlocked) {
-      card.title = `Locked Gem Egg Unit! Base Cost: ${def.baseCost.toLocaleString()} Corn — Hatch Gem Eggs to unlock!`;
+      if (id === 'complete_cluck') {
+        const ownedOthers = PROGRESSION.getNonCompleteUnlockedCount();
+        const totalOthers = REQUIRED_FOR_COMPLETE_CLUCK_IDS.length;
+        card.title = `${def.name} — Unlock every other Chicken (${ownedOthers}/${totalOthers}) to forge The Complete Cluck! Comes with Mastered (+150% DMG, +200% Range) & swappable Aether (+300% DMG, +0% Range). Base Cost: ${def.baseCost.toLocaleString()} Corn.`;
+        card.innerHTML = `
+          <img class="coll-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
+          <div class="coll-meta">
+            <div class="coll-name-row">
+              <span class="coll-name">The Complete Cluck</span>
+            </div>
+            <span class="coll-role" style="color:#2dd4bf">OWN ALL ${totalOthers} OTHERS (${ownedOthers}/${totalOthers})</span>
+            <div class="coll-bottom-row">
+              <span class="coll-cost">${formatCompactCost(def.baseCost)} CORN</span>
+              <span class="mut-badge" style="color:#2dd4bf">${ownedOthers}/${totalOthers}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        card.title = `Locked Gem Egg Unit! Base Cost: ${def.baseCost.toLocaleString()} Corn — Hatch Gem Eggs in the Shop to unlock!`;
+        card.innerHTML = `
+          <img class="coll-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
+          <div class="coll-meta">
+            <div class="coll-name-row">
+              <span class="coll-name">??? [LOCKED]</span>
+            </div>
+            <span class="coll-role">${def.role}</span>
+            <div class="coll-bottom-row">
+              <span class="coll-cost">${formatCompactCost(def.baseCost)} CORN</span>
+              <span class="mut-badge" style="color:#f472b6">GEM EGG</span>
+            </div>
+          </div>
+        `;
+      }
+    } else if (id === 'complete_cluck') {
+      const zMut = mut === 'aether' ? 'aether' : 'mastered';
+      const mutDef = MUTATION_DEFS[zMut];
+      const nextLabel = zMut === 'aether' ? 'SWAP -> MASTERED' : 'SWAP -> AETHER';
+      card.title = `${def.name} — ${mutDef.name.toUpperCase()} (${mutDef.summary}) • Unaffected by nearby Support units! Click button to swap Mastered / Aether.`;
       card.innerHTML = `
-        <img class="coll-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
+        <img class="coll-portrait" src="${spr?.portraitUrl ?? ''}" style="border-color:${mutDef.color}" alt="" />
         <div class="coll-meta">
           <div class="coll-name-row">
-            <span class="coll-name">??? [LOCKED]</span>
+            <span class="coll-name">${def.name}</span>
           </div>
-          <span class="coll-role">${def.role}</span>
+          <span class="coll-role" style="color:${mutDef.color}">${mutDef.summary}</span>
           <div class="coll-bottom-row">
             <span class="coll-cost">${formatCompactCost(def.baseCost)} CORN</span>
-            <span class="mut-badge" style="color:#f472b6">GEM EGG</span>
+            <span class="mut-badge ${zMut}">${mutDef.name}</span>
           </div>
+          <button type="button" class="zenith-swap-btn${zMut === 'aether' ? ' is-aether' : ''}">${nextLabel}</button>
         </div>
       `;
+      card.querySelector('button')!.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        handleToggleCompleteCluckMutation();
+      });
     } else {
       const mutDef = mut ? MUTATION_DEFS[mut] : null;
       card.title = mutDef
@@ -657,7 +673,7 @@ function renderIdleModeUi(): void {
   idleProgressFill.style.width = `${pct.toFixed(1)}%`;
   idleEtaText.textContent = `~${etaMins}M ${String(etaSecs).padStart(2, '0')}S TO NEXT EGG`;
   lblIdleOpenEggs.textContent =
-    savedEggs > 0 ? `OPEN GEM EGGS (${savedEggs} READY)` : 'OPEN GEM EGGS';
+    savedEggs > 0 ? `SHOP (${savedEggs} READY)` : 'SHOP';
 }
 
 function openIdleMode(resumeFromWallMs?: number): void {
@@ -746,6 +762,7 @@ let cutsceneTimers: number[] = [];
 let activeCutsceneOutcomes: EggRollOutcome[] = [];
 let activeCutsceneSlots: HTMLDivElement[] = [];
 let cutsceneFinished = false;
+let justForgedCompleteCluck = false;
 
 function clearCutsceneTimers(): void {
   for (const id of cutsceneTimers) {
@@ -816,18 +833,24 @@ function finalizeCutsceneState(): void {
   const newCount = activeCutsceneOutcomes.filter((o) => o.isNewUnit).length;
   const mutCount = count - newCount;
 
-  cutsceneTitle.textContent =
-    count === 1
-      ? activeCutsceneOutcomes[0].isNewUnit
-        ? 'NEW CHICKEN HATCHED!'
-        : 'MUTATION AWAKENED!'
-      : `${count}X GEM EGG HATCH COMPLETE!`;
-  cutsceneSubtitle.textContent =
-    count === 1
-      ? `GEM EGGS REMAINING: ${PROGRESSION.getEggs().toLocaleString()}`
-      : `${newCount} NEW ${newCount === 1 ? 'UNIT' : 'UNITS'} & ${mutCount} ${
-          mutCount === 1 ? 'MUTATION' : 'MUTATIONS'
-        } • GEM EGGS LEFT: ${PROGRESSION.getEggs().toLocaleString()}`;
+  if (justForgedCompleteCluck) {
+    cutsceneTitle.textContent = 'ALL 38 OWNED — THE COMPLETE CLUCK FORGED!';
+    cutsceneSubtitle.textContent =
+      'TERRARIA ZENITH PINNACLE UNLOCKED! (MASTERED <-> AETHER SWAPPABLE IN SHOP & INSPECTOR)';
+  } else {
+    cutsceneTitle.textContent =
+      count === 1
+        ? activeCutsceneOutcomes[0].isNewUnit
+          ? 'NEW CHICKEN HATCHED!'
+          : 'MUTATION AWAKENED!'
+        : `${count}X GEM EGG HATCH COMPLETE!`;
+    cutsceneSubtitle.textContent =
+      count === 1
+        ? `GEM EGGS REMAINING: ${PROGRESSION.getEggs().toLocaleString()}`
+        : `${newCount} NEW ${newCount === 1 ? 'UNIT' : 'UNITS'} & ${mutCount} ${
+            mutCount === 1 ? 'MUTATION' : 'MUTATIONS'
+          } • GEM EGGS LEFT: ${PROGRESSION.getEggs().toLocaleString()}`;
+  }
 
   btnCutsceneSkip.classList.add('hidden');
   const eggsNow = PROGRESSION.getEggs();
@@ -863,11 +886,13 @@ function skipCutsceneToRevealAll(): void {
 }
 
 function startGemEggPurchase(count: 1 | 4 | 8): void {
+  const wasCompleteUnlocked = PROGRESSION.isUnlocked('complete_cluck');
   const outcomes = PROGRESSION.buyGemEggs(count);
   if (!outcomes) {
     engine.audio.playBlockedClick();
     return;
   }
+  justForgedCompleteCluck = !wasCompleteUnlocked && PROGRESSION.isUnlocked('complete_cluck');
   engine.invalidateStatsCache();
 
   clearCutsceneTimers();
@@ -1082,9 +1107,16 @@ function clientToLogicalCoords(clientX: number, clientY: number): { x: number; y
 function setPlacementType(typeId: ChickenTypeId | null): void {
   if (typeId && !engine.isChickenUnlocked(typeId)) {
     engine.audio.playBlockedClick();
-    bannerTitle.textContent = 'LOCKED GEM EGG UNIT!';
-    bannerDesc.textContent =
-      `Earn 1 Gem Egg per ${BUGS_PER_EGG.toLocaleString()} Enemies killed, then open your Gem Eggs in the Main Menu!`;
+    if (typeId === 'complete_cluck') {
+      const ownedOthers = PROGRESSION.getNonCompleteUnlockedCount();
+      const totalOthers = REQUIRED_FOR_COMPLETE_CLUCK_IDS.length;
+      bannerTitle.textContent = 'LOCKED: THE COMPLETE CLUCK!';
+      bannerDesc.textContent = `Unlock every other Chicken (${ownedOthers}/${totalOthers} owned) to forge The Complete Cluck!`;
+    } else {
+      bannerTitle.textContent = 'LOCKED GEM EGG UNIT!';
+      bannerDesc.textContent =
+        `Earn 1 Gem Egg per ${BUGS_PER_EGG.toLocaleString()} Enemies killed, then unlock units in the Shop!`;
+    }
     return;
   }
   ghost.typeId = typeId;
@@ -1107,9 +1139,7 @@ const lockIconUrl = PIXEL_ATLAS.getIconUrl('lock');
 // Cached live shop button arrays to avoid 60 FPS querySelectorAll scans!
 let cachedTroopBtns: HTMLButtonElement[] = [];
 let cachedCornUpgBtns: HTMLButtonElement[] = [];
-let cachedCannonSidebarBtns: HTMLButtonElement[] = [];
 let lastAffordCorn = -1;
-let lastAffordEggs = -1;
 let lastAffordTowerId: number | null = null;
 
 function renderTroopCards(): void {
@@ -1136,24 +1166,41 @@ function renderTroopCards(): void {
 
     if (!unlocked) {
       btn.className = 'troop-btn locked-troop';
-      btn.title = `${def.name} — LOCKED! Earn Gem Eggs (1 per ${BUGS_PER_EGG.toLocaleString()} Enemies) & open them in the Main Menu!`;
-      btn.innerHTML = `
-        <img class="troop-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
-        <div class="troop-meta">
-          <div class="troop-top">
-            <span class="troop-cost" style="color:#f472b6"><img class="px-icon px-icon-sm" src="${lockIconUrl}" alt="" />GEM</span>
+      if (id === 'complete_cluck') {
+        const ownedOthers = PROGRESSION.getNonCompleteUnlockedCount();
+        const totalOthers = REQUIRED_FOR_COMPLETE_CLUCK_IDS.length;
+        btn.title = `${def.name} — LOCKED! Unlock every other Chicken (${ownedOthers}/${totalOthers}) to forge The Complete Cluck!`;
+        btn.innerHTML = `
+          <img class="troop-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
+          <div class="troop-meta">
+            <div class="troop-top">
+              <span class="troop-cost" style="color:#2dd4bf"><img class="px-icon px-icon-sm" src="${lockIconUrl}" alt="" />${ownedOthers}/${totalOthers}</span>
+            </div>
+            <span class="troop-name">??? (${formatCompactCost(def.baseCost)})</span>
+            <span class="troop-role" style="color:#2dd4bf">Own All ${totalOthers} Units</span>
           </div>
-          <span class="troop-name">??? (${formatCompactCost(def.baseCost)})</span>
-          <span class="troop-role">Open Gem Eggs</span>
-        </div>
-      `;
+        `;
+      } else {
+        btn.title = `${def.name} — LOCKED! Earn Gem Eggs (1 per ${BUGS_PER_EGG.toLocaleString()} Enemies) & unlock in the Shop!`;
+        btn.innerHTML = `
+          <img class="troop-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
+          <div class="troop-meta">
+            <div class="troop-top">
+              <span class="troop-cost" style="color:#f472b6"><img class="px-icon px-icon-sm" src="${lockIconUrl}" alt="" />GEM</span>
+            </div>
+            <span class="troop-name">??? (${formatCompactCost(def.baseCost)})</span>
+            <span class="troop-role">Unlock in Shop</span>
+          </div>
+        `;
+      }
       btn.addEventListener('click', () => setPlacementType(id));
     } else {
       const mutDef = mut ? MUTATION_DEFS[mut] : null;
+      const isComplete = id === 'complete_cluck';
       btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
       btn.title = `${def.name}${plusLv > 0 ? ` +${plusLv}` : ''} (${def.role})${
-        mutDef ? ` [${mutDef.name.toUpperCase()} MUTATION: ${mutDef.summary}]` : ''
-      } — ${cost.toLocaleString()} Corn`;
+        mutDef ? ` [${mutDef.name.toUpperCase()}: ${mutDef.summary}]` : ''
+      }${isComplete ? ' [Unaffected by Support Auras]' : ''} — ${cost.toLocaleString()} Corn`;
 
       const shortMutLabel = mut
         ? `${mut.slice(0, 3).toUpperCase()}${plusLv > 0 ? `+${plusLv}` : ''}`
@@ -1192,9 +1239,7 @@ function renderTroopCards(): void {
 
 function renderUpgradeLists(): void {
   cachedCornUpgBtns = [];
-  cachedCannonSidebarBtns = [];
   lastAffordCorn = -1;
-  lastAffordEggs = -1;
 
   clickerUpgList.innerHTML = '';
   const clickerFrag = document.createDocumentFragment();
@@ -1277,61 +1322,6 @@ function renderUpgradeLists(): void {
     tdFrag.appendChild(row);
   }
   tdUpgList.appendChild(tdFrag);
-
-  // Render Cluck Cannon Loadouts in the CANNON sidebar tab!
-  setText(lblTabCannon, `CANNON ${PROGRESSION.getUnlockedCannonCount()}/${CANNON_ORDER.length}`);
-  sidebarCannonList.innerHTML = '';
-  const cannonFrag = document.createDocumentFragment();
-  const savedEggs = PROGRESSION.getEggs();
-  const equippedCannonId = PROGRESSION.getEquippedCannon();
-
-  for (const cId of CANNON_ORDER) {
-    const cDef = CANNON_DEFS[cId];
-    const unlocked = PROGRESSION.isCannonUnlocked(cId);
-    const isEquipped = unlocked && cId === equippedCannonId;
-    const canAfford = !unlocked && savedEggs >= cDef.gemEggCost;
-    const iconUrl = PIXEL_ATLAS.getIconUrl(cDef.iconId);
-
-    const row = document.createElement('div');
-    row.className = 'upg-row';
-    if (isEquipped) {
-      row.style.borderColor = cDef.accentColor;
-      row.style.background = '#172554';
-    }
-
-    const btnClass = isEquipped
-      ? 'upg-buy-btn cannon-sidebar-btn equipped-btn'
-      : unlocked
-      ? 'upg-buy-btn cannon-sidebar-btn'
-      : 'upg-buy-btn cannon-sidebar-btn gem-buy-btn';
-    const btnDisabled = !unlocked && !canAfford;
-    const btnHtml = isEquipped
-      ? 'EQUIPPED'
-      : unlocked
-      ? 'EQUIP'
-      : `<img class="px-icon px-icon-sm" src="${gemEggIconUrl}" alt="" />${cDef.gemEggCost} GEM`;
-
-    row.innerHTML = `
-      <div class="upg-icon-box" style="border-color:${cDef.accentColor}">
-        <img class="px-icon px-icon-md" src="${iconUrl}" alt="" />
-      </div>
-      <div class="upg-info">
-        <div class="upg-title">${cDef.name} (${cDef.chargeSec}S)</div>
-        <div class="upg-effect" style="color:${cDef.accentColor}">${cDef.badgeText}</div>
-        <div class="upg-desc">${cDef.description}</div>
-      </div>
-      <button type="button" class="${btnClass}" data-cannon-id="${cId}" ${
-      btnDisabled ? 'disabled' : ''
-    }>
-        ${btnHtml}
-      </button>
-    `;
-    const btn = row.querySelector('button')!;
-    btn.addEventListener('click', () => handleCannonSelectOrBuy(cId));
-    cachedCannonSidebarBtns.push(btn);
-    cannonFrag.appendChild(row);
-  }
-  sidebarCannonList.appendChild(cannonFrag);
 }
 
 function formatInspectorStats(towerId: number): string {
@@ -1355,7 +1345,12 @@ function formatInspectorStats(towerId: number): string {
     } | BUFFING ${buffedCount}`;
   }
 
-  const buffTag = eff.supportBuffCount > 0 ? ` | BUFFED x${eff.supportBuffCount}` : '';
+  const buffTag =
+    tower.typeId === 'complete_cluck'
+      ? ' | NO AURA BUFFS'
+      : eff.supportBuffCount > 0
+      ? ` | BUFFED x${eff.supportBuffCount}`
+      : '';
   const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
   const kbTag = eff.effectiveKnockback > 0 ? ' | KB' : '';
   const critTag =
@@ -1399,6 +1394,18 @@ function renderInspector(): void {
   setText(inspStats, formatInspectorStats(tower.id));
   setText(btnInspTarget, `AIM: ${tower.targetMode.toUpperCase()}`);
   btnInspTarget.classList.toggle('hidden', eff.effectiveDamage <= 0);
+
+  if (tower.typeId === 'complete_cluck') {
+    const isAether = eff.mutationTier === 'aether';
+    setText(btnInspZenithMut, isAether ? 'SWAP: MASTERED' : 'SWAP: AETHER');
+    btnInspZenithMut.classList.toggle('is-aether', isAether);
+    btnInspZenithMut.title = isAether
+      ? 'Currently AETHER (+300% DMG, +0% Range). Click to swap to MASTERED (+150% DMG, +200% Range)!'
+      : 'Currently MASTERED (+150% DMG, +200% Range). Click to swap to AETHER (+300% DMG, +0% Range)!';
+    btnInspZenithMut.classList.remove('hidden');
+  } else {
+    btnInspZenithMut.classList.add('hidden');
+  }
 
   if (tower.tier < 3) {
     const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
@@ -1469,7 +1476,7 @@ function populateDefeatEndscreen(): void {
   }
 
   lblDefeatShopBtn.textContent =
-    rep.totalSavedEggs > 0 ? `OPEN GEM EGGS (${rep.totalSavedEggs})` : 'OPEN GEM EGGS';
+    rep.totalSavedEggs > 0 ? `SHOP (${rep.totalSavedEggs})` : 'SHOP';
 }
 
 function updateHudBattleEggsLive(): void {
@@ -1500,7 +1507,7 @@ function refreshFullUi(): void {
   setText(hudPops, engine.totalBugsPopped.toLocaleString());
   updateHudBattleEggsLive();
 
-  const waveDef = getWaveDefinition(engine.waveNumber);
+  const waveDef = getWaveDefinition(engine.waveNumber, engine.difficultyId);
   setText(bannerTitle, `WAVE ${waveDef.waveNumber}: ${waveDef.title.toUpperCase()}`);
   setText(bannerDesc, waveDef.callout);
 
@@ -1543,7 +1550,7 @@ function refreshFullUi(): void {
   if (!inMainMenu && engine.status === 'victory_prompt') {
     victorySummary.textContent = `You crushed the Nebula Cosmic Foxes on ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge})! Defeated ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
     victoryEggsEarned.textContent = `+${engine.lastVictoryEggsEarned.toLocaleString()} GEM EGGS EARNED!`;
-    victoryEggsTotal.textContent = `OWNED GEM EGGS: ${PROGRESSION.getEggs().toLocaleString()} • OPEN IN MAIN MENU!`;
+    victoryEggsTotal.textContent = `OWNED GEM EGGS: ${PROGRESSION.getEggs().toLocaleString()} • SPEND IN SHOP!`;
     victoryModal.classList.remove('hidden');
   } else {
     victoryModal.classList.add('hidden');
@@ -1567,7 +1574,6 @@ engine.onCornChange = syncLiveShopAffordability;
 
 function syncLiveShopAffordability(): void {
   const cornNow = engine.corn;
-  const liveEggs = PROGRESSION.getEggs();
   setText(hudCorn, cornNow.toLocaleString());
 
   if (cornNow !== lastAffordCorn) {
@@ -1586,16 +1592,6 @@ function syncLiveShopAffordability(): void {
         const cost = Number(btn.dataset.cost ?? '0');
         btn.disabled = cornNow < cost;
       }
-    }
-  }
-
-  if (liveEggs !== lastAffordEggs) {
-    lastAffordEggs = liveEggs;
-    for (let i = 0; i < cachedCannonSidebarBtns.length; i++) {
-      const btn = cachedCannonSidebarBtns[i];
-      const cId = btn.dataset.cannonId as CannonTypeId | undefined;
-      if (!cId || PROGRESSION.isCannonUnlocked(cId)) continue;
-      btn.disabled = liveEggs < CANNON_DEFS[cId].gemEggCost;
     }
   }
 
@@ -1808,22 +1804,14 @@ btnHenClick.addEventListener('keydown', (e) => {
   }
 });
 
-function switchShopTab(which: 'troops' | 'clicker' | 'td' | 'cannon'): void {
+function switchShopTab(which: 'troops' | 'clicker' | 'td'): void {
   document.querySelectorAll<HTMLButtonElement>('.shop-tab').forEach((t) => {
     t.classList.toggle('active', t.dataset.tab === which);
   });
   document.getElementById('tab-troops')!.classList.toggle('hidden', which !== 'troops');
   document.getElementById('tab-clicker')!.classList.toggle('hidden', which !== 'clicker');
   document.getElementById('tab-td')!.classList.toggle('hidden', which !== 'td');
-  document.getElementById('tab-cannon')!.classList.toggle('hidden', which !== 'cannon');
 }
-
-btnCannonLoadout.addEventListener('click', (e) => {
-  e.stopPropagation();
-  btnCannonLoadout.blur();
-  engine.audio.playUpgrade();
-  switchShopTab('cannon');
-});
 
 btnCluckCannon.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -1837,7 +1825,7 @@ btnCluckCannon.addEventListener('click', (e) => {
 // Shop tab switching
 document.querySelectorAll<HTMLButtonElement>('.shop-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
-    const which = (tab.dataset.tab as 'troops' | 'clicker' | 'td' | 'cannon') ?? 'troops';
+    const which = (tab.dataset.tab as 'troops' | 'clicker' | 'td') ?? 'troops';
     switchShopTab(which);
   });
 });
@@ -1928,6 +1916,10 @@ canvas.addEventListener('click', (e) => {
 });
 
 btnCancelPlace.addEventListener('click', () => setPlacementType(null));
+
+btnInspZenithMut.addEventListener('click', () => {
+  handleToggleCompleteCluckMutation();
+});
 
 btnInspTarget.addEventListener('click', () => {
   if (selectedTowerId !== null) engine.cycleTargetMode(selectedTowerId);

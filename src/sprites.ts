@@ -930,6 +930,13 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
     px(bx - 3, by + 1, '#FACC15', 4, 8);
     px(bx - 2, by + 2, '#FFFFFF', 3, 5);
     px(bx - 3, by - 1, '#F43F5E', 2, 2);
+  } else if (typeId === 'complete_cluck') {
+    // Terraria Zenith Floating Rainbow Sword-Fan Halo behind The Complete Cluck!
+    px(bx - 4, by - 2, OUTLINE, 6, 11);
+    px(bx - 3, by - 1, '#4ADE80', 2, 3); // Terra Blade emerald
+    px(bx - 3, by + 2, '#22D3EE', 2, 3); // Influx Waver cyan
+    px(bx - 3, by + 5, '#F472B6', 2, 3); // Meowmere pink
+    px(bx - 1, by, '#C084FC', 2, 7);     // Star Wrath & Shimmer violet
   }
 
   // 3. Tiny Stubby Birdie Feet (hop up happily when attacking!)
@@ -1381,6 +1388,22 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       px(bx + 12, by + 4, '#F472B6', 4, 2);
       px(17, 2, '#38BDF8', 2, 3);
       px(18, 1, '#FEF08A', 2, 1);
+      break;
+    }
+    case 'complete_cluck': {
+      // The Complete Cluck (Terraria Zenith): Prismatic Zenith Crown + Forged Infinity Sword!
+      px(bx + 2, by - 3, OUTLINE, 9, 3);
+      px(bx + 3, by - 3, '#FACC15', 7, 2);
+      px(bx + 4, by - 4, '#2DD4BF', 2, 2); // Terra-Zenith crest gem
+      px(bx + 7, by - 4, '#E879F9', 2, 2); // Aether-Shimmer crest gem
+      px(bx + 6, by - 5, '#FFFFFF', 1, 2);
+      // Iconic Terraria Zenith Greatsword held diagonally forward!
+      px(bx + 12, by + 6, '#FACC15', 5, 2); // Golden Solar crossguard
+      px(bx + 13, by + 2, OUTLINE, 4, 5);
+      px(bx + 14, by + 3, '#2DD4BF', 2, 3); // Terra core
+      px(bx + 15, by + 1, '#38BDF8', 2, 3); // Influx edge
+      px(bx + 16, by - 1, '#E879F9', 2, 3); // Meowmere / Star-Wrath tip
+      px(bx + 16, by, '#FFFFFF', 1, 2);     // Prismatic blade gleam
       break;
     }
   }

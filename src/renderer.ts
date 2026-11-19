@@ -1310,6 +1310,30 @@ export class MeadowRenderer {
         ctx.fillRect(px - 1, py - 1, 2, 2);
         break;
       }
+      case 'zenith_blade': {
+        // Terraria Zenith: spinning multi-sword rainbow arcs (or Shimmer-violet Aether blades)!
+        const isAether = p.color === '#E879F9';
+        const swordColors = isAether
+          ? ['#E879F9', '#C084FC', '#38BDF8', '#F472B6']
+          : ['#4ADE80', '#22D3EE', '#F472B6', '#FACC15', '#C084FC', '#FB7185'];
+        const bladeCol = swordColors[p.id % swordColors.length];
+        const dx = Math.round(Math.cos(p.rotation) * 4);
+        const dy = Math.round(Math.sin(p.rotation) * 4);
+        // Afterimage arc trail
+        ctx.fillStyle = isAether ? '#A855F7' : '#14B8A6';
+        ctx.fillRect(px - dx - 1, py - dy - 1, 3, 3);
+        // Outlined spinning Terraria sword blade + golden hilt + white edge gleam
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 2, py + 1, 2, 2);
+        ctx.fillStyle = bladeCol;
+        ctx.fillRect(px - 2, py - 2, 5, 4);
+        ctx.fillRect(px + dx * 0.5, py + dy * 0.5, 2, 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py - 2, 2, 2);
+        break;
+      }
       default:
         break;
     }

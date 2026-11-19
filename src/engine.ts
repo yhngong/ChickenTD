@@ -117,6 +117,7 @@ const STRONG_DEFAULT_SET = new Set<ChickenTypeId>([
   'gaia_creator',
   'void_singularity',
   'cat_god_supreme',
+  'complete_cluck',
 ]);
 
 export class ChickenTdEngine {
@@ -148,7 +149,8 @@ export class ChickenTdEngine {
   public waveClickCounter = 0; // counts toward 12-Peck Mega Cob
   public waveCornHarvested = 0; // tracks Corn harvested in the active wave for Golden Corn Silo
 
-  // Rechargeable Cluck Cannon (0..1) + Active Cannon Loadout Buff Timers
+  // Rechargeable Cluck Cannon (locked per run — not interchangeable mid-game!)
+  public equippedCannon: CannonTypeId = 'shockwave';
   public cannonCharge = 0.5;
   public cannonFlash = 0;
   public cannonDamageBoostTimer = 0;
@@ -258,17 +260,11 @@ export class ChickenTdEngine {
   }
 
   public getEquippedCannonId(): CannonTypeId {
-    return PROGRESSION.getEquippedCannon();
+    return this.equippedCannon;
   }
 
   public getEquippedCannonDef(): CannonDef {
-    return CANNON_DEFS[this.getEquippedCannonId()];
-  }
-
-  public equipCannonLoadout(id: CannonTypeId): boolean {
-    if (!PROGRESSION.equipCannon(id)) return false;
-    this.notifyUi();
-    return true;
+    return CANNON_DEFS[this.equippedCannon];
   }
 
   public isChickenUnlocked(typeId: ChickenTypeId): boolean {
@@ -362,6 +358,7 @@ export class ChickenTdEngine {
       totalClicksAccepted: this.totalClicksAccepted,
       waveClickCounter: this.waveClickCounter,
       waveCornHarvested: this.waveCornHarvested,
+      equippedCannon: this.equippedCannon,
       cannonCharge: this.cannonCharge,
       cannonDamageBoostTimer: this.cannonDamageBoostTimer,
       cannonCornBoostTimer: this.cannonCornBoostTimer,
@@ -423,6 +420,10 @@ export class ChickenTdEngine {
       this.totalClicksAccepted = Math.max(0, Math.floor(Number(saved.totalClicksAccepted ?? 0)));
       this.waveClickCounter = Math.max(0, Math.floor(Number(saved.waveClickCounter ?? 0)));
       this.waveCornHarvested = Math.max(0, Math.floor(Number(saved.waveCornHarvested ?? 0)));
+      this.equippedCannon =
+        saved.equippedCannon && saved.equippedCannon in CANNON_DEFS
+          ? saved.equippedCannon
+          : PROGRESSION.getEquippedCannon();
       this.cannonCharge = Math.max(0, Math.min(1, Number(saved.cannonCharge ?? 0.5)));
       this.cannonFlash = 0;
       this.cannonDamageBoostTimer = Math.max(0, Number(saved.cannonDamageBoostTimer ?? 0));
@@ -557,6 +558,7 @@ export class ChickenTdEngine {
     this.totalClicksAccepted = 0;
     this.waveClickCounter = 0;
     this.waveCornHarvested = 0;
+    this.equippedCannon = PROGRESSION.getEquippedCannon();
     this.cannonCharge = 0.5;
     this.cannonFlash = 0;
     this.cannonDamageBoostTimer = 0;
@@ -739,7 +741,7 @@ export class ChickenTdEngine {
       this.freeplayUnlocked = true;
     }
 
-    const def = getWaveDefinition(this.waveNumber);
+    const def = getWaveDefinition(this.waveNumber, this.difficultyId);
     const countMult = this.getDifficulty().enemyCountMult;
     const queue: PendingSpawn[] = [];
     for (const grp of def.groups) {
@@ -1081,7 +1083,10 @@ export class ChickenTdEngine {
     if (!auraSpec) return [];
     const radius = this.getSupportAuraRadius(supportTower);
     return this.towers.filter(
-      (t) => t.id !== supportTower.id && Math.hypot(t.x - supportTower.x, t.y - supportTower.y) <= radius
+      (t) =>
+        t.id !== supportTower.id &&
+        t.typeId !== 'complete_cluck' &&
+        Math.hypot(t.x - supportTower.x, t.y - supportTower.y) <= radius
     );
   }
 
@@ -1092,15 +1097,31 @@ export class ChickenTdEngine {
   ): PlacedChicken[] {
     if (!CHICKEN_DEFS[typeId].tiers[0].supportAura) return [];
     const radius = this.getPreviewRange(typeId);
-    return this.towers.filter((t) => Math.hypot(t.x - x, t.y - y) <= radius);
+    return this.towers.filter(
+      (t) => t.typeId !== 'complete_cluck' && Math.hypot(t.x - x, t.y - y) <= radius
+    );
   }
 
   /**
    * Computes combined nearby Support Aura buffs for a placed tower.
-   * Same support typeId does NOT stack with copies of itself (uses best tier in range);
-   * distinct support types combine additively so positioning multiple support classes is rewarding & balanced!
+   * Note: "The Complete Cluck" ('complete_cluck') is completely unaffected by nearby support units!
    */
   private computeSupportBuffsForTower(target: PlacedChicken): SupportAuraSpec & { count: number } {
+    if (target.typeId === 'complete_cluck') {
+      return {
+        damageBonus: 0,
+        fireRateBonus: 0,
+        rangeBonus: 0,
+        bonusPierce: 0,
+        bonusProjectiles: 0,
+        foxDamageBonus: 0,
+        grantsCamo: false,
+        grantsArmorPierce: false,
+        bonusCritChance: 0,
+        bonusKnockback: 0,
+        count: 0,
+      };
+    }
     const bestByType = new Map<ChickenTypeId, SupportAuraSpec>();
 
     for (const other of this.towers) {
@@ -1729,16 +1750,30 @@ export class ChickenTdEngine {
       }
 
       const count = stats.effectiveProjectiles;
-      const spreadStep = def.projectileStyle === 'feather_slash' ? 0.24 : 0.13;
+      const spreadStep =
+        def.projectileStyle === 'feather_slash'
+          ? 0.24
+          : def.projectileStyle === 'zenith_blade'
+          ? 0.1
+          : 0.13;
       const isBoomerang = def.projectileStyle === 'boomerang';
+      const isZenith = def.projectileStyle === 'zenith_blade';
+      const projColor =
+        isZenith && stats.mutationTier === 'aether' ? '#E879F9' : def.accentColor;
 
       for (let m = 0; m < count; m++) {
         if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
         const angOffset = count === 1 ? 0 : (m - (count - 1) / 2) * spreadStep;
-        const ang = baseAngle + angOffset - (isBoomerang ? 0.34 : 0);
+        const zenithDir = m % 2 === 0 ? 1 : -1;
+        const ang =
+          baseAngle +
+          angOffset -
+          (isBoomerang ? 0.34 : isZenith ? zenithDir * 0.28 : 0);
         const speed = stats.projectileSpeed;
         const maxLife = isBoomerang
           ? (stats.effectiveRange * 2.05) / speed
+          : isZenith
+          ? (stats.effectiveRange * 1.38) / speed
           : (stats.effectiveRange + 75) / speed;
         const cosA = Math.cos(ang);
         const sinA = Math.sin(ang);
@@ -1751,7 +1786,7 @@ export class ChickenTdEngine {
           y: tower.y + sinA * 14,
           vx: cosA * speed,
           vy: sinA * speed,
-          curveRate: isBoomerang ? 2.15 : 0,
+          curveRate: isBoomerang ? 2.15 : isZenith ? zenithDir * 2.05 : 0,
           rotation: ang,
           damage: stats.effectiveDamage,
           pierceLeft: stats.effectivePierce,
@@ -1767,7 +1802,7 @@ export class ChickenTdEngine {
           hitEnemyIds: null,
           age: 0,
           maxLifetime: maxLife,
-          color: def.accentColor,
+          color: projColor,
         });
       }
     }
@@ -1797,8 +1832,13 @@ export class ChickenTdEngine {
 
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        if (p.style === 'shuriken' || p.style === 'boomerang' || p.style === 'black_hole') {
-          p.rotation += dt * 18;
+        if (
+          p.style === 'shuriken' ||
+          p.style === 'boomerang' ||
+          p.style === 'black_hole' ||
+          p.style === 'zenith_blade'
+        ) {
+          p.rotation += dt * (p.style === 'zenith_blade' ? 24 : 18);
         } else {
           p.rotation = Math.atan2(p.vy, p.vx);
         }
@@ -2138,6 +2178,8 @@ export class ChickenTdEngine {
         ? '#F59E0B'
         : proj.style === 'chrono_orb'
         ? '#2DD4BF'
+        : proj.style === 'zenith_blade'
+        ? proj.color
         : proj.style === 'ion_lance' ||
           proj.style === 'antimatter' ||
           proj.style === 'cat_paw' ||

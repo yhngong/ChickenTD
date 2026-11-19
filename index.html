@@ -30,7 +30,7 @@
               <div class="menu-kicker">16-BIT CLICKER &times; BATTLE CATS TOWER DEFENSE</div>
               <h1 class="menu-logo">CHICKEN<span>TD</span></h1>
               <p class="menu-tagline">
-                38 Pixel Chicken Units &bull; Support Auras &bull; 5 Cluck Cannons &bull; Gem Eggs &amp; Mutations
+                39 Pixel Chicken Units &bull; Support Auras &bull; 5 Cluck Cannons &bull; Gem Eggs &amp; Mutations
               </p>
             </div>
           </div>
@@ -48,8 +48,8 @@
             <button id="btn-open-gem-shop" class="gem-shop-hero-btn" type="button">
               <img id="icon-menu-gem-egg" class="px-icon px-icon-lg" alt="" />
               <div>
-                <span class="gem-btn-top">OPEN GEM EGGS</span>
-                <span id="menu-collection-sub" class="gem-btn-sub">16 / 38 UNITS</span>
+                <span class="gem-btn-top">SHOP</span>
+                <span id="menu-collection-sub" class="gem-btn-sub">16 / 39 UNITS</span>
               </div>
             </button>
           </div>
@@ -65,18 +65,10 @@
 
         <section class="menu-section">
           <div class="menu-sec-head">
-            <h2>2. SELECT DIFFICULTY</h2>
+            <h2>2. SELECT DIFFICULTY (5 MODES)</h2>
             <span id="menu-diff-summary" class="menu-sec-sub">BARNYARD (NORMAL)</span>
           </div>
           <div id="menu-diff-grid" class="menu-diff-grid"></div>
-        </section>
-
-        <section class="menu-section">
-          <div class="menu-sec-head">
-            <h2>3. CLUCK CANNON LOADOUT (BUY WITH GEM EGGS)</h2>
-            <span id="menu-cannon-summary" class="menu-sec-sub">SHOCKWAVE CANNON &bull; 1 / 5 UNLOCKED</span>
-          </div>
-          <div id="menu-cannon-grid" class="menu-cannon-grid"></div>
         </section>
 
         <footer class="menu-cta-row">
@@ -91,7 +83,7 @@
           </button>
           <button id="btn-menu-gem-shop-cta" class="gem-cta-btn menu-side-btn" type="button">
             <img id="icon-cta-gem-egg" class="px-icon px-icon-sm" alt="" />
-            <span>OPEN GEM EGGS</span>
+            <span>SHOP</span>
           </button>
           <button
             id="btn-menu-idle"
@@ -118,7 +110,7 @@
       </div>
     </div>
 
-    <!-- GEM EGG HATCHERY & MUTATION ROSTER (MAIN MENU SUB-SCREEN) -->
+    <!-- GEM EGG SHOP, CLUCK CANNON LOADOUT & MUTATION ROSTER -->
     <div id="gem-shop-screen" class="gem-shop-screen hidden">
       <div class="gem-shop-container">
         <header class="gem-shop-header">
@@ -128,8 +120,8 @@
           <div class="gem-shop-title-block">
             <img id="icon-shop-title-gem" class="px-icon px-icon-lg" alt="" />
             <div>
-              <h2>GEM EGG HATCHERY &amp; CANNON ARMORY</h2>
-              <p>HATCH UNITS, AWAKEN MUTATIONS &amp; UNLOCK CLUCK CANNONS WITH GEM EGGS!</p>
+              <h2>SHOP</h2>
+              <p>HATCH GEM EGGS, AWAKEN MUTATIONS &amp; EQUIP YOUR CLUCK CANNON LOADOUT!</p>
             </div>
           </div>
           <div class="shop-wallet-row">
@@ -199,27 +191,27 @@
           </div>
         </section>
 
-        <!-- CLUCK CANNON ARMORY (BUY & SWAP WITH GEM EGGS) -->
+        <!-- CLUCK CANNON LOADOUT (BUY & EQUIP IN SHOP — LOCKED IN GAME) -->
         <section class="cannon-armory-section">
           <div class="collection-head">
             <div class="collection-title-wrap">
               <img id="icon-shop-cannon-armory" class="px-icon px-icon-sm" alt="" />
-              <h3 id="shop-cannon-heading">CLUCK CANNON ARMORY (1 / 5 UNLOCKED)</h3>
+              <h3 id="shop-cannon-heading">CLUCK CANNON LOADOUT (1 / 5 UNLOCKED)</h3>
             </div>
-            <span class="cannon-armory-note">BUY WITH GEM EGGS &bull; CLICK OWNED CANNON TO EQUIP</span>
+            <span id="shop-cannon-note" class="cannon-armory-note">BUY WITH GEM EGGS &bull; LOCKED ONCE A GAME STARTS!</span>
           </div>
           <div id="shop-cannon-grid" class="shop-cannon-grid"></div>
         </section>
 
-        <!-- 38-UNIT CHICKEN GUIDE & MUTATION COLLECTION -->
+        <!-- 39-UNIT CHICKEN GUIDE & MUTATION COLLECTION -->
         <section class="collection-section">
           <div class="collection-head">
             <div class="collection-title-wrap">
               <img id="icon-collection-star" class="px-icon px-icon-sm" alt="" />
-              <h3 id="collection-heading">CHICKEN ROSTER &amp; MUTATIONS (16 / 38 UNLOCKED)</h3>
+              <h3 id="collection-heading">CHICKEN ROSTER &amp; MUTATIONS (16 / 39 UNLOCKED)</h3>
             </div>
             <div class="collection-filters">
-              <button class="coll-filter-btn active" data-filter="all" type="button">ALL (38)</button>
+              <button class="coll-filter-btn active" data-filter="all" type="button">ALL (39)</button>
               <button class="coll-filter-btn" data-filter="gacha" type="button">GEM EGG EXCLUSIVE (22)</button>
               <button class="coll-filter-btn" data-filter="starter" type="button">STARTERS (16)</button>
               <button class="coll-filter-btn" data-filter="support" type="button">SUPPORT (4)</button>
@@ -257,7 +249,7 @@
               OPEN 8 MORE
             </button>
             <button id="btn-cutscene-done" class="primary-modal-btn cutscene-close-btn" type="button">
-              COLLECT &amp; BACK TO HATCHERY
+              COLLECT &amp; BACK TO SHOP
             </button>
           </div>
         </footer>
@@ -321,7 +313,7 @@
         <footer class="idle-footer-row">
           <button id="btn-idle-open-eggs" class="gem-cta-btn idle-action-btn" type="button">
             <img id="icon-idle-gem-egg" class="px-icon px-icon-sm" alt="" />
-            <span id="lbl-idle-open-eggs">OPEN GEM EGGS</span>
+            <span id="lbl-idle-open-eggs">SHOP</span>
           </button>
           <button id="btn-idle-exit" class="primary-modal-btn idle-action-btn" type="button">
             EXIT IDLE MODE [ESC]
@@ -442,16 +434,8 @@
               <button id="btn-cancel-place" type="button">CANCEL [ESC]</button>
             </div>
 
-            <!-- Rechargeable Cluck Cannon + Quick Cannon Loadout Switcher! -->
+            <!-- Rechargeable Cluck Cannon (Loadout chosen in Shop before starting run!) -->
             <div id="stage-cannon-cluster" class="stage-cannon-cluster">
-              <button
-                id="btn-cannon-loadout"
-                class="cannon-swap-btn"
-                type="button"
-                title="Change or unlock Cluck Cannons (Stop Time, Damage Boost & more) with Gem Eggs!"
-              >
-                CHANGE CANNON
-              </button>
               <button
                 id="btn-cluck-cannon"
                 class="cluck-cannon-btn"
@@ -484,6 +468,9 @@
               </div>
 
               <div class="insp-actions">
+                <button id="btn-insp-zenith-mut" class="insp-btn zenith-mut-btn hidden" type="button">
+                  SWAP: AETHER
+                </button>
                 <button id="btn-insp-target" class="insp-btn target-btn" type="button">
                   AIM: FIRST
                 </button>
@@ -545,12 +532,12 @@
             </div>
           </div>
 
-          <!-- 2. TABBED PIXEL SHOP: 38 TROOPS | CLICKER UPGRADES | TD LAB | CANNON -->
+          <!-- 2. TABBED PIXEL SHOP: 39 TROOPS | CLICKER UPGRADES | TD LAB -->
           <div class="shop-card">
             <div class="shop-tabs" role="tablist">
               <button class="shop-tab active" data-tab="troops" type="button">
                 <img id="icon-tab-troops" class="px-icon px-icon-sm" alt="" />
-                <span id="lbl-tab-troops">TROOPS 16/38</span>
+                <span id="lbl-tab-troops">TROOPS 16/39</span>
               </button>
               <button class="shop-tab" data-tab="clicker" type="button">
                 <img id="icon-tab-clicker" class="px-icon px-icon-sm" alt="" />
@@ -559,10 +546,6 @@
               <button class="shop-tab" data-tab="td" type="button">
                 <img id="icon-tab-td" class="px-icon px-icon-sm" alt="" />
                 <span>TD LAB</span>
-              </button>
-              <button class="shop-tab" data-tab="cannon" type="button">
-                <img id="icon-tab-cannon" class="px-icon px-icon-sm" alt="" />
-                <span id="lbl-tab-cannon">CANNON 1/5</span>
               </button>
             </div>
 
@@ -576,10 +559,6 @@
 
             <div id="tab-td" class="shop-body hidden">
               <div id="td-upg-list" class="upgrade-list"></div>
-            </div>
-
-            <div id="tab-cannon" class="shop-body hidden">
-              <div id="sidebar-cannon-list" class="upgrade-list"></div>
             </div>
           </div>
 
@@ -600,10 +579,11 @@
         </h2>
         <ul class="rules-list">
           <li>
-            <strong>38 PIXEL CHICKENS &amp; SUPPORT TOWERS:</strong> Start with Chickens up to
-            <em>Cyber-Cluck 9000</em> (including <strong>Roost Beacon</strong> &amp;
-            <strong>Espresso Brew-Hen</strong> support aura towers that buff nearby allies!), and open
-            <strong>Gem Eggs</strong> in the Main Menu to unlock more units!
+            <strong>39 PIXEL CHICKENS &amp; THE COMPLETE CLUCK:</strong> Start with 16 Chickens up to
+            <em>Cyber-Cluck 9000</em>, unlock 22 more from <strong>Gem Eggs</strong> in the
+            <strong>Shop</strong>, and collect all 38 to forge <strong>The Complete Cluck</strong>
+            (Terraria Zenith blade — swappable between <strong>Mastered</strong> &amp;
+            <strong>Aether</strong>)!
           </li>
           <li>
             <strong>GEM EGGS &amp; AUTO-SAVE (1 PER 1,000 KILLS):</strong> Every
@@ -617,11 +597,11 @@
             permanent Battle Cats <strong>+Levels</strong>!
           </li>
           <li>
-            <strong>5 CLUCK CANNONS (BUY WITH GEM EGGS!):</strong> Charge your
-            <strong>Cluck Cannon</strong> (`[TAB]`) during waves, and spend <strong>Gem Eggs</strong>
-            in the Main Menu, Hatchery, or Cannon tab to unlock &amp; swap between
-            <strong>Shockwave</strong>, <strong>Time-Stop</strong>, <strong>Damage Boost</strong>,
-            <strong>Orbital Nova</strong>, and <strong>Cornstorm</strong>!
+            <strong>5 CLUCK CANNONS (EQUIP IN SHOP BEFORE BATTLE!):</strong> Unlock &amp; equip your
+            <strong>Cluck Cannon</strong> (<strong>Shockwave</strong>, <strong>Time-Stop</strong>,
+            <strong>Damage Boost</strong>, <strong>Orbital Nova</strong>, or
+            <strong>Cornstorm</strong>) in the <strong>Shop</strong> with Gem Eggs! Your chosen
+            cannon is locked in for the entire run (`[TAB]` to fire).
           </li>
           <li>
             <strong>ZERO BUG GOLD + 12 CPS CLICKER:</strong> Enemies drop 0 Corn! Click the Henhouse
@@ -633,11 +613,10 @@
             <strong>Camo Sight</strong> (or Epic/Legendary Mutations / Watchtower Roost Lv3).
           </li>
           <li>
-            <strong>SWARM DIFFICULTIES &amp; IDLE FARMING:</strong> Higher difficulties spawn
-            <strong>bigger enemy swarms</strong> (<strong>Hard 1.65x</strong>,
-            <strong>Nightmare 2.4x</strong>) with <strong>1.0x HP</strong> so you earn Gem Eggs much
-            faster! Or click <strong>GO IDLE</strong> to let <strong>Brawler Bantam</strong> slowly
-            farm <strong>~1 Gem Egg per 10 minutes</strong>!
+            <strong>5 DIFFICULTIES (INCLUDING TRUE FOX-HUNT!) &amp; IDLE MODE:</strong> Choose from
+            <strong>Easy</strong> up to <strong>Nightmare</strong> (`2.4x` swarms) or
+            <strong>True Fox-Hunt</strong> (`+40%` costs &amp; Fox Bosses ambushing way earlier starting
+            Wave 3!), or click <strong>GO IDLE</strong> (`~1 Gem Egg per 10 mins`)!
           </li>
         </ul>
         <button id="btn-close-rules" class="primary-modal-btn" type="button">
@@ -659,7 +638,7 @@
           <img id="icon-victory-battle-egg" class="px-icon px-icon-lg" alt="" />
           <div>
             <strong id="victory-eggs-earned">+0 GEM EGGS EARNED!</strong>
-            <span id="victory-eggs-total">OWNED GEM EGGS: 0 &bull; OPEN IN MAIN MENU!</span>
+            <span id="victory-eggs-total">OWNED GEM EGGS: 0 &bull; SPEND IN SHOP!</span>
           </div>
         </div>
         <div class="modal-btn-row">
@@ -667,7 +646,7 @@
             CONTINUE FREEPLAY
           </button>
           <button id="btn-shop-victory" class="gem-cta-btn" type="button">
-            OPEN GEM EGGS
+            SHOP
           </button>
           <button id="btn-menu-victory" class="secondary-modal-btn" type="button">
             MAIN MENU
@@ -755,7 +734,7 @@
           </button>
           <button id="btn-shop-gameover" class="gem-cta-btn" type="button">
             <img id="icon-defeat-gem-shop" class="px-icon px-icon-sm" alt="" />
-            <span id="lbl-defeat-shop-btn">OPEN GEM EGGS</span>
+            <span id="lbl-defeat-shop-btn">SHOP</span>
           </button>
           <button id="btn-menu-gameover" class="secondary-modal-btn" type="button">
             MAIN MENU

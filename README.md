@@ -1,13 +1,13 @@
 # ChickenTD
 
-A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tower defense & support auras**, and **Battle Cats gacha, mutations, & cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **4 Difficulties**, deploy and upgrade **38 specialized pixel-art Chicken Troops** (including 4 **Support Aura** Chickens), fire and customize **5 rechargeable Cluck Cannons**, and earn **Gem Eggs** directly (`1 Gem Egg per 1,000 Enemies killed`) to unlock new units, **Cluck Cannon loadouts**, and **4-Tier Mutations**.
+A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tower defense & support auras**, and **Battle Cats gacha, mutations, & cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **5 Difficulties** (including **True Fox-Hunt**), deploy and upgrade **39 specialized pixel-art Chicken Troops** (including 4 **Support Aura** Chickens and **The Complete Cluck**), fire and customize **5 rechargeable Cluck Cannons**, and earn **Gem Eggs** directly (`1 Gem Egg per 1,000 Enemies killed`) to unlock new units, **Cluck Cannon loadouts**, and **Mutations** in the **Shop**.
 
 ## Core Mechanics
 
-- **Main Menu — 5 Maps, 4 Swarm Difficulties, 5 Cluck Cannons, Idle Mode & Gem Egg Hatchery**:
+- **Main Menu & Shop — 5 Maps, 5 Difficulties, Cluck Cannon Loadout & Idle Mode**:
   - **Maps**: *Sunny Clover Meadow* (`Beginner`), *Frostbite Pine Fjord* (`Intermediate`), *Scorched Roost Caldera* (`Advanced`), *Whispering Honey-Bog* (`Expert`), and *Cosmic Egg Sanctum* (`Master`).
-  - **Swarm Difficulties (Faster Gem Eggs!)**: Higher difficulties keep Enemy HP at `1.0x` instead of making enemies sponge hits, and instead spawn **larger swarms** — *Chickadee* (`0.75x` Enemies), *Barnyard* (`1.0x` Enemies), *Fox-Hunt* (`1.65x` Enemies), and *Henpocalypse* (`2.4x` Enemies) — so skilled players earn Gem Eggs up to **2.4x faster**!
-  - **Brawler Bantam Idle Mode (`GO IDLE`)**: Click **GO IDLE** from the Main Menu, Gem Egg Hatchery, or Top HUD to watch **Brawler Bantam** patrol the pasture and strike down strolling enemies (`100` kills/min = **1 Gem Egg every 10 minutes**), safely pausing your active battle and tracking wall-clock time even in background tabs!
+  - **5 Difficulties (Including True Fox-Hunt!)**: Higher difficulties keep Enemy HP at `1.0x` and spawn **larger swarms** — *Chickadee* (`0.75x` Enemies), *Barnyard* (`1.0x` Enemies), *Fox-Hunt* (`1.65x` Enemies), *Henpocalypse* (`2.4x` Enemies), and **True Fox-Hunt** (`+40%` Shop Costs & Giant Fox Bosses ambushing way earlier starting on Wave 3!).
+  - **Brawler Bantam Idle Mode (`GO IDLE`)**: Click **GO IDLE** from the Main Menu, Shop, or Top HUD to watch **Brawler Bantam** patrol the pasture and strike down strolling enemies (`100` kills/min = **1 Gem Egg every 10 minutes**), safely pausing your active battle and tracking wall-clock time even in background tabs!
   - **Installable App & Portable Offline Download (`GET APP`)**: Install ChickenTD as a standalone Desktop/Mobile App (PWA with offline caching, custom pixel icon, and its own window) or download a single self-contained `ChickenTD.html` file to play offline anywhere!
 - **Battle Cats Progression — Gem Eggs, Full Auto-Save & Mutations**:
   - **Direct Gem Egg Drops**: Earn **1 Gem Egg per 1,000 Enemies killed** (kill progress carries over across rounds and saves automatically!).
@@ -15,8 +15,8 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
   - **Starter vs. Gem Egg Roster**: You start with the **16 classic Chickens up to Cyber-Cluck 9000** (including **Roost Beacon** & **Espresso Brew-Hen** support towers). All **22 units after Cyber-Cluck 9000** are unlocked by opening your **Gem Eggs** in the Main Menu!
   - **1x, 4x & 8x Multi-Hatch Cutscene**: Crack open **1 Gem Egg**, **4 Gem Eggs at a time**, or **8 Gem Eggs at a time** in an animated crystalline egg-shattering cutscene!
   - **4-Tier Duplicate Mutations & `+Levels`**: Pulling a unit you already own awakens a **Mutation** (**Common `55%`**, **Rare `28%`**, **Epic `13%`**, **Legendary `4%`**) plus permanent Battle Cats **`+Levels`**!
-- **5 Swappable Cluck Cannons (Unlock with Gem Eggs) & Combat Features**:
-  - **Cluck Cannon Armory (`[TAB]`)**: Buy new cannons permanently with **Gem Eggs** and swap between them anytime in the Main Menu, Gem Egg Hatchery, or in-game `CANNON` tab:
+- **5 Swappable Cluck Cannons (Equip in Shop Before Battle) & Combat Features**:
+  - **Cluck Cannon Loadout (`[TAB]`)**: Buy new cannons permanently with **Gem Eggs** and equip your loadout in the **Shop** before starting a run (your chosen cannon is locked for the duration of each game!):
     - **Shockwave Cannon** (*Starter — Free*): Full-lane shockwave beam with wave-scaled damage, `68px` knockback, and `58%` slow.
     - **Time-Stop Cannon** (*`2` Gem Eggs*): Stops time across the map — freezes all Bugs solid at `0` speed for `5.0s` (`3.8s` vs Giant Fox Bosses) + temporal rift damage!
     - **Damage Boost Cannon** (*`2` Gem Eggs*): Supercharges ALL Chicken Troops with **`2.0x` Damage** & **`+35%` Attack Speed** for `8.0s` + shock burst!
@@ -31,7 +31,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 - **Zero Enemy Gold — 100% Henhouse Economy (`12 CPS` Cap)**:
   - Defeating Bugs and Foxes awards **0 Corn**! Harvest Corn during active waves at the **Henhouse Clicker** (capped at `12 CPS`) alongside passive **Farmhand Chicks** and **9 Clicker Upgrades**.
 
-## All 38 Chicken Units (4 Tiers Each)
+## All 39 Chicken Units (4 Tiers Each)
 
 ### Starter Coop (Unlocked from Start — Units 1–16)
 1. **Brawler Bantam** — Close Melee Flurry
@@ -75,6 +75,9 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 37. **Singularity Hen** — Black-Hole Horizon
 38. **Golden Cluck-God** — Supreme Battle Deity (`1,000,000` Corn!)
 
+### Completionist Pinnacle Unit (Unlocked Only by Owning All 38 Other Chickens)
+39. **The Complete Cluck** — Terrarian Zenith Blade (`3,000,000` Corn! Preset **Mastered** `+150% DMG, +200% Range` <-> **Aether** `+300% DMG, +0% Extra Range`; unaffected by Support Aura units!)
+
 ## Controls
 
 | Input | Action |
@@ -82,7 +85,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 | **Pointer Click on Henhouse** | Harvest Corn during active waves (strictly capped at `12 CPS`) |
 | **Click Chicken Card in Troops Tab** | Select any unlocked Chicken Troop to deploy on the map |
 | `Tab` / **Cluck Cannon Button** | Fire equipped Cluck Cannon when 100% charged |
-| **Change Cannon / `CANNON` Tab** | Buy & swap Cluck Cannons (`Time-Stop`, `Damage Boost`, etc.) with Gem Eggs |
+| **`SHOP` (Main Menu)** | Open Gem Eggs & select your Cluck Cannon loadout before starting a game |
 | **Click Placed Chicken** | Open Inspector to Upgrade (`Tier 1–4`), change Targeting, or Sell |
 | `Space` | Start Next Wave (or Skip Gem Egg Cutscene) |
 | `Esc` / Right-Click | Cancel placement or close inspector / shop |

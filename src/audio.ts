@@ -179,7 +179,7 @@ export class ChickenAudioEngine {
   }
 
   public playEggReveal(kind: 'new' | MutationTier): void {
-    if (kind === 'new' || kind === 'legendary') {
+    if (kind === 'new' || kind === 'legendary' || kind === 'mastered' || kind === 'aether') {
       // Grand triumphant 4-note Battle-Cats Uber/Legend fanfare!
       this.tone('triangle', 523.25, 523.25, 0.12, 0.24, 0.0);
       this.tone('triangle', 659.25, 659.25, 0.12, 0.24, 0.1);

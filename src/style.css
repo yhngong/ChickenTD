@@ -1113,11 +1113,11 @@ button {
 
 .menu-diff-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 980px) {
   .menu-diff-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3021,4 +3021,62 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
+}
+
+/* ==================== THE COMPLETE CLUCK (MASTERED & AETHER ZENITH FORMS) ==================== */
+.mut-badge.mastered {
+  color: #2dd4bf;
+  background: #0d2d2a;
+  border-color: #14b8a6;
+}
+
+.mut-badge.aether {
+  color: #e879f9;
+  background: #2e1042;
+  border-color: #c084fc;
+}
+
+.coll-card.mut-mastered {
+  border-color: #2dd4bf;
+  background: #0d2324;
+  box-shadow: 0 0 0 1px #facc15, 0 3px 0 var(--pixel-shadow);
+}
+
+.coll-card.mut-aether {
+  border-color: #e879f9;
+  background: #221035;
+  box-shadow: 0 0 0 1px #38bdf8, 0 3px 0 var(--pixel-shadow);
+}
+
+.zenith-swap-btn {
+  margin-top: 5px;
+  width: 100%;
+  padding: 4px 6px;
+  font-family: var(--font-px-head);
+  font-size: 8px;
+  background: #1e1b4b;
+  color: #fef08a;
+  border: 2px solid #2dd4bf;
+  box-shadow: 0 2px 0 var(--pixel-shadow);
+}
+
+.zenith-swap-btn.is-aether {
+  background: #3b0764;
+  border-color: #e879f9;
+}
+
+.zenith-swap-btn:hover {
+  filter: brightness(1.15);
+}
+
+.zenith-mut-btn {
+  background: #0f3a36;
+  border-color: #2dd4bf;
+  color: #99f6e4;
+}
+
+.zenith-mut-btn.is-aether {
+  background: #3b0764;
+  border-color: #e879f9;
+  color: #f5d0fe;
 }

@@ -90,12 +90,13 @@ export const CANNON_DEFS: Record<CannonTypeId, CannonDef> = {
   },
 };
 
-// ==================== 4 SELECTABLE DIFFICULTIES ====================
+// ==================== 5 SELECTABLE DIFFICULTIES ====================
 export const DIFFICULTY_ORDER: readonly DifficultyId[] = [
   'easy',
   'normal',
   'hard',
   'nightmare',
+  'true_fox_hunt',
 ];
 
 export const DIFFICULTY_DEFS: Record<DifficultyId, DifficultyDef> = {
@@ -151,11 +152,25 @@ export const DIFFICULTY_DEFS: Record<DifficultyId, DifficultyDef> = {
     accentColor: '#F43F5E',
     description: '120 Corn • 5 Eggs • +20% Costs • 2.4x Enemies (2.4x Faster Gem Eggs!)',
   },
+  true_fox_hunt: {
+    id: 'true_fox_hunt',
+    name: 'True Fox-Hunt',
+    badge: 'TRUE FOX',
+    startingCorn: 170,
+    startingEggs: 5,
+    costMult: 1.4,
+    enemyHpMult: 1.0,
+    enemyCountMult: 1.45,
+    enemySpeedMult: 1.18,
+    accentColor: '#E879F9',
+    description: '170 Corn • 5 Eggs • +40% Costs • Foxes Spawn Way Earlier!',
+  },
 };
 
-// 38 Playable Chicken Units:
+// 39 Playable Chicken Units:
 // - First 16 units (up to 'mecha' Cyber-Cluck 9000) are unlocked from the start!
-// - All 22 units after Cyber-Cluck 9000 are earned from Gem Eggs!
+// - Next 22 units are earned from Gem Eggs!
+// - #39 ('complete_cluck' — The Complete Cluck) unlocks ONLY when all 38 other Chickens are owned!
 export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'bantam',
   'pecker',
@@ -196,6 +211,8 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'gaia_creator',
   'void_singularity',
   'cat_god_supreme',
+  // === COMPLETIONIST PINNACLE UNIT ===
+  'complete_cluck',
 ];
 
 export const STARTER_CUTOFF_INDEX = CHICKEN_ORDER.indexOf('mecha');
@@ -205,6 +222,9 @@ export const STARTER_CHICKEN_IDS: readonly ChickenTypeId[] = CHICKEN_ORDER.slice
 );
 export const GEM_EGG_CHICKEN_IDS: readonly ChickenTypeId[] = CHICKEN_ORDER.slice(
   STARTER_CUTOFF_INDEX + 1
+).filter((id) => id !== 'complete_cluck');
+export const REQUIRED_FOR_COMPLETE_CLUCK_IDS: readonly ChickenTypeId[] = CHICKEN_ORDER.filter(
+  (id) => id !== 'complete_cluck'
 );
 
 export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
@@ -3594,6 +3614,99 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
       },
     ],
   },
+
+  // 39. THE COMPLETE CLUCK — Terraria Zenith Pinnacle! Unlocked ONLY by owning all 38 other Chickens!
+  // Base range is tight (120 -> 155 px) so swapping between Mastered (+150% DMG, +200% Range => 360 -> 465 px)
+  // and Aether (+300% DMG, +0% Range => 120 -> 155 px) creates a true strategic range-vs-DPS choice!
+  complete_cluck: {
+    id: 'complete_cluck',
+    name: 'The Complete Cluck',
+    role: 'Terrarian Zenith Blade',
+    baseCost: 3000000,
+    featherColor: '#ECFDF5',
+    bellyColor: '#99F6E4',
+    accentColor: '#2DD4BF',
+    projectileStyle: 'zenith_blade',
+    tiers: [
+      {
+        tierName: 'Forged Zenith Sovereign',
+        upgradeCost: 0,
+        damage: 1350,
+        fireRate: 10.5,
+        range: 120,
+        pierce: 28,
+        projectiles: 4,
+        projectileSpeed: 1350,
+        splashRadius: 28,
+        slowFactor: 0.45,
+        slowDuration: 2.0,
+        burnDps: 1100,
+        foxDamageMult: 6.5,
+        camoSight: true,
+        knockback: 36,
+        savageCritChance: 0.35,
+        description:
+          'Sweeping Terraria Zenith sword arcs! Swap Mastered (wide range) or Aether (close DPS). No Support buffs!',
+      },
+      {
+        tierName: 'Terra-Meowmere Vortex',
+        upgradeCost: 2400000,
+        damage: 2500,
+        fireRate: 11.8,
+        range: 130,
+        pierce: 36,
+        projectiles: 5,
+        projectileSpeed: 1480,
+        splashRadius: 34,
+        slowFactor: 0.54,
+        slowDuration: 2.5,
+        burnDps: 2200,
+        foxDamageMult: 7.5,
+        camoSight: true,
+        knockback: 46,
+        savageCritChance: 0.42,
+        description: '5 converging rainbow sword arcs carve through entire boss formations!',
+      },
+      {
+        tierName: 'Influx-Solar Infinity',
+        upgradeCost: 5200000,
+        damage: 4600,
+        fireRate: 13.2,
+        range: 142,
+        pierce: 46,
+        projectiles: 6,
+        projectileSpeed: 1620,
+        splashRadius: 40,
+        slowFactor: 0.62,
+        slowDuration: 3.1,
+        burnDps: 4200,
+        foxDamageMult: 8.6,
+        camoSight: true,
+        knockback: 58,
+        savageCritChance: 0.48,
+        description: '6 prismatic infinity blades at 13.2/s with 48% 3x Savage Strikes!',
+      },
+      {
+        tierName: 'True Zenith Complete Cluck',
+        upgradeCost: 10500000,
+        damage: 8800,
+        fireRate: 14.5,
+        range: 155,
+        pierce: 60,
+        projectiles: 7,
+        projectileSpeed: 1760,
+        splashRadius: 46,
+        slowFactor: 0.68,
+        slowDuration: 3.8,
+        burnDps: 8200,
+        foxDamageMult: 9.8,
+        camoSight: true,
+        knockback: 70,
+        savageCritChance: 0.55,
+        description: 'All 38 Chickens forged into one ultimate Zenith storm! 55% Crits & 9.8x vs Foxes!',
+      },
+    ],
+  },
 };
 
 /**
@@ -4380,13 +4493,170 @@ export function getWaveSpeedScale(waveNumber: number): number {
   return Math.min(4.0, 2.05 + (waveNumber - CAMPAIGN_WAVES) * 0.12);
 }
 
-export function getWaveDefinition(waveNumber: number): WaveDefinition {
+const TRUE_FOX_HUNT_EARLY_FOXES: Record<
+  number,
+  {
+    alert: string;
+    foxGroups: readonly {
+      enemyType: EnemyTypeId;
+      count: number;
+      intervalSec: number;
+      startDelaySec: number;
+    }[];
+  }
+> = {
+  3: {
+    alert: '[TRUE FOX-HUNT] Early Red Scout Fox ambushing on Wave 3!',
+    foxGroups: [{ enemyType: 'fox_scout', count: 1, intervalSec: 2.5, startDelaySec: 2.2 }],
+  },
+  4: {
+    alert: '[TRUE FOX-HUNT] Red Scout Fox leading the meadow raid!',
+    foxGroups: [{ enemyType: 'fox_scout', count: 1, intervalSec: 2.5, startDelaySec: 1.6 }],
+  },
+  5: {
+    alert: '[TRUE FOX-HUNT] Twin Red Scout Foxes charging early!',
+    foxGroups: [{ enemyType: 'fox_scout', count: 2, intervalSec: 3.4, startDelaySec: 1.4 }],
+  },
+  6: {
+    alert: '[TRUE FOX-HUNT] Early Armored Timber Fox + Scout Fox!',
+    foxGroups: [
+      { enemyType: 'fox_scout', count: 1, intervalSec: 2.2, startDelaySec: 1.0 },
+      { enemyType: 'fox_timber', count: 1, intervalSec: 3.0, startDelaySec: 2.8 },
+    ],
+  },
+  7: {
+    alert: '[TRUE FOX-HUNT] Armored Timber Fox + Camo Night-Moths!',
+    foxGroups: [{ enemyType: 'fox_timber', count: 1, intervalSec: 3.0, startDelaySec: 1.8 }],
+  },
+  8: {
+    alert: '[TRUE FOX-HUNT] Early Shadow Kitsune & Timber Fox assault!',
+    foxGroups: [
+      { enemyType: 'fox_timber', count: 1, intervalSec: 2.5, startDelaySec: 1.2 },
+      { enemyType: 'fox_kitsune', count: 1, intervalSec: 3.5, startDelaySec: 2.6 },
+    ],
+  },
+  9: {
+    alert: '[TRUE FOX-HUNT] Shadow Kitsune rushing with Iron Beetles!',
+    foxGroups: [{ enemyType: 'fox_kitsune', count: 1, intervalSec: 3.0, startDelaySec: 1.5 }],
+  },
+  10: {
+    alert: '[TRUE FOX-HUNT] Early Wraith Camo-Fox & Shadow Kitsune!',
+    foxGroups: [
+      { enemyType: 'fox_kitsune', count: 1, intervalSec: 2.6, startDelaySec: 1.2 },
+      { enemyType: 'fox_phantom', count: 1, intervalSec: 3.0, startDelaySec: 2.4 },
+    ],
+  },
+  11: {
+    alert: '[TRUE FOX-HUNT] Early Glacial Frost-Fox & Wraith Camo-Fox!',
+    foxGroups: [
+      { enemyType: 'fox_phantom', count: 1, intervalSec: 2.4, startDelaySec: 1.0 },
+      { enemyType: 'fox_frost', count: 1, intervalSec: 3.2, startDelaySec: 2.2 },
+    ],
+  },
+  12: {
+    alert: '[TRUE FOX-HUNT] Early Mega Alpha Reynard Titan!',
+    foxGroups: [{ enemyType: 'fox_alpha', count: 1, intervalSec: 3.5, startDelaySec: 1.8 }],
+  },
+  13: {
+    alert: '[TRUE FOX-HUNT] Mega Alpha Reynard + Glacial Frost-Fox!',
+    foxGroups: [
+      { enemyType: 'fox_frost', count: 1, intervalSec: 2.5, startDelaySec: 1.2 },
+      { enemyType: 'fox_alpha', count: 1, intervalSec: 3.2, startDelaySec: 2.4 },
+    ],
+  },
+  14: {
+    alert: '[TRUE FOX-HUNT] Early Cyber-Reynard MK-X Mecha Fox!',
+    foxGroups: [{ enemyType: 'fox_mecha', count: 1, intervalSec: 3.2, startDelaySec: 1.8 }],
+  },
+  15: {
+    alert: '[TRUE FOX-HUNT] Cyber-Reynard MK-X + Mega Alpha Reynard!',
+    foxGroups: [
+      { enemyType: 'fox_alpha', count: 1, intervalSec: 2.5, startDelaySec: 1.2 },
+      { enemyType: 'fox_mecha', count: 1, intervalSec: 3.0, startDelaySec: 2.4 },
+    ],
+  },
+  16: {
+    alert: '[TRUE FOX-HUNT] Early Solar Phoenix Fox blazing in on Wave 16!',
+    foxGroups: [{ enemyType: 'fox_phoenix', count: 1, intervalSec: 3.6, startDelaySec: 2.0 }],
+  },
+  17: {
+    alert: '[TRUE FOX-HUNT] Solar Phoenix Fox + Cyber-Reynard MK-X!',
+    foxGroups: [
+      { enemyType: 'fox_mecha', count: 1, intervalSec: 2.4, startDelaySec: 1.2 },
+      { enemyType: 'fox_phoenix', count: 1, intervalSec: 3.4, startDelaySec: 2.2 },
+    ],
+  },
+  18: {
+    alert: '[TRUE FOX-HUNT] Twin Solar Phoenix Foxes incoming!',
+    foxGroups: [{ enemyType: 'fox_phoenix', count: 2, intervalSec: 3.0, startDelaySec: 1.5 }],
+  },
+  19: {
+    alert: '[TRUE FOX-HUNT] Early Nebula Cosmic Fox Titan on Wave 19!',
+    foxGroups: [{ enemyType: 'fox_cosmic', count: 1, intervalSec: 4.0, startDelaySec: 2.2 }],
+  },
+  20: {
+    alert: '[TRUE FOX-HUNT] Nebula Cosmic Fox + Solar Phoenix Fox!',
+    foxGroups: [
+      { enemyType: 'fox_phoenix', count: 1, intervalSec: 2.5, startDelaySec: 1.2 },
+      { enemyType: 'fox_cosmic', count: 1, intervalSec: 4.0, startDelaySec: 2.4 },
+    ],
+  },
+  21: {
+    alert: '[TRUE FOX-HUNT] Nebula Cosmic Fox leading the Wraith pack!',
+    foxGroups: [{ enemyType: 'fox_cosmic', count: 1, intervalSec: 3.8, startDelaySec: 1.8 }],
+  },
+  22: {
+    alert: '[TRUE FOX-HUNT] Nebula Cosmic Fox + Solar Phoenix Foxes!',
+    foxGroups: [{ enemyType: 'fox_cosmic', count: 1, intervalSec: 3.6, startDelaySec: 1.6 }],
+  },
+  23: {
+    alert: '[TRUE FOX-HUNT] Twin Nebula Cosmic Foxes!',
+    foxGroups: [{ enemyType: 'fox_cosmic', count: 2, intervalSec: 3.8, startDelaySec: 1.5 }],
+  },
+  24: {
+    alert: '[TRUE FOX-HUNT] Twin Nebula Cosmic Foxes + Phoenix Swarm!',
+    foxGroups: [{ enemyType: 'fox_cosmic', count: 2, intervalSec: 3.4, startDelaySec: 1.2 }],
+  },
+  25: {
+    alert: '[TRUE FOX-HUNT FINALE] Immediate Cosmic Fox Ambush (+2 Extra Cosmic Foxes)!',
+    foxGroups: [{ enemyType: 'fox_cosmic', count: 2, intervalSec: 2.8, startDelaySec: 0.5 }],
+  },
+};
+
+export function getWaveDefinition(
+  waveNumber: number,
+  difficultyId: DifficultyId = 'normal'
+): WaveDefinition {
   if (waveNumber >= 1 && waveNumber <= HANDCRAFTED_WAVES.length) {
-    return HANDCRAFTED_WAVES[waveNumber - 1];
+    const base = HANDCRAFTED_WAVES[waveNumber - 1];
+    if (difficultyId !== 'true_fox_hunt') {
+      return base;
+    }
+    const earlySpec = TRUE_FOX_HUNT_EARLY_FOXES[waveNumber];
+    const groups = base.groups.map((grp) => {
+      if (ENEMY_DEFS[grp.enemyType].isFoxBoss) {
+        return {
+          ...grp,
+          startDelaySec: Math.max(0.25, Number((grp.startDelaySec * 0.35).toFixed(2))),
+          intervalSec: Math.max(0.4, Number((grp.intervalSec * 0.75).toFixed(2))),
+        };
+      }
+      return grp;
+    });
+    if (earlySpec) {
+      groups.push(...earlySpec.foxGroups);
+    }
+    return {
+      waveNumber: base.waveNumber,
+      title: earlySpec ? `${base.title} [FOX AMBUSH]` : base.title,
+      callout: earlySpec ? earlySpec.alert : `[TRUE FOX-HUNT] +40% Shop Costs — Farm Corn fast before Wave 3 Foxes!`,
+      groups,
+    };
   }
   const extra = waveNumber - HANDCRAFTED_WAVES.length;
-  const cosmicCount = 2 + extra + Math.floor(extra * extra * 0.18);
-  const phoenixCount = 3 + extra * 2;
+  const isTrueFox = difficultyId === 'true_fox_hunt';
+  const cosmicCount = 2 + extra + Math.floor(extra * extra * 0.18) + (isTrueFox ? 2 : 0);
+  const phoenixCount = 3 + extra * 2 + (isTrueFox ? 2 : 0);
   const mechaCount = 4 + extra * 2;
   const phantomCount = 6 + extra * 3;
   const hpMult = getWaveHpScale(waveNumber);
@@ -4408,19 +4678,19 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
         enemyType: 'fox_mecha',
         count: mechaCount,
         intervalSec: Math.max(0.45, 1.4 - extra * 0.08),
-        startDelaySec: 1.0,
+        startDelaySec: isTrueFox ? 0.35 : 1.0,
       },
       {
         enemyType: 'fox_phoenix',
         count: phoenixCount,
         intervalSec: Math.max(0.6, 2.0 - extra * 0.1),
-        startDelaySec: 2.2,
+        startDelaySec: isTrueFox ? 0.6 : 2.2,
       },
       {
         enemyType: 'fox_cosmic',
         count: cosmicCount,
         intervalSec: Math.max(1.1, 4.2 - extra * 0.2),
-        startDelaySec: 4.0,
+        startDelaySec: isTrueFox ? 0.9 : 4.0,
       },
     ],
   };

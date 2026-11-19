@@ -5,6 +5,7 @@ import {
   CHICKEN_ORDER,
   DIFFICULTY_ORDER,
   GEM_EGG_CHICKEN_IDS,
+  REQUIRED_FOR_COMPLETE_CLUCK_IDS,
   STARTER_CHICKEN_IDS,
 } from './data';
 import { MAP_ORDER } from './map';
@@ -39,7 +40,7 @@ export type RedeemCodeResult =
   | { status: 'already_redeemed'; code: string }
   | { status: 'invalid' };
 
-export const MUTATION_ORDER: readonly MutationTier[] = [
+export const MUTATION_ORDER: readonly ('common' | 'rare' | 'epic' | 'legendary')[] = [
   'common',
   'rare',
   'epic',
@@ -51,6 +52,8 @@ export const MUTATION_RANK: Record<MutationTier, number> = {
   rare: 2,
   epic: 3,
   legendary: 4,
+  mastered: 5,
+  aether: 5,
 };
 
 export const MUTATION_DEFS: Record<MutationTier, MutationDef> = {
@@ -134,6 +137,46 @@ export const MUTATION_DEFS: Record<MutationTier, MutationDef> = {
     bonusKnockback: 13.5,
     summary:
       '+112.5% DMG • +30% Spd • +1 Shot • +4 Pierce • 11% Crit & KB • -16.5% Cost',
+  },
+  mastered: {
+    id: 'mastered',
+    name: 'Mastered',
+    subtitle: 'Zenith Blade Mastery',
+    chance: 0,
+    color: '#2DD4BF',
+    borderColor: '#14B8A6',
+    bgTint: '#0D2D2A',
+    damageMult: 2.5,
+    fireRateMult: 1.0,
+    rangeMult: 3.0,
+    bonusPierce: 0,
+    bonusProjectiles: 0,
+    foxMult: 1.0,
+    costMult: 1.0,
+    grantsCamo: true,
+    bonusCritChance: 0,
+    bonusKnockback: 0,
+    summary: '+150% DMG • +200% Range (Wide-Map Zenith Arcs)',
+  },
+  aether: {
+    id: 'aether',
+    name: 'Aether',
+    subtitle: 'Shimmer-Forged Overdrive',
+    chance: 0,
+    color: '#E879F9',
+    borderColor: '#C084FC',
+    bgTint: '#2E1042',
+    damageMult: 4.0,
+    fireRateMult: 1.0,
+    rangeMult: 1.0,
+    bonusPierce: 0,
+    bonusProjectiles: 0,
+    foxMult: 1.0,
+    costMult: 1.0,
+    grantsCamo: true,
+    bonusCritChance: 0,
+    bonusKnockback: 0,
+    summary: '+300% DMG • +0% Extra Range (Close-Range Shredder)',
   },
 };
 
@@ -221,9 +264,23 @@ export class ProgressionStore {
       if (parsed.unitMutations && typeof parsed.unitMutations === 'object') {
         for (const id of CHICKEN_ORDER) {
           const m = parsed.unitMutations[id];
-          if (m && m in MUTATION_DEFS) {
+          if (id === 'complete_cluck') {
+            if (m === 'mastered' || m === 'aether') {
+              unitMutations[id] = m;
+            }
+          } else if (m === 'common' || m === 'rare' || m === 'epic' || m === 'legendary') {
             unitMutations[id] = m;
           }
+        }
+      }
+
+      const ownsAllOthers = REQUIRED_FOR_COMPLETE_CLUCK_IDS.every(
+        (id) => unlockedUnits[id] === true
+      );
+      if (ownsAllOthers) {
+        unlockedUnits.complete_cluck = true;
+        if (unitMutations.complete_cluck !== 'aether') {
+          unitMutations.complete_cluck = 'mastered';
         }
       }
 
@@ -397,9 +454,39 @@ export class ProgressionStore {
     return this.data.gemEggsOpened;
   }
 
+  private hasAllOtherChickens(): boolean {
+    for (const id of REQUIRED_FOR_COMPLETE_CLUCK_IDS) {
+      if (!STARTER_CHICKEN_IDS.includes(id) && this.data.unlockedUnits[id] !== true) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   public isUnlocked(id: ChickenTypeId): boolean {
+    if (id === 'complete_cluck') {
+      const unlocked = this.hasAllOtherChickens();
+      if (unlocked) {
+        this.data.unlockedUnits.complete_cluck = true;
+        if (
+          this.data.unitMutations.complete_cluck !== 'mastered' &&
+          this.data.unitMutations.complete_cluck !== 'aether'
+        ) {
+          this.data.unitMutations.complete_cluck = 'mastered';
+        }
+      }
+      return unlocked;
+    }
     if (STARTER_CHICKEN_IDS.includes(id)) return true;
     return this.data.unlockedUnits[id] === true;
+  }
+
+  public getNonCompleteUnlockedCount(): number {
+    let count = 0;
+    for (const id of REQUIRED_FOR_COMPLETE_CLUCK_IDS) {
+      if (this.isUnlocked(id)) count++;
+    }
+    return count;
   }
 
   public getUnlockedCount(): number {
@@ -411,7 +498,20 @@ export class ProgressionStore {
   }
 
   public getMutation(id: ChickenTypeId): MutationTier | null {
+    if (id === 'complete_cluck') {
+      if (!this.isUnlocked('complete_cluck')) return null;
+      return this.data.unitMutations.complete_cluck === 'aether' ? 'aether' : 'mastered';
+    }
     return this.data.unitMutations[id] ?? null;
+  }
+
+  public toggleCompleteCluckMutation(): 'mastered' | 'aether' | null {
+    if (!this.isUnlocked('complete_cluck')) return null;
+    const next: 'mastered' | 'aether' =
+      this.data.unitMutations.complete_cluck === 'aether' ? 'mastered' : 'aether';
+    this.data.unitMutations.complete_cluck = next;
+    this.save();
+    return next;
   }
 
   public getPlusLevel(id: ChickenTypeId): number {
@@ -567,6 +667,17 @@ export class ProgressionStore {
           mutationUpgraded: upgraded,
           plusLevel: nextPlus,
         });
+      }
+    }
+
+    // Automatically forge & unlock "The Complete Cluck" (preset to Mastered) once all 38 other Chickens are owned!
+    if (this.hasAllOtherChickens()) {
+      this.data.unlockedUnits.complete_cluck = true;
+      if (
+        this.data.unitMutations.complete_cluck !== 'mastered' &&
+        this.data.unitMutations.complete_cluck !== 'aether'
+      ) {
+        this.data.unitMutations.complete_cluck = 'mastered';
       }
     }
 
