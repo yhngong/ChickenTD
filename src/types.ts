@@ -17,7 +17,7 @@ export type ChickenTypeId =
   | 'brew_hen'
   | 'phoenix'
   | 'mecha'
-  // === 36 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
+  // === 37 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
   | 'iron_spurs'
   | 'ramen_chef'
   | 'bastion_shield'
@@ -51,10 +51,11 @@ export type ChickenTypeId =
   | 'mech_zilla'
   | 'gaia_creator'
   | 'void_singularity'
+  | 'malevolent_chicken'
   | 'golden_deity'
   | 'solar_emperor'
   | 'eternity_weaver'
-  // === COMPLETIONIST PINNACLE UNIT (UNLOCKED BY OWNING ALL 54 OTHERS) ===
+  // === COMPLETIONIST PINNACLE UNIT (UNLOCKED BY OWNING ALL 55 OTHERS) ===
   | 'complete_cluck';
 
 export type ProjectileStyle =
@@ -112,6 +113,8 @@ export type ProjectileStyle =
   | 'espresso_splash'
   | 'overclock_bolt'
   | 'idol_note'
+  | 'dismantle_slash'
+  | 'malevolent_shrine'
   | 'infinity_blade';
 
 export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary' | 'mastered' | 'aether';
@@ -312,7 +315,9 @@ export type ProjectileGimmick =
   | 'soul_curse'
   | 'divine_smite'
   | 'uppercut_ko'
-  | 'iaijutsu_wave';
+  | 'iaijutsu_wave'
+  | 'dismantle_cleave'
+  | 'shrine_crush';
 
 export interface ChickenTowerDef {
   id: ChickenTypeId;
@@ -365,6 +370,7 @@ export interface PlacedChicken {
   lockStacks?: number;
   orbitAngle?: number;
   orbitTickTimer?: number;
+  shrineCooldown?: number;
 }
 
 export interface ActiveStand {
@@ -420,7 +426,13 @@ export type ProjectileMotionMode =
   | 'rift_cross'
   | 'path_reverse';
 
-export type HazardZoneStyle = 'honey' | 'acid' | 'miasma' | 'whirlpool' | 'singularity';
+export type HazardZoneStyle =
+  | 'honey'
+  | 'acid'
+  | 'miasma'
+  | 'whirlpool'
+  | 'singularity'
+  | 'shrine_domain';
 
 export interface ActiveProjectile {
   id: number;
@@ -463,6 +475,7 @@ export interface ActiveProjectile {
   returnPhaseReset?: boolean;
   arcHeight?: number;
   spawnsZone?: HazardZoneStyle;
+  trackEnemyId?: number;
 }
 
 export interface VisualBeamEffect {

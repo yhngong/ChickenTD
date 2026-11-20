@@ -970,6 +970,7 @@ function getChickenSpriteLayout(typeId: ChickenTypeId): ChickenSpriteLayout {
     case 'mech_zilla':
     case 'gaia_creator':
     case 'void_singularity':
+    case 'malevolent_chicken':
     case 'golden_deity':
     case 'solar_emperor':
     case 'eternity_weaver':
@@ -1070,6 +1071,13 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
     px(6, 27, '#FACC15', 26, 5);
     px(8, 26, '#FEF9C3', 22, 4);
     px(10, 27, '#FFFFFF', 18, 2);
+  } else if (typeId === 'malevolent_chicken') {
+    // Cursed crimson & bleached-bone Domain seal beneath Malevolent Chicken!
+    px(6, 29, OUTLINE, 26, 4);
+    px(7, 30, '#450A0A', 24, 2);
+    px(9, 30, '#E11D48', 20, 1);
+    px(7, 28, '#F8FAFC', 2, 2);
+    px(29, 28, '#F8FAFC', 2, 2);
   }
 
   // ==================== 2. BACK-LAYER WINGS, CAPES, TREES & SWORD HALOS ====================
@@ -1155,6 +1163,22 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
     px(2, by + 3, OUTLINE, 34, 7);
     px(3, by + 4, '#A855F7', 32, 5);
     px(5, by + 5, '#22D3EE', 28, 3);
+  } else if (typeId === 'malevolent_chicken') {
+    // Jagged flickering black-and-crimson King-of-Curses flame wisps behind the King-Borb!
+    // Left flame wisp tapering upward to a sharp tip
+    px(6, 7, OUTLINE, 2, 3);
+    px(5, 10, OUTLINE, 4, 4);
+    px(4, 13, OUTLINE, 6, 9);
+    px(6, 8, '#E11D48', 1, 3);
+    px(5, 11, '#991B1B', 3, 10);
+    px(6, 13, '#FB7185', 2, 6);
+    // Right flame wisp tapering upward to a sharp tip
+    px(29, 6, OUTLINE, 2, 3);
+    px(28, 9, OUTLINE, 4, 4);
+    px(27, 12, OUTLINE, 6, 10);
+    px(29, 7, '#E11D48', 1, 3);
+    px(28, 10, '#991B1B', 3, 11);
+    px(28, 12, '#FB7185', 2, 6);
   } else if (typeId === 'golden_deity') {
     // Radiant golden sun-mandala halo behind the round King-Borb!
     px(4, 4, OUTLINE, 28, 20);
@@ -1826,6 +1850,69 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       px(bx + 19, by + 5, '#090D16', 4, 4);
       break;
     }
+    case 'malevolent_chicken': {
+      // Spiky salmon-pink Sukuna hair (sharp jagged anime spikes + dark undercut!)
+      px(bx + 2, by, OUTLINE, 13, 2);
+      px(bx + 3, by + 1, '#1E1B4B', 11, 1);
+      // 5 distinct sharp spiky pink tufts (left sweep, left-mid peak, tall center spike, right-mid peak, front bang spike)
+      // Outlines for each pointed spike
+      px(bx, by - 4, OUTLINE, 4, 4);
+      px(bx - 1, by - 5, OUTLINE, 2, 2);
+      px(bx + 3, by - 6, OUTLINE, 4, 6);
+      px(bx + 4, by - 7, OUTLINE, 2, 2);
+      px(bx + 7, by - 7, OUTLINE, 4, 7);
+      px(bx + 8, by - 9, OUTLINE, 2, 3);
+      px(bx + 11, by - 6, OUTLINE, 4, 6);
+      px(bx + 12, by - 8, OUTLINE, 2, 3);
+      px(bx + 14, by - 4, OUTLINE, 4, 4);
+      px(bx + 16, by - 5, OUTLINE, 2, 2);
+      // Vibrant Sukuna pink fill & bright rose-pink spike tips
+      px(bx, by - 4, '#F43F5E', 2, 1);
+      px(bx + 1, by - 3, '#FB7185', 3, 3);
+      px(bx + 4, by - 6, '#FDA4AF', 1, 2);
+      px(bx + 4, by - 4, '#FB7185', 3, 4);
+      px(bx + 8, by - 8, '#FDA4AF', 1, 3);
+      px(bx + 8, by - 5, '#FB7185', 2, 5);
+      px(bx + 7, by - 3, '#F43F5E', 1, 3);
+      px(bx + 12, by - 7, '#FDA4AF', 1, 2);
+      px(bx + 11, by - 5, '#FB7185', 3, 5);
+      px(bx + 15, by - 4, '#FDA4AF', 2, 1);
+      px(bx + 14, by - 3, '#F43F5E', 3, 3);
+      // Forehead, cheek & wing black Sukuna curse markings
+      px(bx + 9, by + 2, OUTLINE, 5, 1);
+      px(bx + 11, by + 3, OUTLINE, 1, 1);
+      px(bx + 5, by + 4, OUTLINE, 4, 1);
+      px(bx + 4, by + 6, OUTLINE, 4, 1);
+      px(bx + 2, wingY + 1, OUTLINE, 4, 1);
+      px(bx + 2, wingY + 3, OUTLINE, 4, 1);
+      // Iconic lower slitted crimson Sukuna eye beneath main eye!
+      px(bx + 11, by + 9, OUTLINE, 4, 1);
+      px(bx + 12, by + 9, '#EF4444', 2, 1);
+      // Dark-collared kimono overlap & crimson obi sash
+      px(bx + 5, by + 10, '#1E293B', 8, 2);
+      px(bx + 8, by + 10, '#FFF1F2', 2, 1);
+      px(bx + 4, by + 12, '#991B1B', 10, 1);
+      px(bx + 6, by + 12, '#E11D48', 6, 1);
+      // Curved crescent Dismantle shockwave slash hovering out front!
+      px(bx + 19, by, OUTLINE, 3, 3);
+      px(bx + 21, by + 2, OUTLINE, 3, 3);
+      px(bx + 22, by + 4, OUTLINE, 3, 4);
+      px(bx + 21, by + 7, OUTLINE, 3, 3);
+      px(bx + 19, by + 9, OUTLINE, 3, 3);
+      px(bx + 20, by + 1, '#E11D48', 2, 2);
+      px(bx + 22, by + 3, '#E11D48', 2, 5);
+      px(bx + 20, by + 9, '#E11D48', 2, 2);
+      px(bx + 20, by + 1, '#FFFFFF', 1, 1);
+      px(bx + 23, by + 4, '#FFFFFF', 1, 4);
+      px(bx + 20, by + 10, '#FFFFFF', 1, 1);
+      if (attackFrame) {
+        // Cross-Dismantle flash on attack!
+        px(bx + 19, by + 5, OUTLINE, 7, 3);
+        px(bx + 19, by + 6, '#E11D48', 7, 1);
+        px(bx + 20, by + 5, '#FFFFFF', 5, 1);
+      }
+      break;
+    }
     case 'golden_deity': {
       // Royal winged sun-crown + ruby jewel + divine golden scepter!
       px(bx + 3, by - 4, OUTLINE, 11, 4);
@@ -2425,12 +2512,121 @@ function buildGemEggStageSprite(stage: 0 | 1 | 2 | 3): HTMLCanvasElement {
   return c;
 }
 
+// ==================== 4.8. GIANT MALEVOLENT SHRINE PIXEL SPRITE (48x44 = 96x88 LOGICAL PX!) ====================
+function buildMalevolentShrineSprite(): HTMLCanvasElement {
+  const c = makeCanvas(48, 44);
+  const ctx = c.getContext('2d')!;
+  const px = (x: number, y: number, col: string, w = 1, h = 1) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y, w, h);
+  };
+
+  // 1. Golden Pagoda Spire / Finial
+  px(22, 1, OUTLINE, 4, 5);
+  px(23, 2, '#FACC15', 2, 3);
+  px(23, 1, '#FEF08A', 2, 1);
+
+  // 2. Upper Pagoda Tier (x=9..38, y=5..10)
+  px(8, 5, OUTLINE, 32, 6);
+  px(7, 4, OUTLINE, 3, 3);
+  px(38, 4, OUTLINE, 3, 3);
+  px(8, 5, '#E11D48', 2, 2);
+  px(38, 5, '#E11D48', 2, 2);
+  px(10, 6, '#1E293B', 28, 3);
+  px(12, 6, '#334155', 24, 1);
+  px(11, 9, '#991B1B', 26, 1);
+
+  // 3. Grand Sweeping Horned Shrine Roof (x=1..46, y=10..18)
+  px(3, 10, OUTLINE, 42, 8);
+  px(1, 9, OUTLINE, 4, 5);
+  px(43, 9, OUTLINE, 4, 5);
+  // Upturned ivory/crimson roof-horn tips
+  px(2, 9, '#F8FAFC', 2, 2);
+  px(44, 9, '#F8FAFC', 2, 2);
+  px(2, 11, '#E11D48', 3, 2);
+  px(43, 11, '#E11D48', 3, 2);
+  // Dark slate roof tiles + vertical ribs
+  px(4, 11, '#0F172A', 40, 5);
+  px(6, 11, '#1E293B', 36, 3);
+  for (let rx = 8; rx <= 38; rx += 5) {
+    px(rx, 11, '#475569', 2, 4);
+  }
+  // Crimson eaves & gold central crest
+  px(5, 16, '#991B1B', 38, 2);
+  px(7, 16, '#E11D48', 34, 1);
+  px(21, 14, '#FACC15', 6, 3);
+  px(22, 15, '#FEF08A', 4, 1);
+
+  // 4. Shrine Pillars, Horned Bull Skulls & Gaping Demonic Mouth Sanctum (y=18..36)
+  px(6, 18, OUTLINE, 36, 18);
+  // Left & Right crimson torii columns
+  px(7, 18, '#7F1D1D', 5, 18);
+  px(8, 18, '#DC2626', 2, 18);
+  px(36, 18, '#7F1D1D', 5, 18);
+  px(38, 18, '#DC2626', 2, 18);
+
+  // Bleached Horned Skulls flanking the Shrine!
+  // Left horned skull
+  px(3, 19, OUTLINE, 4, 5);
+  px(4, 20, '#F8FAFC', 2, 3);
+  px(6, 21, OUTLINE, 7, 8);
+  px(7, 22, '#F8FAFC', 5, 5);
+  px(7, 27, '#CBD5E1', 5, 1);
+  px(8, 24, OUTLINE, 1, 2);
+  px(10, 24, '#EF4444', 1, 2);
+  px(7, 30, '#E2E8F0', 5, 1);
+  px(7, 32, '#CBD5E1', 5, 1);
+  // Right horned skull
+  px(41, 19, OUTLINE, 4, 5);
+  px(42, 20, '#F8FAFC', 2, 3);
+  px(35, 21, OUTLINE, 7, 8);
+  px(36, 22, '#F8FAFC', 5, 5);
+  px(36, 27, '#CBD5E1', 5, 1);
+  px(37, 24, '#EF4444', 1, 2);
+  px(39, 24, OUTLINE, 1, 2);
+  px(36, 30, '#E2E8F0', 5, 1);
+  px(36, 32, '#CBD5E1', 5, 1);
+
+  // Central Gaping Demonic Mouth / Cursed Shrine Maw (x=13..34, y=18..35)
+  px(13, 18, '#450A0A', 22, 18);
+  px(14, 19, '#991B1B', 20, 2);
+  px(14, 33, '#991B1B', 20, 2);
+  px(15, 21, '#090D16', 18, 12);
+  // Sharp white upper & lower shrine fangs!
+  for (let fx = 16; fx <= 31; fx += 3) {
+    px(fx, 21, '#F8FAFC', 2, 2);
+  }
+  for (let fx = 17; fx <= 30; fx += 3) {
+    px(fx, 31, '#F8FAFC', 2, 2);
+  }
+  // Glowing cursed crimson core & crossed slash altar inside the maw
+  px(21, 24, '#E11D48', 6, 6);
+  px(22, 25, '#FB7185', 4, 4);
+  px(20, 26, '#FFFFFF', 8, 1);
+  px(23, 23, '#FFFFFF', 2, 8);
+
+  // 5. Heavy Stepped Stone & Bone Plinth Base (y=36..43)
+  px(4, 36, OUTLINE, 40, 4);
+  px(5, 37, '#334155', 38, 2);
+  px(7, 37, '#64748B', 34, 1);
+  px(2, 39, OUTLINE, 44, 4);
+  px(3, 40, '#1E293B', 42, 2);
+  px(5, 40, '#475569', 38, 1);
+  // Crimson cursed altar steps in center
+  px(18, 36, '#991B1B', 12, 6);
+  px(20, 37, '#E11D48', 8, 4);
+  px(21, 38, '#FDA4AF', 6, 1);
+
+  return c;
+}
+
 // ==================== 5. SINGLETON PIXEL ATLAS ====================
 export class PixelSpriteAtlas {
   private iconUrls = new Map<PixelIconId, string>();
   private chickenSprites = new Map<ChickenTypeId, ChickenSpritePair>();
   private enemySprites = new Map<EnemyTypeId, EnemySpriteSet>();
   public standSprites: StandSpriteSet | null = null;
+  public malevolentShrineSprite: HTMLCanvasElement | null = null;
   public henhouseIdleUrl = '';
   public henhousePeckUrl = '';
   public gemEggStageUrls: [string, string, string, string] = ['', '', '', ''];
@@ -2452,8 +2648,9 @@ export class PixelSpriteAtlas {
       requiemIdle: drawStandSpiritPixelArt(true, false),
       requiemPunch: drawStandSpiritPixelArt(true, true),
     };
+    this.malevolentShrineSprite = buildMalevolentShrineSprite();
 
-    // Bake all 55 variable-sized Chicken Unit sprites (20x20 up to 42x40) + crisp 2x square portraits!
+    // Bake all 56 variable-sized Chicken Unit sprites (20x20 up to 42x40) + crisp 2x square portraits!
     for (const id of Object.keys(CHICKEN_DEFS) as ChickenTypeId[]) {
       const idle = drawChickenUnitPixelArt(id, false);
       const attack = drawChickenUnitPixelArt(id, true);

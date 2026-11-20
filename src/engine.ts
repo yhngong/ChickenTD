@@ -135,6 +135,7 @@ const STRONG_DEFAULT_SET = new Set<ChickenTypeId>([
   'mech_zilla',
   'gaia_creator',
   'void_singularity',
+  'malevolent_chicken',
   'golden_deity',
   'solar_emperor',
   'eternity_weaver',
@@ -595,6 +596,10 @@ export class ChickenTdEngine {
             recoil: 0,
             totalPopDamage: Math.max(0, Number(t.totalPopDamage ?? 0)),
             totalSpent: Math.max(0, Number(t.totalSpent ?? 0)),
+            shrineCooldown:
+              typeof t.shrineCooldown === 'number' && Number.isFinite(t.shrineCooldown)
+                ? Math.max(0, t.shrineCooldown)
+                : 0,
           };
           maxId = Math.max(maxId, cleanTower.id);
           this.towers.push(cleanTower);
@@ -1231,7 +1236,6 @@ export class ChickenTdEngine {
     return this.towers.filter(
       (t) =>
         t.id !== supportTower.id &&
-        t.typeId !== 'complete_cluck' &&
         Math.hypot(t.x - supportTower.x, t.y - supportTower.y) <= radius
     );
   }
@@ -1243,31 +1247,13 @@ export class ChickenTdEngine {
   ): PlacedChicken[] {
     if (!CHICKEN_DEFS[typeId].tiers[0].supportAura) return [];
     const radius = this.getPreviewRange(typeId);
-    return this.towers.filter(
-      (t) => t.typeId !== 'complete_cluck' && Math.hypot(t.x - x, t.y - y) <= radius
-    );
+    return this.towers.filter((t) => Math.hypot(t.x - x, t.y - y) <= radius);
   }
 
   /**
    * Computes combined nearby Support Aura buffs for a placed tower.
-   * Note: "The Complete Cluck" ('complete_cluck') is completely unaffected by nearby support units!
    */
   private computeSupportBuffsForTower(target: PlacedChicken): SupportAuraSpec & { count: number } {
-    if (target.typeId === 'complete_cluck') {
-      return {
-        damageBonus: 0,
-        fireRateBonus: 0,
-        rangeBonus: 0,
-        bonusPierce: 0,
-        bonusProjectiles: 0,
-        foxDamageBonus: 0,
-        grantsCamo: false,
-        grantsArmorPierce: false,
-        bonusCritChance: 0,
-        bonusKnockback: 0,
-        count: 0,
-      };
-    }
     const bestByType = new Map<ChickenTypeId, SupportAuraSpec>();
 
     for (const other of this.towers) {
@@ -1503,6 +1489,9 @@ export class ChickenTdEngine {
     }
     tower.tier = nextTierIdx;
     tower.totalSpent += upgCost;
+    if (tower.typeId === 'malevolent_chicken' && nextTierIdx === MAX_CHICKEN_TIER_INDEX) {
+      tower.shrineCooldown = 0.25;
+    }
     this.invalidateStatsCache();
     const fxCol =
       nextTierIdx === 6
@@ -1956,6 +1945,22 @@ export class ChickenTdEngine {
         continue;
       }
 
+      // GIMMICK: Max-Level Malevolent Chicken summons a Giant Malevolent Shrine every 10.0 seconds!
+      if (tower.typeId === 'malevolent_chicken' && tower.tier === MAX_CHICKEN_TIER_INDEX) {
+        tower.shrineCooldown = Math.max(0, (tower.shrineCooldown ?? 0) - dt);
+        if (tower.shrineCooldown <= 0 && this.enemies.length > 0) {
+          const mStats = this.getEffectiveChickenStats(tower);
+          const shrineTarget =
+            this.pickTargetForTower(tower, mStats) ?? this.pickAnyMapTargetForTower(tower, mStats);
+          if (shrineTarget) {
+            tower.shrineCooldown = 10.0;
+            tower.angle = Math.atan2(shrineTarget.y! - tower.y, shrineTarget.x! - tower.x);
+            tower.recoil = 1.0;
+            this.summonMalevolentShrine(tower, mStats, shrineTarget);
+          }
+        }
+      }
+
       if (tower.cooldown > 0 || this.enemies.length === 0) continue;
 
       const stats = this.getEffectiveChickenStats(tower);
@@ -2373,6 +2378,7 @@ export class ChickenTdEngine {
       const isUppercut =
         (tower.typeId === 'bantam' || tower.typeId === 'iron_spurs') && shotNum % 5 === 0;
       const isIaijutsu = tower.typeId === 'samurai_shogun' && shotNum % 3 === 0;
+      const isCrossDismantle = tower.typeId === 'malevolent_chicken' && shotNum % 3 === 0;
       const isGoldenSeed = tower.typeId === 'pecker' && shotNum % 4 === 0;
       const isOverchargeIon = tower.typeId === 'aegis_mech' && shotNum % 4 === 0;
       const isShadowFan = tower.typeId === 'ninja' && shotNum % 4 === 0;
@@ -2381,6 +2387,8 @@ export class ChickenTdEngine {
 
       if (isDeadeye) {
         this.spawnRing(tower.x, tower.y, 32, '#FACC15');
+      } else if (isCrossDismantle) {
+        this.spawnRing(tower.x, tower.y, 38, '#E11D48');
       }
 
       const shotGimmick: ProjectileGimmick | undefined =
@@ -2392,6 +2400,8 @@ export class ChickenTdEngine {
           ? 'uppercut_ko'
           : isIaijutsu
           ? 'iaijutsu_wave'
+          : tower.typeId === 'malevolent_chicken'
+          ? 'dismantle_cleave'
           : isTimeRewind
           ? 'time_rewind'
           : tower.typeId === 'chilly'
@@ -2402,7 +2412,13 @@ export class ChickenTdEngine {
           ? 'soul_curse'
           : undefined;
 
-      const actualCount = isDeadeye ? 1 : isShadowFan ? 3 : isOverchargeIon ? 2 : count;
+      const actualCount = isDeadeye
+        ? 1
+        : isShadowFan || isCrossDismantle
+        ? 3
+        : isOverchargeIon
+        ? 2
+        : count;
       const dmgMult = isDeadeye
         ? 4.0 * count
         : isUppercut
@@ -2411,11 +2427,15 @@ export class ChickenTdEngine {
         ? 2.2
         : isOverchargeIon
         ? 1.35
+        : isCrossDismantle
+        ? 1.25
         : 1.0;
 
       const spreadStep =
         pStyle === 'feather_slash' || pStyle === 'moon_slash' || pStyle === 'kanabo_crush'
           ? 0.24
+          : pStyle === 'dismantle_slash'
+          ? 0.16
           : 0.14;
       const specMode =
         pStyle === 'shadow_talon'
@@ -2444,15 +2464,18 @@ export class ChickenTdEngine {
           curveRate: 0,
           rotation: ang,
           damage: stats.effectiveDamage * dmgMult,
-          pierceLeft: stats.effectivePierce + (isDeadeye ? 10 : isIaijutsu ? 4 : 0),
+          pierceLeft:
+            stats.effectivePierce + (isDeadeye ? 10 : isIaijutsu ? 4 : isCrossDismantle ? 6 : 0),
           splashRadius:
-            stats.splashRadius + (isUppercut ? 26 : isIaijutsu ? 38 : isOverchargeIon ? 24 : 0),
+            stats.splashRadius +
+            (isUppercut ? 26 : isIaijutsu ? 38 : isCrossDismantle ? 36 : isOverchargeIon ? 24 : 0),
           slowFactor: stats.slowFactor,
           slowDuration: stats.slowDuration,
           burnDps: stats.effectiveBurnDps,
           foxDamageMult: stats.effectiveFoxMult,
           knockback: stats.effectiveKnockback * (isUppercut ? 2.2 : isDeadeye ? 1.8 : 1.0),
-          savageCritChance: isIaijutsu || isDeadeye ? 1.0 : stats.effectiveCritChance,
+          savageCritChance:
+            isIaijutsu || isDeadeye || isCrossDismantle ? 1.0 : stats.effectiveCritChance,
           armorPiercing: armorPiercing || isGoldenSeed || isDeadeye || isShadowFan,
           canHitCamo: stats.effectiveCamo,
           hitEnemyIds: null,
@@ -2492,11 +2515,43 @@ export class ChickenTdEngine {
 
         // Lobbed mortars & Sky-drop pillars detonate directly at (targetX, targetY) upon arrival!
         if (mode === 'lob_arc' || mode === 'sky_drop') {
+          if (p.trackEnemyId !== undefined) {
+            for (let k = 0; k < this.enemies.length; k++) {
+              const te = this.enemies[k];
+              if (te && te.alive !== false && te.id === p.trackEnemyId && te.x !== undefined && te.y !== undefined) {
+                p.targetX = te.x;
+                p.targetY = te.y;
+                p.originX = te.x;
+                p.originY = te.y - 210;
+                break;
+              }
+            }
+          }
           if (p.age >= p.maxLifetime) {
             const lx = p.targetX ?? p.x;
             const ly = p.targetY ?? p.y;
             this.applySplashHit(p, lx, ly);
-            if (mode === 'sky_drop' && this.beams.length < MAX_ACTIVE_BEAMS) {
+            if (p.style === 'malevolent_shrine') {
+              this.audio.playMalevolentShrineImpact();
+              this.spawnRing(lx, ly, 155, '#090D16');
+              this.spawnRing(lx, ly, 96, '#FDA4AF');
+              this.spawnPixelBurst(lx, ly, 18, '#E11D48');
+              this.spawnPixelBurst(lx, ly, 10, '#FFFFFF');
+              if (this.beams.length < MAX_ACTIVE_BEAMS) {
+                this.beams.push({
+                  kind: 'laser',
+                  points: [
+                    { x: lx, y: Math.max(0, ly - 180) },
+                    { x: lx, y: ly },
+                  ],
+                  width: 9,
+                  outerColor: '#E11D48',
+                  coreColor: '#FFFFFF',
+                  age: 0,
+                  lifetime: 0.28,
+                });
+              }
+            } else if (mode === 'sky_drop' && this.beams.length < MAX_ACTIVE_BEAMS) {
               this.beams.push({
                 kind: 'laser',
                 points: [
@@ -2626,7 +2681,9 @@ export class ChickenTdEngine {
           const cMin = cCol > 0 ? cCol - 1 : 0;
           const cMax = cCol < SPATIAL_COLS - 1 ? cCol + 1 : SPATIAL_COLS - 1;
           const extraRadius =
-            p.style === 'infinity_blade'
+            p.style === 'dismantle_slash'
+              ? 18
+              : p.style === 'infinity_blade'
               ? 16
               : p.splashRadius > 0 ||
                 p.style === 'feather_slash' ||
@@ -3176,24 +3233,121 @@ export class ChickenTdEngine {
   }
 
   /**
-   * Persistent Ground Hazard Zones (Sticky Honey, Acid/Miasma Pools, Whirlpools, Singularity Wells)!
+   * Summons Malevolent Chicken's Max-Level Giant Malevolent Shrine directly from the sky onto its target!
+   */
+  private summonMalevolentShrine(
+    tower: PlacedChicken,
+    stats: EffectiveChickenStats,
+    target: ActiveEnemy
+  ): void {
+    const tx = target.x ?? tower.x;
+    const ty = target.y ?? tower.y;
+    const dropLife = 0.42;
+
+    this.spawnRing(tower.x, tower.y, 64, '#E11D48');
+    this.spawnRing(tower.x, tower.y, 40, '#090D16');
+    this.spawnPixelBurst(tower.x, tower.y, 10, '#FB7185');
+    this.audio.playMalevolentShrineCast();
+
+    this.projectiles.push({
+      id: this.nextEntityId++,
+      ownerTowerId: tower.id,
+      style: 'malevolent_shrine',
+      x: tx,
+      y: ty - 210,
+      vx: 0,
+      vy: 210 / dropLife,
+      curveRate: 0,
+      rotation: Math.PI * 0.5,
+      damage: stats.effectiveDamage * 18.0,
+      pierceLeft: 999,
+      splashRadius: 225,
+      slowFactor: 0.68,
+      slowDuration: 4.5,
+      burnDps: stats.effectiveBurnDps * 2.5,
+      foxDamageMult: stats.effectiveFoxMult * 1.2,
+      knockback: Math.max(90, Math.round(stats.effectiveKnockback * 1.5)),
+      savageCritChance: stats.effectiveCritChance,
+      armorPiercing: true,
+      canHitCamo: stats.effectiveCamo,
+      hitEnemyIds: null,
+      age: 0,
+      maxLifetime: dropLife,
+      color: '#E11D48',
+      motionMode: 'sky_drop',
+      gimmick: 'shrine_crush',
+      originX: tx,
+      originY: ty - 210,
+      targetX: tx,
+      targetY: ty,
+      spawnsZone: 'shrine_domain',
+      trackEnemyId: target.id,
+    });
+  }
+
+  private pickAnyMapTargetForTower(
+    tower: PlacedChicken,
+    stats: EffectiveChickenStats
+  ): ActiveEnemy | null {
+    let best: ActiveEnemy | null = null;
+    let bestScore = -Infinity;
+    const tx = tower.x;
+    const ty = tower.y;
+    const mode = tower.targetMode;
+
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (e.alive === false) continue;
+      const def = ENEMY_DEFS[e.typeId];
+      if (def.isCamo && !stats.effectiveCamo) continue;
+      if (e.x === undefined || e.y === undefined) {
+        syncEnemyPathPosition(e);
+      }
+      const dx = e.x! - tx;
+      const dy = e.y! - ty;
+      const distSq = dx * dx + dy * dy;
+
+      let score = 0;
+      if (mode === 'first') score = e.distance;
+      else if (mode === 'last') score = -e.distance;
+      else if (mode === 'close') score = -distSq;
+      else score = def.maxHp * 1000 + e.distance;
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Persistent Ground Hazard Zones (Sticky Honey, Acid/Miasma Pools, Whirlpools, Singularity Wells, Malevolent Shrine)!
    */
   private spawnHazardZone(proj: ActiveProjectile, cx: number, cy: number): void {
     const zStyle = proj.spawnsZone;
     if (!zStyle) return;
     if (this.hazardZones.length >= MAX_ACTIVE_ZONES) {
-      // Recycle oldest zone in-place
-      this.hazardZones.shift();
+      // Recycle oldest non-shrine zone first if possible
+      const nonShrineIdx = this.hazardZones.findIndex((z) => z.zoneStyle !== 'shrine_domain');
+      this.hazardZones.splice(nonShrineIdx >= 0 ? nonShrineIdx : 0, 1);
     }
-    const radius = Math.max(
-      28,
-      Math.min(
-        92,
-        Math.round(proj.splashRadius * (zStyle === 'singularity' || zStyle === 'whirlpool' ? 0.68 : 0.78))
-      )
-    );
+    const isShrine = zStyle === 'shrine_domain';
+    const radius = isShrine
+      ? 165
+      : Math.max(
+          28,
+          Math.min(
+            92,
+            Math.round(
+              proj.splashRadius * (zStyle === 'singularity' || zStyle === 'whirlpool' ? 0.68 : 0.78)
+            )
+          )
+        );
     const col =
-      zStyle === 'honey'
+      zStyle === 'shrine_domain'
+        ? '#E11D48'
+        : zStyle === 'honey'
         ? '#F59E0B'
         : zStyle === 'acid'
         ? '#84CC16'
@@ -3209,7 +3363,9 @@ export class ChickenTdEngine {
       x: cx,
       y: cy,
       radius,
-      tickDamage: Math.max(0.4, proj.damage * 0.22 + proj.burnDps * 0.14),
+      tickDamage: isShrine
+        ? Math.max(1, proj.damage * 0.14)
+        : Math.max(0.4, proj.damage * 0.22 + proj.burnDps * 0.14),
       slowFactor: Math.max(0.22, proj.slowFactor),
       slowDuration: Math.max(0.6, proj.slowDuration * 0.5),
       burnDps: proj.burnDps,
@@ -3217,8 +3373,8 @@ export class ChickenTdEngine {
       canHitCamo: proj.canHitCamo,
       color: col,
       age: 0,
-      maxLifetime: zStyle === 'singularity' ? 0.72 : 2.1,
-      tickCooldown: zStyle === 'singularity' ? 0.18 : 0.24,
+      maxLifetime: isShrine ? 1.8 : zStyle === 'singularity' ? 0.72 : 2.1,
+      tickCooldown: isShrine ? 0.18 : zStyle === 'singularity' ? 0.18 : 0.24,
     });
   }
 
@@ -3232,11 +3388,12 @@ export class ChickenTdEngine {
 
       z.tickCooldown -= dt;
       if (z.tickCooldown <= 0 && this.enemies.length > 0) {
-        z.tickCooldown = 0.28;
+        const isShrine = z.zoneStyle === 'shrine_domain';
+        z.tickCooldown = isShrine ? 0.22 : 0.28;
         const zoneCarrier: ActiveProjectile = {
           id: z.id,
           ownerTowerId: z.ownerTowerId,
-          style: 'acid',
+          style: isShrine ? 'dismantle_slash' : 'acid',
           x: z.x,
           y: z.y,
           vx: 0,
@@ -3244,24 +3401,26 @@ export class ChickenTdEngine {
           curveRate: 0,
           rotation: 0,
           damage: z.tickDamage,
-          pierceLeft: 30,
+          pierceLeft: isShrine ? 60 : 30,
           splashRadius: z.radius,
           slowFactor: z.slowFactor,
           slowDuration: z.slowDuration,
           burnDps: z.burnDps,
           foxDamageMult: z.foxDamageMult,
-          knockback: z.zoneStyle === 'singularity' ? 12 : 0,
-          savageCritChance: 0,
+          knockback: isShrine ? 18 : z.zoneStyle === 'singularity' ? 12 : 0,
+          savageCritChance: isShrine ? 0.35 : 0,
           armorPiercing: true,
           canHitCamo: z.canHitCamo,
           hitEnemyIds: null,
           age: 0,
           maxLifetime: 0.05,
           color: z.color,
+          gimmick: isShrine ? 'dismantle_cleave' : undefined,
         };
         const snapLen = this.enemies.length;
+        const maxHits = isShrine ? 60 : 28;
         let hits = 0;
-        for (let i = 0; i < snapLen && hits < 28; i++) {
+        for (let i = 0; i < snapLen && hits < maxHits; i++) {
           const e = this.enemies[i];
           if (!e || e.alive === false) continue;
           const eDef = ENEMY_DEFS[e.typeId];
@@ -3375,6 +3534,8 @@ export class ChickenTdEngine {
         ? '#2DD4BF'
         : proj.style === 'infinity_blade'
         ? proj.color
+        : proj.style === 'dismantle_slash' || proj.style === 'malevolent_shrine'
+        ? '#E11D48'
         : proj.style === 'ion_lance' ||
           proj.style === 'antimatter' ||
           proj.style === 'iron_fist' ||
@@ -3494,6 +3655,13 @@ export class ChickenTdEngine {
       if (!def.isFoxBoss && e.kbCooldown <= 0) {
         e.freezeTimer = Math.max(e.freezeTimer, 0.35);
         e.kbCooldown = 1.2;
+      }
+    } else if (proj.gimmick === 'dismantle_cleave') {
+      e.vulnTimer = Math.max(e.vulnTimer, 3.0);
+    } else if (proj.gimmick === 'shrine_crush') {
+      e.vulnTimer = Math.max(e.vulnTimer, 5.5);
+      if (e.kbCooldown <= 0) {
+        e.freezeTimer = Math.max(e.freezeTimer, def.isFoxBoss ? 0.45 : 0.9);
       }
     }
 

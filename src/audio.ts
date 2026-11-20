@@ -7,6 +7,7 @@ export class ChickenAudioEngine {
   private lastPopPerfMs = 0;
   private lastBossPopPerfMs = 0;
   private lastCritPerfMs = 0;
+  private lastShrinePerfMs = 0;
 
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -118,6 +119,24 @@ export class ChickenAudioEngine {
     this.lastCritPerfMs = now;
     this.tone('square', 740, 1320, 0.09, 0.16, 0);
     this.tone('triangle', 1046, 1568, 0.11, 0.18, 0.035);
+  }
+
+  public playMalevolentShrineCast(): void {
+    const now = performance.now();
+    if (now - this.lastShrinePerfMs < 140) return;
+    this.lastShrinePerfMs = now;
+    // Ominous temple bell chime + descending cursed resonance
+    this.tone('sine', 587.33, 293.66, 0.34, 0.22, 0);
+    this.tone('triangle', 293.66, 110, 0.38, 0.2, 0.02);
+    this.tone('square', 880, 440, 0.12, 0.1, 0);
+  }
+
+  public playMalevolentShrineImpact(): void {
+    // Thunderous Shrine slam + rapid razor-cleave overtones
+    this.tone('sawtooth', 220, 38, 0.48, 0.28, 0);
+    this.tone('square', 146.83, 32, 0.52, 0.24, 0.02);
+    this.tone('triangle', 987.77, 261.63, 0.16, 0.18, 0.05);
+    this.tone('triangle', 1318.5, 329.63, 0.16, 0.16, 0.12);
   }
 
   public playCluckCannon(cannonId: CannonTypeId = 'shockwave'): void {

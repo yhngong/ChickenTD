@@ -183,10 +183,10 @@ export const DIFFICULTY_DEFS: Record<DifficultyId, DifficultyDef> = {
   },
 };
 
-// 55 Playable Chicken Units:
+// 56 Playable Chicken Units:
 // - First 18 units (up to 'mecha' Cyber-Cluck 9000) are unlocked from the start!
-// - Next 36 units are earned from Gem Eggs in the Shop!
-// - #55 ('complete_cluck' — The Complete Cluck) unlocks ONLY when all 54 other Chickens are owned!
+// - Next 37 units are earned from Gem Eggs in the Shop!
+// - #56 ('complete_cluck' — The Complete Cluck) unlocks ONLY when all 55 other Chickens are owned!
 export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'bantam',
   'pecker',
@@ -206,7 +206,7 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'brew_hen',
   'phoenix',
   'mecha',
-  // === GEM EGG EXCLUSIVE UNITS (36 TOTAL) ===
+  // === GEM EGG EXCLUSIVE UNITS (37 TOTAL) ===
   'iron_spurs',
   'ramen_chef',
   'bastion_shield',
@@ -240,6 +240,7 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'mech_zilla',
   'gaia_creator',
   'void_singularity',
+  'malevolent_chicken',
   'golden_deity',
   'solar_emperor',
   'eternity_weaver',
@@ -5183,7 +5184,101 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 55. THE COMPLETE CLUCK — Completionist Pinnacle! Unlocked ONLY by owning all 54 other Chickens!
+  // E17. MALEVOLENT CHICKEN — Pink-Haired King-of-Curses Dismantle Shockwave & Max-Level Shrine Titan!
+  malevolent_chicken: {
+    id: 'malevolent_chicken',
+    name: 'Malevolent Chicken',
+    role: 'Dismantle & Shrine Curse',
+    baseCost: 820000,
+    featherColor: '#FFF1F2',
+    bellyColor: '#FFE4E6',
+    accentColor: '#E11D48',
+    projectileStyle: 'dismantle_slash',
+    tiers: [
+      {
+        tierName: 'Cursed Finger Chick',
+        upgradeCost: 0,
+        damage: 1350,
+        fireRate: 6.2,
+        range: 405,
+        pierce: 10,
+        projectiles: 4,
+        projectileSpeed: 1780,
+        splashRadius: 68,
+        slowFactor: 0.48,
+        slowDuration: 2.0,
+        burnDps: 1250,
+        foxDamageMult: 6.0,
+        camoSight: true,
+        knockback: 38,
+        savageCritChance: 0.32,
+        description:
+          'Pink-haired Cursed Vessel! Fires razor Dismantle shockwaves that cleave lanes & shatter armor!',
+      },
+      {
+        tierName: 'Vessel of Shibuya',
+        upgradeCost: 680000,
+        damage: 2500,
+        fireRate: 7.4,
+        range: 432,
+        pierce: 13,
+        projectiles: 5,
+        projectileSpeed: 1920,
+        splashRadius: 82,
+        slowFactor: 0.56,
+        slowDuration: 2.5,
+        burnDps: 2500,
+        foxDamageMult: 7.0,
+        camoSight: true,
+        knockback: 48,
+        savageCritChance: 0.38,
+        description:
+          'Spiderweb Dismantle shockwaves carve 82-AoE rifts with 7.0x Boss wrath & 38% 3x Crits!',
+      },
+      {
+        tierName: 'Four-Winged Calamity',
+        upgradeCost: 1450000,
+        damage: 4650,
+        fireRate: 8.8,
+        range: 460,
+        pierce: 16,
+        projectiles: 6,
+        projectileSpeed: 2060,
+        splashRadius: 96,
+        slowFactor: 0.63,
+        slowDuration: 3.1,
+        burnDps: 5000,
+        foxDamageMult: 8.0,
+        camoSight: true,
+        knockback: 62,
+        savageCritChance: 0.44,
+        description:
+          'Relentless cursed shockwave storm inflicts 5,000/s bleed & 44% 3x Black-Flash Crits!',
+      },
+      {
+        tierName: 'Ryomen Rooster',
+        upgradeCost: 3000000,
+        damage: 8800,
+        fireRate: 10.4,
+        range: 492,
+        pierce: 20,
+        projectiles: 7,
+        projectileSpeed: 2200,
+        splashRadius: 112,
+        slowFactor: 0.68,
+        slowDuration: 3.8,
+        burnDps: 9800,
+        foxDamageMult: 9.1,
+        camoSight: true,
+        knockback: 78,
+        savageCritChance: 0.5,
+        description:
+          '50% 3x Savage Crits & 9.1x Boss Cleave! Reach Tier 7 MAX to summon Malevolent Shrine!',
+      },
+    ],
+  },
+
+  // 56. THE COMPLETE CLUCK — Completionist Pinnacle! Unlocked ONLY by owning all 55 other Chickens!
   // Base range is tight (120 -> 155 px) so swapping between Mastered (+150% DMG, +200% Range => 360 -> 465 px)
   // and Aether (+300% DMG, +0% Range => 120 -> 155 px) creates a true strategic range-vs-DPS choice!
   complete_cluck: {
@@ -5214,7 +5309,7 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         knockback: 42,
         savageCritChance: 0.42,
         description:
-          'Elliptical boomeranging sword-arcs converge on targets & return! Swap Mastered / Aether. No Support buffs!',
+          'Elliptical boomeranging sword-arcs converge on targets & return! Swap Mastered / Aether freely!',
       },
       {
         tierName: 'Prismatic Vortex Monarch',
@@ -5271,7 +5366,7 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 80,
         savageCritChance: 0.62,
-        description: 'All 54 Chickens forged into one boomerang blade tempest! 62% Crits & 11.5x vs Foxes!',
+        description: 'All 55 Chickens forged into one boomerang blade tempest! 62% Crits & 11.5x vs Foxes!',
       },
     ],
   },
@@ -5329,6 +5424,7 @@ const UNIT_GIMMICK_TAG: Record<ChickenTypeId, string> = {
   mech_zilla: 'Lock-On Atomic Breath Beam ramps up to 2.5x Kaiju Melt!',
   gaia_creator: '3 Orbiting World-Tree Prisms + Blooming Nature Bursts!',
   void_singularity: 'Imploding Black Holes pull enemies inward before collapsing!',
+  malevolent_chicken: 'Dismantle shockwaves; T7 MAX drops a Giant Shrine every 10s!',
   golden_deity: 'Heavenly Wrath Pillars deal bonus % HP Divine Judgment!',
   solar_emperor: 'Calls down colossal Dyson Corona Meteors from the sun!',
   eternity_weaver: 'Crossing X-shaped Reality Rifts cleave & warp space-time!',
@@ -5356,6 +5452,7 @@ const TWIN_SHOT_SPECIALISTS = new Set<ChickenTypeId>([
   'cowboy_desperado',
   'samurai_shogun',
   'valkyrie',
+  'malevolent_chicken',
   'eternity_weaver',
 ]);
 
@@ -5526,7 +5623,8 @@ function buildSevenTierChickenDefs(
 
     const t7: ChickenTierStats = {
       ...t4,
-      tierName: `Omega ${raw.name}`,
+      tierName:
+        id === 'malevolent_chicken' ? 'King of Curses: Malevolent Shrine' : `Omega ${raw.name}`,
       upgradeCost: cost7,
       damage: roundCleanDmg(t4.damage * 78.0 * projCompensation),
       burnDps: Math.round(t4.burnDps * 72.0),
@@ -5540,7 +5638,10 @@ function buildSevenTierChickenDefs(
       knockback: t4.knockback ? Math.round(t4.knockback * 1.4) : undefined,
       savageCritChance: Math.min(0.82, Number(((t4.savageCritChance ?? 0.06) + 0.17).toFixed(2))),
       supportAura: scaleSupportAura(t4.supportAura, 2.25, 1.88, 1.68, 5, 0.10),
-      description: `TIER 7 OMEGA MAX: Wave-50 Endgame Pinnacle! ${UNIT_GIMMICK_TAG[id]}`,
+      description:
+        id === 'malevolent_chicken'
+          ? 'TIER 7 MAX DOMAIN EXPANSION: Summons a Giant Malevolent Shrine every 10s that drops onto the targeted enemy for massive splash damage!'
+          : `TIER 7 OMEGA MAX: Wave-50 Endgame Pinnacle! ${UNIT_GIMMICK_TAG[id]}`,
     };
 
     out[id] = {

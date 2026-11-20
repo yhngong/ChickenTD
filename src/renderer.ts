@@ -649,6 +649,14 @@ export class MeadowRenderer {
       }
     }
 
+    // 6.6. Landed Giant Malevolent Shrines & Domain Cleave Slashes!
+    for (let i = 0; i < engine.hazardZones.length; i++) {
+      const hz = engine.hazardZones[i];
+      if (hz.zoneStyle === 'shrine_domain') {
+        this.drawPixelShrineMonumentOverlay(ctx, hz, nowSec);
+      }
+    }
+
     // 6.8. Instant Piercing Laser Beams & Jagged Chain-Lightning Arcs!
     for (let i = 0; i < engine.beams.length; i++) {
       this.drawPixelBeam(ctx, engine.beams[i], nowSec);
@@ -777,16 +785,17 @@ export class MeadowRenderer {
     if (isSelected) {
       drawPixelCircle(ctx, px, py + 2, footPx, '#FACC15', false);
     } else if (tower.tier === 6) {
-      // Omega Tier 7 radiant alternating rose-gold aura!
+      // Omega Tier 7 radiant alternating aura (cursed crimson/pink Domain ring for Malevolent Chicken!)
       const auraR = footPx + (Math.floor(nowSec * 6) % 2);
-      drawPixelCircle(
-        ctx,
-        px,
-        py + 2,
-        auraR,
-        Math.floor(nowSec * 8) % 2 === 0 ? '#F43F5E' : '#FEF08A',
-        false
-      );
+      const t7Col =
+        tower.typeId === 'malevolent_chicken'
+          ? Math.floor(nowSec * 9) % 2 === 0
+            ? '#E11D48'
+            : '#FB7185'
+          : Math.floor(nowSec * 8) % 2 === 0
+          ? '#F43F5E'
+          : '#FEF08A';
+      drawPixelCircle(ctx, px, py + 2, auraR, t7Col, false);
     } else if (mutColor) {
       const auraR =
         footPx - (mutTier === 'legendary' || mutTier === 'mastered' || mutTier === 'aether' ? 0 : 1) +
@@ -1071,6 +1080,62 @@ export class MeadowRenderer {
         );
         break;
       }
+      case 'shrine_domain': {
+        // Cursed crimson & abyssal black Domain Expansion ground pool beneath the landed Giant Shrine!
+        const domainRx = Math.min(54, rx);
+        const domainRy = Math.max(8, Math.round(domainRx * 0.56));
+        drawPixelCircle(ctx, zx, zy, domainRx + (Math.floor(nowSec * 14) % 2), '#E11D48', true);
+        drawFilledPixelDisk(ctx, zx, zy, Math.max(6, domainRx - 2), domainRy, '#090D16');
+        drawFilledPixelDisk(
+          ctx,
+          zx,
+          zy,
+          Math.max(4, Math.round(domainRx * 0.72)),
+          Math.max(4, Math.round(domainRy * 0.72)),
+          '#450A0A'
+        );
+        drawPixelCircle(ctx, zx, zy, Math.max(5, Math.round(domainRx * 0.5)), '#FB7185', true);
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
+  private drawPixelShrineMonumentOverlay(
+    ctx: CanvasRenderingContext2D,
+    z: ActiveHazardZone,
+    nowSec: number
+  ): void {
+    const shrineSpr = PIXEL_ATLAS.malevolentShrineSprite;
+    const zx = toPx(z.x);
+    const zy = toPx(z.y);
+    const rx = Math.min(64, Math.max(18, toPx(z.radius)));
+    const fade =
+      z.age > z.maxLifetime * 0.75
+        ? Math.max(0.15, (z.maxLifetime - z.age) / (z.maxLifetime * 0.25))
+        : 1.0;
+
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.96, fade);
+    if (shrineSpr) {
+      const halfW = Math.floor(shrineSpr.width / 2);
+      ctx.drawImage(shrineSpr, zx - halfW, zy - shrineSpr.height + 8);
+    }
+
+    // Rapid crisscrossing Malevolent Shrine Dismantle / Cleave slashes across the Domain!
+    const seed = Math.floor(nowSec * 28) + z.id * 5;
+    for (let s = 0; s < 4; s++) {
+      const h1 = ((seed + s * 17) * 2654435761) >>> 0;
+      const cx = zx + (((h1 % 100) / 50 - 1) * rx * 0.78);
+      const cy = zy + (((((h1 >> 8) % 100) / 50 - 1) * rx * 0.48));
+      const ang = ((h1 >> 16) % 628) / 100;
+      const len = 7 + (s % 2) * 4;
+      const dx = Math.round(Math.cos(ang) * len);
+      const dy = Math.round(Math.sin(ang) * len);
+      const icx = Math.round(cx);
+      const icy = Math.round(cy);
+      drawPixelLine(ctx, icx - dx, icy - dy, icx + dx, icy + dy, 2, s % 2 === 0 ? '#E11D48' : '#090D16');
+      drawPixelLine(ctx, icx - dx, icy - dy, icx + dx, icy + dy, 1, '#FFFFFF');
     }
     ctx.restore();
   }
@@ -1244,6 +1309,27 @@ export class MeadowRenderer {
       ctx.fillRect(px - 3, py + 1, 6, 2);
       py -= lift;
     } else if (p.motionMode === 'sky_drop') {
+      if (p.style === 'malevolent_shrine') {
+        // Giant Malevolent Shrine plummeting onto the targeted enemy!
+        const prog = Math.max(0, Math.min(1, p.age / Math.max(0.05, p.maxLifetime)));
+        const tPx = toPx(p.targetX ?? p.x);
+        const tPy = toPx(p.targetY ?? p.y);
+        // Expanding cursed Domain target circle & shadow on the ground beneath target
+        const shadowRx = Math.round(10 + 18 * prog);
+        const shadowRy = Math.round(6 + 10 * prog);
+        drawFilledPixelDisk(ctx, tPx, tPy + 2, shadowRx, shadowRy, 'rgba(9, 13, 22, 0.58)');
+        drawPixelCircle(ctx, tPx, tPy + 2, Math.round(38 - 10 * prog), '#E11D48', true);
+        // Vertical crimson-and-black descent speed streaks above the falling Shrine
+        drawPixelLine(ctx, px - 14, py - 46, px - 14, py - 24, 2, '#E11D48');
+        drawPixelLine(ctx, px, py - 52, px, py - 26, 2, '#FFFFFF');
+        drawPixelLine(ctx, px + 14, py - 46, px + 14, py - 24, 2, '#E11D48');
+        const shrineSpr = PIXEL_ATLAS.malevolentShrineSprite;
+        if (shrineSpr) {
+          const halfW = Math.floor(shrineSpr.width / 2);
+          ctx.drawImage(shrineSpr, px - halfW, py - shrineSpr.height + 8);
+        }
+        return;
+      }
       const tx = px - Math.round(Math.cos(p.rotation) * 11);
       const ty = py - Math.round(Math.sin(p.rotation) * 11);
       drawPixelLine(ctx, tx, ty, px, py, 3, p.color);
@@ -1815,6 +1901,62 @@ export class MeadowRenderer {
         ctx.fillRect(px - 1, py - 1, 2, 2);
         break;
       }
+      case 'dismantle_slash': {
+        // Sukuna's Dismantle Shockwave: wide swept crimson-black-white crescent + parallel slash wake!
+        const fx = Math.cos(p.rotation);
+        const fy = Math.sin(p.rotation);
+        const rx = -fy;
+        const ry = fx;
+        const tipX = Math.round(px + fx * 3);
+        const tipY = Math.round(py + fy * 3);
+        const lwX = Math.round(px - fx * 3 - rx * 6);
+        const lwY = Math.round(py - fy * 3 - ry * 6);
+        const rwX = Math.round(px - fx * 3 + rx * 6);
+        const rwY = Math.round(py - fy * 3 + ry * 6);
+
+        // Trailing parallel Dismantle shockwave slash wake
+        const bx = Math.round(px - fx * 5);
+        const by = Math.round(py - fy * 5);
+        const w1X = Math.round(bx - rx * 4);
+        const w1Y = Math.round(by - ry * 4);
+        const w2X = Math.round(bx + rx * 4);
+        const w2Y = Math.round(by + ry * 4);
+        drawPixelLine(ctx, w1X, w1Y, w2X, w2Y, 2, '#991B1B');
+        drawPixelLine(ctx, w1X, w1Y, w2X, w2Y, 1, '#FDA4AF');
+
+        // Cross-Dismantle spiderweb X-slash on 3rd-shot guaranteed crits!
+        if (p.savageCritChance >= 1.0) {
+          drawPixelLine(
+            ctx,
+            Math.round(px - fx * 6 - rx * 4),
+            Math.round(py - fy * 6 - ry * 4),
+            Math.round(px + fx * 2 + rx * 4),
+            Math.round(py + fy * 2 + ry * 4),
+            2,
+            '#E11D48'
+          );
+          drawPixelLine(
+            ctx,
+            Math.round(px - fx * 6 + rx * 4),
+            Math.round(py - fy * 6 + ry * 4),
+            Math.round(px + fx * 2 - rx * 4),
+            Math.round(py + fy * 2 - ry * 4),
+            1,
+            '#FFFFFF'
+          );
+        }
+
+        // Main Dismantle Shockwave Crescent (black cursed aura -> crimson edge -> white razor core)
+        drawPixelLine(ctx, lwX, lwY, tipX, tipY, 3, '#090D16');
+        drawPixelLine(ctx, tipX, tipY, rwX, rwY, 3, '#090D16');
+        drawPixelLine(ctx, lwX, lwY, tipX, tipY, 2, '#E11D48');
+        drawPixelLine(ctx, tipX, tipY, rwX, rwY, 2, '#E11D48');
+        drawPixelLine(ctx, lwX, lwY, tipX, tipY, 1, '#FFFFFF');
+        drawPixelLine(ctx, tipX, tipY, rwX, rwY, 1, '#FFFFFF');
+        break;
+      }
+      case 'malevolent_shrine':
+        break;
       case 'bass_pulse':
         break;
       case 'infinity_blade': {

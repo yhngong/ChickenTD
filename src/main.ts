@@ -614,7 +614,7 @@ function renderGemEggShop(): void {
       const zMut = mut === 'aether' ? 'aether' : 'mastered';
       const mutDef = MUTATION_DEFS[zMut];
       const nextLabel = zMut === 'aether' ? 'SWAP -> MASTERED' : 'SWAP -> AETHER';
-      card.title = `${def.name} — ${mutDef.name.toUpperCase()} (${mutDef.summary}) • Unaffected by nearby Support units! Click button to swap Mastered / Aether.`;
+      card.title = `${def.name} — ${mutDef.name.toUpperCase()} (${mutDef.summary}) • Click button to swap Mastered / Aether.`;
       card.innerHTML = `
         <img class="coll-portrait" src="${spr?.portraitUrl ?? ''}" style="border-color:${mutDef.color}" alt="" />
         <div class="coll-meta">
@@ -1242,11 +1242,10 @@ function renderTroopCards(): void {
       btn.addEventListener('click', () => setPlacementType(id));
     } else {
       const mutDef = mut ? MUTATION_DEFS[mut] : null;
-      const isComplete = id === 'complete_cluck';
       btn.className = `troop-btn${isSelected ? ' selected' : ''}${!canAfford ? ' unaffordable' : ''}`;
       btn.title = `${def.name}${plusLv > 0 ? ` +${plusLv}` : ''} (${def.role})${
         mutDef ? ` [${mutDef.name.toUpperCase()}: ${mutDef.summary}]` : ''
-      }${isComplete ? ' [Unaffected by Support Auras]' : ''} — ${cost.toLocaleString()} Corn`;
+      } — ${cost.toLocaleString()} Corn`;
 
       const shortMutLabel = mut
         ? `${mut.slice(0, 3).toUpperCase()}${plusLv > 0 ? `+${plusLv}` : ''}`
@@ -1394,12 +1393,7 @@ function formatInspectorStats(towerId: number): string {
   }
 
   const dealtText = formatCompactCost(Math.round(tower.totalPopDamage));
-  const buffTag =
-    tower.typeId === 'complete_cluck'
-      ? ' | SOLO'
-      : eff.supportBuffCount > 0
-      ? ` | BUFF x${eff.supportBuffCount}`
-      : '';
+  const buffTag = eff.supportBuffCount > 0 ? ` | BUFF x${eff.supportBuffCount}` : '';
   const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
   const kbTag = eff.effectiveKnockback > 0 ? ' | KB' : '';
   const critTag =
@@ -1465,7 +1459,10 @@ function renderInspector(): void {
     btnInspUpgrade.title = `Upgrade to Tier ${tierNum + 1}: ${nextTier.tierName} (${upgCost.toLocaleString()} Corn) — ${nextTier.description}`;
     btnInspUpgrade.disabled = engine.corn < upgCost;
   } else {
-    const maxText = 'OMEGA TIER 7 EVOLUTION ACHIEVED!';
+    const maxText =
+      tower.typeId === 'malevolent_chicken'
+        ? 'DOMAIN EXPANSION ACTIVE: Drops a Giant Malevolent Shrine every 10s for massive splash damage!'
+        : 'OMEGA TIER 7 EVOLUTION ACHIEVED!';
     setText(inspNextDesc, maxText);
     inspNextDesc.title = maxText;
     setText(btnInspUpgrade, 'MAX T7');

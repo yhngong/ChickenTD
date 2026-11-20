@@ -44,6 +44,7 @@ const COLOSSAL_TITAN_SET = new Set<ChickenTypeId>([
   'mech_zilla',
   'gaia_creator',
   'void_singularity',
+  'malevolent_chicken',
   'golden_deity',
   'solar_emperor',
   'eternity_weaver',
