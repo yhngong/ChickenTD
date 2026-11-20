@@ -12,6 +12,7 @@ import {
 import { MUTATION_DEFS, PROGRESSION } from './progression';
 import { PIXEL_ATLAS } from './sprites';
 import {
+  ActiveDeathray,
   ActiveEnemy,
   ActiveHazardZone,
   ActiveProjectile,
@@ -679,9 +680,12 @@ export class MeadowRenderer {
       }
     }
 
-    // 6.8. Instant Piercing Laser Beams & Jagged Chain-Lightning Arcs!
+    // 6.8. Instant Piercing Laser Beams, Chain-Lightning Arcs & Moon Lord Phantasmal Deathrays!
     for (let i = 0; i < engine.beams.length; i++) {
       this.drawPixelBeam(ctx, engine.beams[i], nowSec);
+    }
+    for (let i = 0; i < engine.deathrays.length; i++) {
+      this.drawPixelDeathray(ctx, engine.deathrays[i], nowSec);
     }
 
     // 7. Pixel Projectiles
@@ -1163,6 +1167,74 @@ export class MeadowRenderer {
       drawPixelLine(ctx, icx - dx, icy - dy, icx + dx, icy + dy, 2, s % 2 === 0 ? '#E11D48' : '#090D16');
       drawPixelLine(ctx, icx - dx, icy - dy, icx + dx, icy + dy, 1, '#FFFFFF');
     }
+    ctx.restore();
+  }
+
+  private drawPixelDeathray(
+    ctx: CanvasRenderingContext2D,
+    dr: ActiveDeathray,
+    nowSec: number
+  ): void {
+    const ox = toPx(dr.originX);
+    const oy = toPx(dr.originY);
+    const fx = toPx(dr.focalX);
+    const fy = toPx(dr.focalY);
+    const sr = Math.max(12, toPx(dr.splashRadius));
+    const fade =
+      dr.age > dr.maxLifetime * 0.72
+        ? Math.max(0.2, (dr.maxLifetime - dr.age) / (dr.maxLifetime * 0.28))
+        : 1.0;
+    const pulse = (Math.floor(nowSec * 24) % 2) === 0 ? 1 : 0;
+
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.98, fade);
+
+    // 1. Nearby-Enemy Phantasmal Splash Zone around the concentrated target!
+    drawFilledPixelDisk(ctx, fx, fy, sr, Math.round(sr * 0.72), 'rgba(45, 212, 191, 0.16)');
+    drawPixelCircle(ctx, fx, fy, sr, pulse ? '#2DD4BF' : '#99F6E4', true);
+    drawPixelCircle(ctx, fx, fy, Math.round(sr * 0.52), '#5EEAD4', true);
+
+    // 2. 4-Layer Terraria Moon Lord Phantasmal Deathray Shaft (concentrated onto (fx, fy)!)
+    const wScale = 0.65 + 0.35 * fade;
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(5, Math.round((8 + pulse) * wScale)), '#0D9488');
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(4, Math.round((6 + pulse) * wScale)), '#2DD4BF');
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(2, Math.round(4 * wScale)), '#99F6E4');
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(1, Math.round(2 * wScale)), '#FFFFFF');
+
+    // Animated luminite energy rings surging down the Deathray shaft!
+    for (let k = 0; k < 3; k++) {
+      const t = ((nowSec * 3.8 + k * 0.33) % 1);
+      const rx = Math.round(ox + (fx - ox) * t);
+      const ry = Math.round(oy + (fy - oy) * t);
+      ctx.fillStyle = '#CCFBF1';
+      ctx.fillRect(rx - 3, ry - 3, 6, 6);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(rx - 2, ry - 2, 4, 4);
+    }
+
+    // 3. True Eye of Cthulhu (Phantasmal Third Eye) hovering at beam origin!
+    ctx.fillStyle = OUTLINE;
+    ctx.fillRect(ox - 5, oy - 4, 11, 9);
+    ctx.fillStyle = '#CCFBF1';
+    ctx.fillRect(ox - 4, oy - 3, 9, 7);
+    ctx.fillStyle = '#14B8A6';
+    ctx.fillRect(ox - 2, oy - 2, 5, 5);
+    ctx.fillStyle = '#2DD4BF';
+    ctx.fillRect(ox - 1, oy - 2, 3, 5);
+    ctx.fillStyle = '#090D16';
+    ctx.fillRect(ox, oy - 2, 1, 5);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(ox - 1, oy - 2, 1, 1);
+
+    // 4. Blinding Concentrated Phantasmal Starburst right on the targeted enemy!
+    const coreR = 7 + pulse * 2;
+    drawFilledPixelDisk(ctx, fx, fy, coreR + 3, coreR + 2, '#0D9488');
+    drawFilledPixelDisk(ctx, fx, fy, coreR + 1, coreR, '#2DD4BF');
+    drawFilledPixelDisk(ctx, fx, fy, Math.max(3, coreR - 2), Math.max(3, coreR - 2), '#99F6E4');
+    drawFilledPixelDisk(ctx, fx, fy, 3, 3, '#FFFFFF');
+    drawPixelLine(ctx, fx - 12, fy, fx + 12, fy, 2, '#CCFBF1');
+    drawPixelLine(ctx, fx, fy - 10, fx, fy + 10, 2, '#FFFFFF');
+
     ctx.restore();
   }
 

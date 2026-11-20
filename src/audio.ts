@@ -139,6 +139,14 @@ export class ChickenAudioEngine {
     this.tone('triangle', 1318.5, 329.63, 0.16, 0.16, 0.12);
   }
 
+  public playPhantasmalDeathray(): void {
+    // Moon Lord Phantasmal Deathray: eerie celestial charge whine -> deep resonant luminite beam roar!
+    this.tone('sine', 784, 1568, 0.1, 0.2, 0);
+    this.tone('sawtooth', 1174.66, 98, 0.62, 0.26, 0.06);
+    this.tone('triangle', 587.33, 65.41, 0.68, 0.24, 0.08);
+    this.tone('square', 293.66, 146.83, 0.45, 0.14, 0.1);
+  }
+
   public playCluckCannon(cannonId: CannonTypeId = 'shockwave'): void {
     if (cannonId === 'time_stop') {
       // Dramatic Chrono Time-Stop pitch-warp + clock-halt chime!

@@ -33,6 +33,7 @@ import {
 } from './map';
 import { BUGS_PER_EGG, MUTATION_DEFS, PROGRESSION } from './progression';
 import {
+  ActiveDeathray,
   ActiveEnemy,
   ActiveHazardZone,
   ActiveProjectile,
@@ -210,6 +211,7 @@ export class ChickenTdEngine {
   public enemies: ActiveEnemy[] = [];
   public projectiles: ActiveProjectile[] = [];
   public beams: VisualBeamEffect[] = [];
+  public deathrays: ActiveDeathray[] = [];
   public hazardZones: ActiveHazardZone[] = [];
   public rings: VisualRingEffect[] = [];
   public particles: PixelParticle[] = [];
@@ -405,6 +407,7 @@ export class ChickenTdEngine {
     this.waveActive = false;
     this.projectiles = [];
     this.beams = [];
+    this.deathrays = [];
     this.hazardZones = [];
     const nestPt = getPointAlongPath(getTotalPathLength() * 0.5);
     this.spawnRing(nestPt.x, nestPt.y, 80, '#22D3EE');
@@ -602,6 +605,10 @@ export class ChickenTdEngine {
               typeof t.shrineCooldown === 'number' && Number.isFinite(t.shrineCooldown)
                 ? Math.max(0, t.shrineCooldown)
                 : 0,
+            deathrayCooldown:
+              typeof t.deathrayCooldown === 'number' && Number.isFinite(t.deathrayCooldown)
+                ? Math.max(0, t.deathrayCooldown)
+                : 0,
           };
           maxId = Math.max(maxId, cleanTower.id);
           this.towers.push(cleanTower);
@@ -736,6 +743,7 @@ export class ChickenTdEngine {
     this.enemyStampById.clear();
     this.projectiles = [];
     this.beams = [];
+    this.deathrays = [];
     this.hazardZones = [];
     this.rings = [];
     this.particles = [];
@@ -1463,6 +1471,7 @@ export class ChickenTdEngine {
       recoil: 0,
       totalPopDamage: 0,
       totalSpent: cost,
+      deathrayCooldown: typeId === 'complete_cluck' ? 0.35 : undefined,
     };
     this.towers.push(placed);
     this.towerById.set(placed.id, placed);
@@ -1527,6 +1536,7 @@ export class ChickenTdEngine {
     this.towerById.delete(removed.id);
     this.invalidateStatsCache();
     this.stands = this.stands.filter((s) => s.ownerTowerId !== removed.id);
+    this.deathrays = this.deathrays.filter((d) => d.ownerTowerId !== removed.id);
     const refund = Math.round(removed.totalSpent * 0.7);
     if (this.isSandboxMode()) {
       this.corn = SANDBOX_INF_CORN;
@@ -2002,6 +2012,24 @@ export class ChickenTdEngine {
             tower.angle = Math.atan2(shrineTarget.y! - tower.y, shrineTarget.x! - tower.x);
             tower.recoil = 1.0;
             this.summonMalevolentShrine(tower, mStats, shrineTarget);
+          }
+        }
+      }
+
+      // GIMMICK: The Complete Cluck fires Moon Lord's Phantasmal Deathray every 8.0 seconds,
+      // concentrated onto a single enemy while splashing nearby enemies!
+      if (tower.typeId === 'complete_cluck') {
+        tower.deathrayCooldown = Math.max(0, (tower.deathrayCooldown ?? 0) - dt);
+        if (tower.deathrayCooldown <= 0 && this.enemies.length > 0) {
+          const cStats = this.getEffectiveChickenStats(tower);
+          const rayTarget =
+            this.pickTargetForTower(tower, cStats) ?? this.pickAnyMapTargetForTower(tower, cStats);
+          if (rayTarget) {
+            tower.deathrayCooldown = 8.0;
+            tower.angle = Math.atan2(rayTarget.y! - tower.y, rayTarget.x! - tower.x);
+            tower.recoil = 1.0;
+            this.firePhantasmalDeathray(tower, cStats, rayTarget);
+            towerDirectKillPossible = true;
           }
         }
       }
@@ -2567,9 +2595,12 @@ export class ChickenTdEngine {
       this.compactAliveEnemies();
     }
 
-    // 3.5. Tick Persistent Ground Hazard Zones (Honey puddles, Acid/Miasma pools, Whirlpools, Black Holes!)
+    // 3.5. Tick Persistent Ground Hazard Zones & Concentrated Phantasmal Deathrays!
     if (this.hazardZones.length > 0) {
       this.tickHazardZones(dt);
+    }
+    if (this.deathrays.length > 0) {
+      this.tickDeathrays(dt);
     }
 
     // 4. Advance projectiles & resolve collisions via 16x11 Spatial Grid
@@ -3305,6 +3336,192 @@ export class ChickenTdEngine {
   }
 
   /**
+   * Fires The Complete Cluck's 8-second Moon Lord Phantasmal Deathray!
+   * Concentrates directly on a single targeted enemy while splashing nearby enemies around that spot!
+   */
+  private firePhantasmalDeathray(
+    tower: PlacedChicken,
+    stats: EffectiveChickenStats,
+    target: ActiveEnemy
+  ): void {
+    const ox = tower.x;
+    const oy = tower.y - 20;
+    const fx = target.x ?? tower.x;
+    const fy = target.y ?? tower.y;
+    const splashRadius = 120;
+    const isAether = stats.mutationTier === 'aether';
+    const rayCol = isAether ? '#E879F9' : '#2DD4BF';
+
+    this.audio.playPhantasmalDeathray();
+    this.spawnRing(ox, oy, 48, rayCol);
+    this.spawnRing(fx, fy, splashRadius, rayCol);
+    this.spawnRing(fx, fy, 68, '#FFFFFF');
+    this.spawnPixelBurst(fx, fy, 14, rayCol);
+    this.spawnPixelBurst(fx, fy, 8, '#FFFFFF');
+
+    const initialCarrier: ActiveProjectile = {
+      id: this.nextEntityId++,
+      ownerTowerId: tower.id,
+      style: 'phantasmal_deathray',
+      x: fx,
+      y: fy,
+      vx: 0,
+      vy: 0,
+      curveRate: 0,
+      rotation: Math.atan2(fy - oy, fx - ox),
+      damage: stats.effectiveDamage * 10.0,
+      pierceLeft: 999,
+      splashRadius,
+      slowFactor: 0.62,
+      slowDuration: 3.0,
+      burnDps: stats.effectiveBurnDps * 2.2,
+      foxDamageMult: stats.effectiveFoxMult * 1.15,
+      knockback: 0,
+      savageCritChance: stats.effectiveCritChance,
+      armorPiercing: true,
+      canHitCamo: true,
+      hitEnemyIds: null,
+      age: 0,
+      maxLifetime: 0.05,
+      color: rayCol,
+    };
+
+    // Concentrated full-power hit on the single primary target + nearby-enemy phantasmal splash!
+    const primaryId = target.id;
+    target.vulnTimer = Math.max(target.vulnTimer, 4.5);
+    this.damageEnemy(target, initialCarrier.damage, initialCarrier);
+
+    const snapLen = this.enemies.length;
+    for (let i = 0; i < snapLen; i++) {
+      const e = this.enemies[i];
+      if (!e || e.alive === false || e.id === primaryId) continue;
+      const eDef = ENEMY_DEFS[e.typeId];
+      const dx = (e.x ?? 0) - fx;
+      const dy = (e.y ?? 0) - fy;
+      const maxR = splashRadius + eDef.radius;
+      if (dx * dx + dy * dy <= maxR * maxR) {
+        e.vulnTimer = Math.max(e.vulnTimer, 3.5);
+        this.damageEnemy(e, initialCarrier.damage * 0.65, initialCarrier);
+      }
+    }
+
+    this.deathrays.push({
+      id: this.nextEntityId++,
+      ownerTowerId: tower.id,
+      originX: ox,
+      originY: oy,
+      focalX: fx,
+      focalY: fy,
+      targetEnemyId: primaryId,
+      tickDamage: stats.effectiveDamage * 2.4,
+      splashRadius,
+      burnDps: stats.effectiveBurnDps * 2.2,
+      foxDamageMult: stats.effectiveFoxMult * 1.15,
+      savageCritChance: stats.effectiveCritChance,
+      canHitCamo: true,
+      isAether,
+      age: 0,
+      maxLifetime: 0.75,
+      tickCooldown: 0.15,
+    });
+  }
+
+  private tickDeathrays(dt: number): void {
+    let writeD = 0;
+    let didDamage = false;
+
+    for (let dIdx = 0; dIdx < this.deathrays.length; dIdx++) {
+      const dr = this.deathrays[dIdx];
+      dr.age += dt;
+      if (dr.age >= dr.maxLifetime) continue;
+
+      const owner = this.towerById.get(dr.ownerTowerId);
+      if (owner) {
+        dr.originX = owner.x;
+        dr.originY = owner.y - 20;
+      }
+
+      // Track the single concentrated target while alive!
+      let liveTarget: ActiveEnemy | null = null;
+      for (let i = 0; i < this.enemies.length; i++) {
+        const cand = this.enemies[i];
+        if (cand && cand.alive !== false && cand.id === dr.targetEnemyId) {
+          liveTarget = cand;
+          if (cand.x !== undefined && cand.y !== undefined) {
+            dr.focalX = cand.x;
+            dr.focalY = cand.y;
+          }
+          break;
+        }
+      }
+      if (owner) {
+        owner.angle = Math.atan2(dr.focalY - owner.y, dr.focalX - owner.x);
+      }
+
+      dr.tickCooldown -= dt;
+      if (dr.tickCooldown <= 0 && this.enemies.length > 0) {
+        dr.tickCooldown = 0.15;
+        const rayCol = dr.isAether ? '#E879F9' : '#2DD4BF';
+        const tickCarrier: ActiveProjectile = {
+          id: dr.id,
+          ownerTowerId: dr.ownerTowerId,
+          style: 'phantasmal_deathray',
+          x: dr.focalX,
+          y: dr.focalY,
+          vx: 0,
+          vy: 0,
+          curveRate: 0,
+          rotation: Math.atan2(dr.focalY - dr.originY, dr.focalX - dr.originX),
+          damage: dr.tickDamage,
+          pierceLeft: 999,
+          splashRadius: dr.splashRadius,
+          slowFactor: 0.55,
+          slowDuration: 1.5,
+          burnDps: dr.burnDps,
+          foxDamageMult: dr.foxDamageMult,
+          knockback: 0,
+          savageCritChance: dr.savageCritChance,
+          armorPiercing: true,
+          canHitCamo: dr.canHitCamo,
+          hitEnemyIds: null,
+          age: 0,
+          maxLifetime: 0.05,
+          color: rayCol,
+        };
+
+        if (liveTarget) {
+          liveTarget.vulnTimer = Math.max(liveTarget.vulnTimer, 3.5);
+          this.damageEnemy(liveTarget, dr.tickDamage, tickCarrier);
+          didDamage = true;
+        }
+
+        const snapLen = this.enemies.length;
+        for (let i = 0; i < snapLen; i++) {
+          const e = this.enemies[i];
+          if (!e || e.alive === false || e.id === dr.targetEnemyId) continue;
+          const eDef = ENEMY_DEFS[e.typeId];
+          const dx = (e.x ?? 0) - dr.focalX;
+          const dy = (e.y ?? 0) - dr.focalY;
+          const maxR = dr.splashRadius + eDef.radius;
+          if (dx * dx + dy * dy <= maxR * maxR) {
+            this.damageEnemy(e, dr.tickDamage * 0.65, tickCarrier);
+            didDamage = true;
+          }
+        }
+
+        this.spawnPixelBurst(dr.focalX, dr.focalY, 3, rayCol);
+      }
+
+      this.deathrays[writeD++] = dr;
+    }
+
+    this.deathrays.length = writeD;
+    if (didDamage) {
+      this.compactAliveEnemies();
+    }
+  }
+
+  /**
    * Summons Malevolent Chicken's Max-Level Giant Malevolent Shrine directly from the sky onto its target!
    */
   private summonMalevolentShrine(
@@ -3604,7 +3821,7 @@ export class ChickenTdEngine {
           proj.style === 'revolver_slug' ||
           proj.style === 'kanabo_crush'
         ? '#F59E0B'
-        : proj.style === 'chrono_orb'
+        : proj.style === 'chrono_orb' || proj.style === 'phantasmal_deathray'
         ? '#2DD4BF'
         : proj.style === 'infinity_blade'
         ? proj.color

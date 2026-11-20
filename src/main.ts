@@ -614,7 +614,7 @@ function renderGemEggShop(): void {
       const zMut = mut === 'aether' ? 'aether' : 'mastered';
       const mutDef = MUTATION_DEFS[zMut];
       const nextLabel = zMut === 'aether' ? 'SWAP -> MASTERED' : 'SWAP -> AETHER';
-      card.title = `${def.name} — ${mutDef.name.toUpperCase()} (${mutDef.summary}) • Click button to swap Mastered / Aether.`;
+      card.title = `${def.name} — ${mutDef.name.toUpperCase()} (${mutDef.summary}) • Fires a concentrated Moon Lord Phantasmal Deathray every 8s that splashes nearby enemies! Click button to swap Mastered / Aether.`;
       card.innerHTML = `
         <img class="coll-portrait" src="${spr?.portraitUrl ?? ''}" style="border-color:${mutDef.color}" alt="" />
         <div class="coll-meta">
@@ -1464,6 +1464,8 @@ function renderInspector(): void {
         ? 'DOMAIN EXPANSION ACTIVE: Drops a Giant Malevolent Shrine every 10s for massive splash damage!'
         : tower.typeId === 'limitless_chicken'
         ? 'INFINITY ACTIVE: Passively slows ALL enemies in its attack radius by 80% + Black-Flash punches!'
+        : tower.typeId === 'complete_cluck'
+        ? 'PHANTASMAL DEATHRAY ACTIVE: Fires a concentrated Moon Lord Deathray every 8s that splashes nearby foes!'
         : 'OMEGA TIER 7 EVOLUTION ACHIEVED!';
     setText(inspNextDesc, maxText);
     inspNextDesc.title = maxText;

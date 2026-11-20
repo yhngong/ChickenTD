@@ -102,7 +102,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 56. **Astral Genesis-Wyrm** — Crossing Rift Architect (`2,150,000` Corn)
 
 ### Completionist Pinnacle Unit (Unlocked Only by Owning All 56 Other Chickens)
-57. **The Complete Cluck** — Boomerang Blade Storm (`3,000,000` Corn! Preset **Mastered** `+150% DMG, +200% Range` <-> **Aether** `+300% DMG, +0% Extra Range`!)
+57. **The Complete Cluck** — Boomerang Blade Storm & 8s Concentrated **Phantasmal Deathray** (`3,000,000` Corn! Fires Moon Lord's Phantasmal Deathray every 8s concentrated on a single target while splashing nearby enemies; swappable **Mastered** `+150% DMG, +200% Range` <-> **Aether** `+300% DMG, +0% Extra Range`!)
 
 ## Controls
 

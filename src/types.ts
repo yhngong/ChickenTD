@@ -117,6 +117,7 @@ export type ProjectileStyle =
   | 'dismantle_slash'
   | 'malevolent_shrine'
   | 'limitless_punch'
+  | 'phantasmal_deathray'
   | 'infinity_blade';
 
 export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary' | 'mastered' | 'aether';
@@ -374,6 +375,7 @@ export interface PlacedChicken {
   orbitAngle?: number;
   orbitTickTimer?: number;
   shrineCooldown?: number;
+  deathrayCooldown?: number;
 }
 
 export interface ActiveStand {
@@ -490,6 +492,26 @@ export interface VisualBeamEffect {
   coreColor: string;
   age: number;
   lifetime: number;
+}
+
+export interface ActiveDeathray {
+  id: number;
+  ownerTowerId: number;
+  originX: number;
+  originY: number;
+  focalX: number;
+  focalY: number;
+  targetEnemyId: number;
+  tickDamage: number;
+  splashRadius: number;
+  burnDps: number;
+  foxDamageMult: number;
+  savageCritChance: number;
+  canHitCamo: boolean;
+  isAether: boolean;
+  age: number;
+  maxLifetime: number;
+  tickCooldown: number;
 }
 
 export interface ActiveHazardZone {

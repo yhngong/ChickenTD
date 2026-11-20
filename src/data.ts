@@ -5405,7 +5405,7 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         knockback: 42,
         savageCritChance: 0.42,
         description:
-          'Elliptical boomeranging sword-arcs converge on targets & return! Swap Mastered / Aether freely!',
+          'Elliptical boomeranging sword-arcs + fires a concentrated Phantasmal Deathray every 8s that splashes nearby foes!',
       },
       {
         tierName: 'Prismatic Vortex Monarch',
@@ -5525,7 +5525,7 @@ const UNIT_GIMMICK_TAG: Record<ChickenTypeId, string> = {
   golden_deity: 'Heavenly Wrath Pillars deal bonus % HP Divine Judgment!',
   solar_emperor: 'Calls down colossal Dyson Corona Meteors from the sun!',
   eternity_weaver: 'Crossing X-shaped Reality Rifts cleave & warp space-time!',
-  complete_cluck: 'Sovereign Boomerang Blades slice foes outbound & returning!',
+  complete_cluck: 'Boomerang Blades + 8s Concentrated Phantasmal Deathray splash!',
 };
 
 const MORTAR_OR_SKY_SET = new Set<ChickenTypeId>([
