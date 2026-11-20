@@ -1462,6 +1462,8 @@ function renderInspector(): void {
     const maxText =
       tower.typeId === 'malevolent_chicken'
         ? 'DOMAIN EXPANSION ACTIVE: Drops a Giant Malevolent Shrine every 10s for massive splash damage!'
+        : tower.typeId === 'limitless_chicken'
+        ? 'INFINITY ACTIVE: Passively slows ALL enemies in its attack radius by 80% + Black-Flash punches!'
         : 'OMEGA TIER 7 EVOLUTION ACHIEVED!';
     setText(inspNextDesc, maxText);
     inspNextDesc.title = maxText;

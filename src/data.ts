@@ -183,10 +183,10 @@ export const DIFFICULTY_DEFS: Record<DifficultyId, DifficultyDef> = {
   },
 };
 
-// 56 Playable Chicken Units:
+// 57 Playable Chicken Units:
 // - First 18 units (up to 'mecha' Cyber-Cluck 9000) are unlocked from the start!
-// - Next 37 units are earned from Gem Eggs in the Shop!
-// - #56 ('complete_cluck' — The Complete Cluck) unlocks ONLY when all 55 other Chickens are owned!
+// - Next 38 units are earned from Gem Eggs in the Shop!
+// - #57 ('complete_cluck' — The Complete Cluck) unlocks ONLY when all 56 other Chickens are owned!
 export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'bantam',
   'pecker',
@@ -206,7 +206,7 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'brew_hen',
   'phoenix',
   'mecha',
-  // === GEM EGG EXCLUSIVE UNITS (37 TOTAL) ===
+  // === GEM EGG EXCLUSIVE UNITS (38 TOTAL) ===
   'iron_spurs',
   'ramen_chef',
   'bastion_shield',
@@ -241,6 +241,7 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'gaia_creator',
   'void_singularity',
   'malevolent_chicken',
+  'limitless_chicken',
   'golden_deity',
   'solar_emperor',
   'eternity_weaver',
@@ -5278,7 +5279,102 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 56. THE COMPLETE CLUCK — Completionist Pinnacle! Unlocked ONLY by owning all 55 other Chickens!
+  // E18. LIMITLESS CHICKEN — White-Haired Six-Eyes Close-Range Puncher & Lv7 80%-Slow Infinity Titan!
+  // Upgrades NEVER increase its fixed 150px range — all power goes into devastating Limitless & Black-Flash punches!
+  limitless_chicken: {
+    id: 'limitless_chicken',
+    name: 'Limitless Chicken',
+    role: 'Close Punch & Infinity',
+    baseCost: 820000,
+    featherColor: '#F8FAFC',
+    bellyColor: '#1E293B',
+    accentColor: '#38BDF8',
+    projectileStyle: 'limitless_punch',
+    tiers: [
+      {
+        tierName: 'Six-Eyes Brawler',
+        upgradeCost: 0,
+        damage: 2500,
+        fireRate: 6.8,
+        range: 150,
+        pierce: 8,
+        projectiles: 4,
+        projectileSpeed: 1650,
+        splashRadius: 52,
+        slowFactor: 0,
+        slowDuration: 0,
+        burnDps: 1400,
+        foxDamageMult: 6.6,
+        camoSight: true,
+        knockback: 42,
+        savageCritChance: 0.36,
+        description:
+          'Fixed 150 range! Blue-infused Cursed Fist punches deal massive close-range damage!',
+      },
+      {
+        tierName: 'Lapse Blue Striker',
+        upgradeCost: 680000,
+        damage: 4650,
+        fireRate: 8.0,
+        range: 150,
+        pierce: 10,
+        projectiles: 5,
+        projectileSpeed: 1780,
+        splashRadius: 60,
+        slowFactor: 0,
+        slowDuration: 0,
+        burnDps: 2900,
+        foxDamageMult: 7.7,
+        camoSight: true,
+        knockback: 54,
+        savageCritChance: 0.42,
+        description:
+          'Range stays 150! Heavy Lapse-Blue punches hit 7.7x vs Foxes with 42% 3x Crits!',
+      },
+      {
+        tierName: 'Black-Flash Sensei',
+        upgradeCost: 1450000,
+        damage: 8600,
+        fireRate: 9.4,
+        range: 150,
+        pierce: 12,
+        projectiles: 6,
+        projectileSpeed: 1920,
+        splashRadius: 68,
+        slowFactor: 0,
+        slowDuration: 0,
+        burnDps: 5800,
+        foxDamageMult: 8.8,
+        camoSight: true,
+        knockback: 66,
+        savageCritChance: 0.48,
+        description:
+          'Fixed 150 range! Crushing Black-Flash fist combos shatter armor & obliterate bosses!',
+      },
+      {
+        tierName: 'The Honored Rooster',
+        upgradeCost: 3000000,
+        damage: 16400,
+        fireRate: 11.0,
+        range: 150,
+        pierce: 15,
+        projectiles: 7,
+        projectileSpeed: 2080,
+        splashRadius: 76,
+        slowFactor: 0,
+        slowDuration: 0,
+        burnDps: 11500,
+        foxDamageMult: 10.0,
+        camoSight: true,
+        knockback: 82,
+        savageCritChance: 0.54,
+        description:
+          'Fixed 150 range & 10.0x Boss punch fury! Reach Tier 7 MAX to unlock 80% Infinity slow!',
+      },
+    ],
+  },
+
+  // 57. THE COMPLETE CLUCK — Completionist Pinnacle! Unlocked ONLY by owning all 56 other Chickens!
   // Base range is tight (120 -> 155 px) so swapping between Mastered (+150% DMG, +200% Range => 360 -> 465 px)
   // and Aether (+300% DMG, +0% Range => 120 -> 155 px) creates a true strategic range-vs-DPS choice!
   complete_cluck: {
@@ -5366,7 +5462,7 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 80,
         savageCritChance: 0.62,
-        description: 'All 55 Chickens forged into one boomerang blade tempest! 62% Crits & 11.5x vs Foxes!',
+        description: 'All 56 Chickens forged into one boomerang blade tempest! 62% Crits & 11.5x vs Foxes!',
       },
     ],
   },
@@ -5425,6 +5521,7 @@ const UNIT_GIMMICK_TAG: Record<ChickenTypeId, string> = {
   gaia_creator: '3 Orbiting World-Tree Prisms + Blooming Nature Bursts!',
   void_singularity: 'Imploding Black Holes pull enemies inward before collapsing!',
   malevolent_chicken: 'Dismantle shockwaves; T7 MAX drops a Giant Shrine every 10s!',
+  limitless_chicken: 'Fixed 150 range heavy punches; T7 MAX Infinity slows radius 80%!',
   golden_deity: 'Heavenly Wrath Pillars deal bonus % HP Divine Judgment!',
   solar_emperor: 'Calls down colossal Dyson Corona Meteors from the sun!',
   eternity_weaver: 'Crossing X-shaped Reality Rifts cleave & warp space-time!',
@@ -5489,6 +5586,10 @@ function declutterTierStats(id: ChickenTypeId, t: ChickenTierStats, tierIdx: num
     // Sleek twin/triple boomeranging Infinity Blades instead of 7+ screen-filling blades!
     targetProj = tierIdx >= 4 ? 3 : 2;
     maxRate = 4.2;
+  } else if (id === 'limitless_chicken') {
+    // Rapid left-right heavy Limitless & Black-Flash punches!
+    targetProj = 2;
+    maxRate = 3.6;
   } else if (TWIN_SHOT_SPECIALISTS.has(id)) {
     targetProj = Math.min(2, t.projectiles);
     maxRate = 2.8;
@@ -5580,6 +5681,7 @@ function buildSevenTierChickenDefs(
     const cost7 = roundNiceCost(cost6 * 12.5);
 
     const isComplete = id === 'complete_cluck';
+    const isFixedRange = id === 'limitless_chicken';
     const t5Proj = isComplete ? 3 : t4.projectiles;
     const projCompensation = isComplete ? t4.projectiles / 3 : 1;
 
@@ -5590,7 +5692,7 @@ function buildSevenTierChickenDefs(
       damage: roundCleanDmg(t4.damage * 3.8 * projCompensation),
       burnDps: Math.round(t4.burnDps * 3.8),
       fireRate: Number((t4.fireRate * 1.08).toFixed(2)),
-      range: t4.range + 20,
+      range: isFixedRange ? t4.range : t4.range + 20,
       pierce: t4.pierce > 0 ? t4.pierce + 2 : 0,
       projectiles: t5Proj,
       splashRadius: t4.splashRadius > 0 ? Math.round(t4.splashRadius * 1.1) : 0,
@@ -5609,7 +5711,7 @@ function buildSevenTierChickenDefs(
       damage: roundCleanDmg(t4.damage * 16.5 * projCompensation),
       burnDps: Math.round(t4.burnDps * 16.0),
       fireRate: Number((t4.fireRate * 1.16).toFixed(2)),
-      range: t4.range + 42,
+      range: isFixedRange ? t4.range : t4.range + 42,
       pierce: t4.pierce > 0 ? t4.pierce + 5 : 0,
       projectiles: t5Proj,
       splashRadius: t4.splashRadius > 0 ? Math.round(t4.splashRadius * 1.22) : 0,
@@ -5624,12 +5726,16 @@ function buildSevenTierChickenDefs(
     const t7: ChickenTierStats = {
       ...t4,
       tierName:
-        id === 'malevolent_chicken' ? 'King of Curses: Malevolent Shrine' : `Omega ${raw.name}`,
+        id === 'malevolent_chicken'
+          ? 'King of Curses: Malevolent Shrine'
+          : id === 'limitless_chicken'
+          ? 'The Strongest: Limitless Infinity'
+          : `Omega ${raw.name}`,
       upgradeCost: cost7,
       damage: roundCleanDmg(t4.damage * 78.0 * projCompensation),
       burnDps: Math.round(t4.burnDps * 72.0),
       fireRate: Number((t4.fireRate * 1.25).toFixed(2)),
-      range: t4.range + 68,
+      range: isFixedRange ? t4.range : t4.range + 68,
       pierce: t4.pierce > 0 ? t4.pierce + 10 : 0,
       projectiles: t5Proj,
       splashRadius: t4.splashRadius > 0 ? Math.round(t4.splashRadius * 1.35) : 0,
@@ -5641,6 +5747,8 @@ function buildSevenTierChickenDefs(
       description:
         id === 'malevolent_chicken'
           ? 'TIER 7 MAX DOMAIN EXPANSION: Summons a Giant Malevolent Shrine every 10s that drops onto the targeted enemy for massive splash damage!'
+          : id === 'limitless_chicken'
+          ? 'TIER 7 MAX INFINITY UNLOCKED: Passively slows ALL enemies in its attack radius by 80% while delivering catastrophic Limitless punches!'
           : `TIER 7 OMEGA MAX: Wave-50 Endgame Pinnacle! ${UNIT_GIMMICK_TAG[id]}`,
     };
 

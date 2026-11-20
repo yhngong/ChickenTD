@@ -17,7 +17,7 @@ export type ChickenTypeId =
   | 'brew_hen'
   | 'phoenix'
   | 'mecha'
-  // === 37 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
+  // === 38 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
   | 'iron_spurs'
   | 'ramen_chef'
   | 'bastion_shield'
@@ -52,10 +52,11 @@ export type ChickenTypeId =
   | 'gaia_creator'
   | 'void_singularity'
   | 'malevolent_chicken'
+  | 'limitless_chicken'
   | 'golden_deity'
   | 'solar_emperor'
   | 'eternity_weaver'
-  // === COMPLETIONIST PINNACLE UNIT (UNLOCKED BY OWNING ALL 55 OTHERS) ===
+  // === COMPLETIONIST PINNACLE UNIT (UNLOCKED BY OWNING ALL 56 OTHERS) ===
   | 'complete_cluck';
 
 export type ProjectileStyle =
@@ -115,6 +116,7 @@ export type ProjectileStyle =
   | 'idol_note'
   | 'dismantle_slash'
   | 'malevolent_shrine'
+  | 'limitless_punch'
   | 'infinity_blade';
 
 export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary' | 'mastered' | 'aether';
@@ -317,7 +319,8 @@ export type ProjectileGimmick =
   | 'uppercut_ko'
   | 'iaijutsu_wave'
   | 'dismantle_cleave'
-  | 'shrine_crush';
+  | 'shrine_crush'
+  | 'black_flash_punch';
 
 export interface ChickenTowerDef {
   id: ChickenTypeId;
@@ -409,6 +412,7 @@ export interface ActiveEnemy {
   curseDmg?: number;
   curseOwnerId?: number;
   frostStacks?: number; // Frostbite Brittle (shatters every 3rd chill hit!)
+  infinityTimer?: number; // >0 = inside Lv7 Limitless Chicken's 80% Infinity spatial slow field!
   // Runtime cached world coordinates & liveness (avoids millions of per-frame path recomputations)
   x?: number;
   y?: number;

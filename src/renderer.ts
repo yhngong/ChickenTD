@@ -593,6 +593,28 @@ export class MeadowRenderer {
       this.drawPixelHazardZone(ctx, engine.hazardZones[i], nowSec);
     }
 
+    // 4.7. Level 7 Limitless Chicken Passive Infinity Spatial Barrier (80% Slow Field!)
+    for (let i = 0; i < engine.towers.length; i++) {
+      const tw = engine.towers[i];
+      if (tw.typeId === 'limitless_chicken' && tw.tier === 6) {
+        const eff = engine.getEffectiveChickenStats(tw);
+        const ix = toPx(tw.x);
+        const iy = toPx(tw.y);
+        const ir = toPx(eff.effectiveRange);
+        drawFilledPixelDisk(ctx, ix, iy, ir, ir, 'rgba(56, 189, 248, 0.08)');
+        drawPixelCircle(
+          ctx,
+          ix,
+          iy,
+          ir,
+          Math.floor(nowSec * 6 + tw.id) % 2 === 0 ? '#38BDF8' : '#E0F2FE',
+          true
+        );
+        const rippleR = Math.max(12, Math.round(ir * (1 - ((nowSec * 0.45 + tw.id * 0.3) % 0.65))));
+        drawPixelCircle(ctx, ix, iy, rippleR, 'rgba(186, 230, 253, 0.45)', true);
+      }
+    }
+
     // 5. Placed Chicken Troops (cached depth-sort by Y for authentic 2D pixel overlap!)
     const tLen = engine.towers.length;
     const sig =
@@ -792,6 +814,10 @@ export class MeadowRenderer {
           ? Math.floor(nowSec * 9) % 2 === 0
             ? '#E11D48'
             : '#FB7185'
+          : tower.typeId === 'limitless_chicken'
+          ? Math.floor(nowSec * 9) % 2 === 0
+            ? '#38BDF8'
+            : '#FFFFFF'
           : Math.floor(nowSec * 8) % 2 === 0
           ? '#F43F5E'
           : '#FEF08A';
@@ -1246,6 +1272,10 @@ export class MeadowRenderer {
       drawPixelCircle(ctx, px, py, Math.max(5, Math.floor(img.width / 2) + 1), '#C084FC', true);
       ctx.fillStyle = '#22D3EE';
       ctx.fillRect(px - 5, py - Math.floor(img.height / 2) - 2, 2, 2);
+    } else if (e.infinityTimer && e.infinityTimer > 0) {
+      drawPixelCircle(ctx, px, py, Math.max(5, Math.floor(img.width / 2) + 1), '#38BDF8', true);
+      ctx.fillStyle = '#E0F2FE';
+      ctx.fillRect(px - 2, py - Math.floor(img.height / 2) - 2, 2, 2);
     }
     if (e.vulnTimer > 0) {
       ctx.fillStyle = '#F43F5E';
@@ -1957,6 +1987,26 @@ export class MeadowRenderer {
       }
       case 'malevolent_shrine':
         break;
+      case 'limitless_punch': {
+        // Gojo's Cursed-Blue Fist & 4th-Hit Crimson-Obsidian Black Flash!
+        const fx = Math.cos(p.rotation);
+        const fy = Math.sin(p.rotation);
+        const isBF = p.gimmick === 'black_flash_punch';
+        const tailX = Math.round(px - fx * 6);
+        const tailY = Math.round(py - fy * 6);
+        drawPixelLine(ctx, tailX, tailY, px, py, 3, isBF ? '#E11D48' : '#0284C7');
+        drawPixelLine(ctx, tailX, tailY, px, py, 1, isBF ? '#090D16' : '#E0F2FE');
+
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillStyle = isBF ? '#090D16' : '#0284C7';
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+        ctx.fillStyle = isBF ? '#E11D48' : '#38BDF8';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 1 + Math.round(fx), py - 1 + Math.round(fy), 2, 2);
+        break;
+      }
       case 'bass_pulse':
         break;
       case 'infinity_blade': {

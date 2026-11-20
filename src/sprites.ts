@@ -971,6 +971,7 @@ function getChickenSpriteLayout(typeId: ChickenTypeId): ChickenSpriteLayout {
     case 'gaia_creator':
     case 'void_singularity':
     case 'malevolent_chicken':
+    case 'limitless_chicken':
     case 'golden_deity':
     case 'solar_emperor':
     case 'eternity_weaver':
@@ -1078,6 +1079,12 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
     px(9, 30, '#E11D48', 20, 1);
     px(7, 28, '#F8FAFC', 2, 2);
     px(29, 28, '#F8FAFC', 2, 2);
+  } else if (typeId === 'limitless_chicken') {
+    // Shimmering Six-Eyes Azure & White Infinity spatial horizon ring under Limitless Chicken!
+    px(5, 29, OUTLINE, 28, 4);
+    px(6, 30, '#0284C7', 26, 2);
+    px(8, 30, '#38BDF8', 22, 1);
+    px(12, 30, '#FFFFFF', 14, 1);
   }
 
   // ==================== 2. BACK-LAYER WINGS, CAPES, TREES & SWORD HALOS ====================
@@ -1179,6 +1186,16 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
     px(29, 7, '#E11D48', 1, 3);
     px(28, 10, '#991B1B', 3, 11);
     px(28, 12, '#FB7185', 2, 6);
+  } else if (typeId === 'limitless_chicken') {
+    // Hovering Lapse Blue (left) & Reversal Red (right) Limitless spheres behind shoulders!
+    px(3, 10, OUTLINE, 7, 7);
+    px(4, 11, '#0284C7', 5, 5);
+    px(5, 12, '#38BDF8', 3, 3);
+    px(5, 12, '#FFFFFF', 1, 1);
+    px(27, 9, OUTLINE, 7, 7);
+    px(28, 10, '#DC2626', 5, 5);
+    px(29, 11, '#FB7185', 3, 3);
+    px(29, 11, '#FFFFFF', 1, 1);
   } else if (typeId === 'golden_deity') {
     // Radiant golden sun-mandala halo behind the round King-Borb!
     px(4, 4, OUTLINE, 28, 20);
@@ -1913,6 +1930,52 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
       }
       break;
     }
+    case 'limitless_chicken': {
+      // Tall gravity-defying spiky snow-white Gojo hair sweeping straight up!
+      px(bx, by - 5, OUTLINE, 4, 6);
+      px(bx - 1, by - 6, OUTLINE, 2, 2);
+      px(bx + 3, by - 8, OUTLINE, 4, 9);
+      px(bx + 4, by - 9, OUTLINE, 2, 2);
+      px(bx + 7, by - 9, OUTLINE, 4, 10);
+      px(bx + 8, by - 11, OUTLINE, 2, 3);
+      px(bx + 11, by - 8, OUTLINE, 4, 9);
+      px(bx + 12, by - 9, OUTLINE, 2, 2);
+      px(bx + 14, by - 5, OUTLINE, 4, 6);
+      px(bx + 16, by - 6, OUTLINE, 2, 2);
+      // Pure snow-white spikes with subtle icy Six-Eyes silver-blue shading
+      px(bx, by - 5, '#FFFFFF', 2, 1);
+      px(bx + 1, by - 4, '#F1F5F9', 3, 5);
+      px(bx + 4, by - 8, '#FFFFFF', 2, 8);
+      px(bx + 6, by - 5, '#BAE6FD', 1, 5);
+      px(bx + 8, by - 10, '#FFFFFF', 2, 10);
+      px(bx + 7, by - 6, '#E0F2FE', 1, 6);
+      px(bx + 12, by - 8, '#FFFFFF', 2, 8);
+      px(bx + 11, by - 5, '#BAE6FD', 1, 5);
+      px(bx + 15, by - 5, '#FFFFFF', 2, 1);
+      px(bx + 14, by - 4, '#E0F2FE', 3, 5);
+
+      // Dark navy Jujutsu High high-collar uniform jacket + golden swirl button!
+      px(bx + 1, wingY, OUTLINE, 6, 5);
+      px(bx + 2, wingY + 1, '#1E293B', 4, 3);
+      px(bx + 2, by + 9, '#0F172A', 13, 4);
+      px(bx + 4, by + 13, '#0F172A', 9, 1);
+      px(bx + 4, by + 9, '#1E293B', 10, 3);
+      px(bx + 12, by + 10, '#FACC15', 2, 2);
+
+      // Heavy Azure-Infused Limitless Cursed Fist out front (+ Black-Flash sparks on attack!)
+      const fx = bx + (attackFrame ? 20 : 18);
+      const fy = by + 2;
+      px(fx, fy, OUTLINE, 7, 7);
+      px(fx + 1, fy + 1, '#0284C7', 5, 5);
+      px(fx + 2, fy + 1, '#38BDF8', 4, 4);
+      px(fx + 4, fy + 2, '#FFFFFF', 2, 2);
+      if (attackFrame) {
+        px(fx - 2, fy - 1, '#E11D48', 3, 2);
+        px(fx + 2, fy + 7, '#E11D48', 4, 2);
+        px(fx + 6, fy + 2, '#FFFFFF', 2, 3);
+      }
+      break;
+    }
     case 'golden_deity': {
       // Royal winged sun-crown + ruby jewel + divine golden scepter!
       px(bx + 3, by - 4, OUTLINE, 11, 4);
@@ -1993,6 +2056,31 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
     px(bx + 12, by + 5, '#F97316', 2, 1);
     if (attackFrame) {
       px(bx + 12, by + 6, '#FB7185', 2, 1);
+    }
+  } else if (typeId === 'limitless_chicken') {
+    // Gojo's iconic pitch-black blindfold + glowing radiant Six-Eyes cyan gleam!
+    if (attackFrame) {
+      // Blindfold pushed slightly up, revealing blazing Six-Eyes!
+      px(bx + 2, by + 2, OUTLINE, 14, 2);
+      px(bx + 3, by + 2, '#1E293B', 12, 1);
+      px(bx + 11, by + 4, '#0284C7', 4, 4);
+      px(bx + 12, by + 4, '#38BDF8', 2, 4);
+      px(bx + 12, by + 4, '#FFFFFF', 1, 2);
+      px(bx + 13, by + 6, '#BAE6FD', 1, 1);
+    } else {
+      // Sleek black blindfold band across face with subtle Six-Eyes azure glow underneath!
+      px(bx + 2, by + 3, OUTLINE, 14, 4);
+      px(bx + 3, by + 4, '#1E293B', 12, 2);
+      px(bx + 11, by + 6, '#38BDF8', 3, 1);
+      px(bx + 12, by + 6, '#FFFFFF', 1, 1);
+    }
+    px(bx + 9, by + 8, '#FB7185', 3, 1);
+    px(bx + 9, by + 8, '#FDA4AF', 2, 1);
+    px(bx + 16, by + 6, OUTLINE, 4, 2);
+    px(bx + 16, by + 6, '#FDE047', 3, 1);
+    px(bx + 16, by + 7, '#F97316', 3, 1);
+    if (attackFrame) {
+      px(bx + 16, by + 8, '#FB7185', 2, 1);
     }
   } else {
     px(bx + 12, by + 4, OUTLINE, 2, 4);
@@ -2650,7 +2738,7 @@ export class PixelSpriteAtlas {
     };
     this.malevolentShrineSprite = buildMalevolentShrineSprite();
 
-    // Bake all 56 variable-sized Chicken Unit sprites (20x20 up to 42x40) + crisp 2x square portraits!
+    // Bake all 57 variable-sized Chicken Unit sprites (20x20 up to 42x40) + crisp 2x square portraits!
     for (const id of Object.keys(CHICKEN_DEFS) as ChickenTypeId[]) {
       const idle = drawChickenUnitPixelArt(id, false);
       const attack = drawChickenUnitPixelArt(id, true);

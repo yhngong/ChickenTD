@@ -136,6 +136,7 @@ const STRONG_DEFAULT_SET = new Set<ChickenTypeId>([
   'gaia_creator',
   'void_singularity',
   'malevolent_chicken',
+  'limitless_chicken',
   'golden_deity',
   'solar_emperor',
   'eternity_weaver',
@@ -229,6 +230,7 @@ export class ChickenTdEngine {
   private inProjectilePhase = false;
   private queryStampCounter = 1;
   private enemyStampById = new Map<number, number>();
+  private infinityFieldsBuf: { x: number; y: number; r: number }[] = [];
 
   public onUiChange: (() => void) | null = null;
   public onCornChange: (() => void) | null = null;
@@ -1226,7 +1228,8 @@ export class ChickenTdEngine {
     const baseRange = CHICKEN_DEFS[typeId].tiers[0].range;
     const mut = PROGRESSION.getMutation(typeId);
     const mutRange = mut ? MUTATION_DEFS[mut].rangeMult : 1.0;
-    return Math.round(baseRange * (1 + this.tdLevels.eagleRoost * 0.08) * mutRange);
+    const eagleMult = typeId === 'limitless_chicken' ? 1.0 : 1 + this.tdLevels.eagleRoost * 0.08;
+    return Math.round(baseRange * eagleMult * mutRange);
   }
 
   public getTowersBuffedBy(supportTower: PlacedChicken): PlacedChicken[] {
@@ -1371,7 +1374,9 @@ export class ChickenTdEngine {
 
     // Support towers use their own non-recursive aura range so two support towers don't loop infinitely
     const supRangeMult = def.isSupport ? 1.0 : 1 + sup.rangeBonus;
-    const rangeMult = (1 + this.tdLevels.eagleRoost * 0.08) * mutRange * supRangeMult;
+    const eagleMult =
+      tower.typeId === 'limitless_chicken' ? 1.0 : 1 + this.tdLevels.eagleRoost * 0.08;
+    const rangeMult = eagleMult * mutRange * supRangeMult;
     const rateMult =
       (1 + this.tdLevels.caffeinatedFeed * 0.11) *
       mutRate *
@@ -1756,23 +1761,63 @@ export class ChickenTdEngine {
       }
     }
 
-    // 2. Move enemies, tick DoTs, check Nest leaks
+    // 2. Move enemies, tick DoTs, check Nest leaks (+ Lv7 Limitless Chicken 80% Infinity slow field!)
     const totalPathLen = getTotalPathLength();
     const speedScale = getWaveSpeedScale(this.waveNumber) * this.getDifficulty().enemySpeedMult;
     const moveCount = this.enemies.length;
     let leakedOrBurned = false;
+
+    const infFields = this.infinityFieldsBuf;
+    infFields.length = 0;
+    if (moveCount > 0) {
+      for (let t = 0; t < this.towers.length; t++) {
+        const tw = this.towers[t];
+        if (tw.typeId === 'limitless_chicken' && tw.tier === MAX_CHICKEN_TIER_INDEX) {
+          infFields.push({
+            x: tw.x,
+            y: tw.y,
+            r: this.getEffectiveChickenStats(tw).effectiveRange,
+          });
+        }
+      }
+    }
+    const infCount = infFields.length;
 
     for (let i = 0; i < moveCount; i++) {
       const e = this.enemies[i];
       if (e.alive === false) continue;
       const def = ENEMY_DEFS[e.typeId];
 
+      let inInfinity = false;
+      if (infCount > 0) {
+        if (e.x === undefined || e.y === undefined) {
+          syncEnemyPathPosition(e);
+        }
+        const ex = e.x!;
+        const ey = e.y!;
+        for (let f = 0; f < infCount; f++) {
+          const inf = infFields[f];
+          const dx = ex - inf.x;
+          const dy = ey - inf.y;
+          const maxR = inf.r + def.radius * 0.5;
+          if (dx * dx + dy * dy <= maxR * maxR) {
+            inInfinity = true;
+            break;
+          }
+        }
+      }
+      if (inInfinity) {
+        e.infinityTimer = 0.12;
+      } else if (e.infinityTimer && e.infinityTimer > 0) {
+        e.infinityTimer = Math.max(0, e.infinityTimer - dt);
+      }
+
       e.hitFlash = Math.max(0, e.hitFlash - dt * 6);
       e.kbCooldown = Math.max(0, e.kbCooldown - dt);
       if (e.freezeTimer > 0) {
         e.freezeTimer = Math.max(0, e.freezeTimer - dt);
       } else {
-        e.walkPhase += dt * (def.isFoxBoss ? 6 : 12);
+        e.walkPhase += dt * (def.isFoxBoss ? 6 : 12) * (inInfinity ? 0.25 : 1);
       }
       if (e.vulnTimer > 0) {
         e.vulnTimer = Math.max(0, e.vulnTimer - dt);
@@ -1802,9 +1847,9 @@ export class ChickenTdEngine {
         }
       }
 
-      const effectiveSlow = def.isFoxBoss ? e.slowFactor * 0.55 : e.slowFactor;
-      const moveSpeed =
-        e.freezeTimer > 0 ? 0 : def.speed * speedScale * (1 - Math.min(0.72, effectiveSlow));
+      const normalSlow = Math.min(0.72, def.isFoxBoss ? e.slowFactor * 0.55 : e.slowFactor);
+      const effectiveSlow = inInfinity ? Math.max(0.8, normalSlow) : normalSlow;
+      const moveSpeed = e.freezeTimer > 0 ? 0 : def.speed * speedScale * (1 - effectiveSlow);
       e.distance += moveSpeed * dt;
 
       if (e.distance >= totalPathLen) {
@@ -2379,6 +2424,7 @@ export class ChickenTdEngine {
         (tower.typeId === 'bantam' || tower.typeId === 'iron_spurs') && shotNum % 5 === 0;
       const isIaijutsu = tower.typeId === 'samurai_shogun' && shotNum % 3 === 0;
       const isCrossDismantle = tower.typeId === 'malevolent_chicken' && shotNum % 3 === 0;
+      const isBlackFlash = tower.typeId === 'limitless_chicken' && shotNum % 4 === 0;
       const isGoldenSeed = tower.typeId === 'pecker' && shotNum % 4 === 0;
       const isOverchargeIon = tower.typeId === 'aegis_mech' && shotNum % 4 === 0;
       const isShadowFan = tower.typeId === 'ninja' && shotNum % 4 === 0;
@@ -2389,6 +2435,9 @@ export class ChickenTdEngine {
         this.spawnRing(tower.x, tower.y, 32, '#FACC15');
       } else if (isCrossDismantle) {
         this.spawnRing(tower.x, tower.y, 38, '#E11D48');
+      } else if (isBlackFlash) {
+        this.spawnRing(tower.x, tower.y, 40, '#E11D48');
+        this.spawnRing(tower.x, tower.y, 26, '#090D16');
       }
 
       const shotGimmick: ProjectileGimmick | undefined =
@@ -2400,6 +2449,8 @@ export class ChickenTdEngine {
           ? 'uppercut_ko'
           : isIaijutsu
           ? 'iaijutsu_wave'
+          : isBlackFlash
+          ? 'black_flash_punch'
           : tower.typeId === 'malevolent_chicken'
           ? 'dismantle_cleave'
           : isTimeRewind
@@ -2423,6 +2474,8 @@ export class ChickenTdEngine {
         ? 4.0 * count
         : isUppercut
         ? 2.4
+        : isBlackFlash
+        ? 2.2
         : isGoldenSeed
         ? 2.2
         : isOverchargeIon
@@ -2432,7 +2485,10 @@ export class ChickenTdEngine {
         : 1.0;
 
       const spreadStep =
-        pStyle === 'feather_slash' || pStyle === 'moon_slash' || pStyle === 'kanabo_crush'
+        pStyle === 'feather_slash' ||
+        pStyle === 'moon_slash' ||
+        pStyle === 'kanabo_crush' ||
+        pStyle === 'limitless_punch'
           ? 0.24
           : pStyle === 'dismantle_slash'
           ? 0.16
@@ -2449,7 +2505,8 @@ export class ChickenTdEngine {
         const angOffset = actualCount === 1 ? 0 : (m - (actualCount - 1) / 2) * spreadStep;
         const ang = baseAngle + angOffset;
         const speed = stats.projectileSpeed * (isDeadeye ? 1.45 : 1.0);
-        const maxLife = (stats.effectiveRange + 75) / speed;
+        const maxLife =
+          (stats.effectiveRange + (pStyle === 'limitless_punch' ? 18 : 75)) / speed;
         const cosA = Math.cos(ang);
         const sinA = Math.sin(ang);
 
@@ -2465,17 +2522,32 @@ export class ChickenTdEngine {
           rotation: ang,
           damage: stats.effectiveDamage * dmgMult,
           pierceLeft:
-            stats.effectivePierce + (isDeadeye ? 10 : isIaijutsu ? 4 : isCrossDismantle ? 6 : 0),
+            stats.effectivePierce +
+            (isDeadeye ? 10 : isIaijutsu ? 4 : isCrossDismantle || isBlackFlash ? 6 : 0),
           splashRadius:
             stats.splashRadius +
-            (isUppercut ? 26 : isIaijutsu ? 38 : isCrossDismantle ? 36 : isOverchargeIon ? 24 : 0),
+            (isUppercut
+              ? 26
+              : isIaijutsu
+              ? 38
+              : isCrossDismantle
+              ? 36
+              : isBlackFlash
+              ? 28
+              : isOverchargeIon
+              ? 24
+              : 0),
           slowFactor: stats.slowFactor,
           slowDuration: stats.slowDuration,
           burnDps: stats.effectiveBurnDps,
           foxDamageMult: stats.effectiveFoxMult,
-          knockback: stats.effectiveKnockback * (isUppercut ? 2.2 : isDeadeye ? 1.8 : 1.0),
+          knockback:
+            stats.effectiveKnockback *
+            (isUppercut ? 2.2 : isDeadeye || isBlackFlash ? 1.8 : 1.0),
           savageCritChance:
-            isIaijutsu || isDeadeye || isCrossDismantle ? 1.0 : stats.effectiveCritChance,
+            isIaijutsu || isDeadeye || isCrossDismantle || isBlackFlash
+              ? 1.0
+              : stats.effectiveCritChance,
           armorPiercing: armorPiercing || isGoldenSeed || isDeadeye || isShadowFan,
           canHitCamo: stats.effectiveCamo,
           hitEnemyIds: null,
@@ -2681,7 +2753,7 @@ export class ChickenTdEngine {
           const cMin = cCol > 0 ? cCol - 1 : 0;
           const cMax = cCol < SPATIAL_COLS - 1 ? cCol + 1 : SPATIAL_COLS - 1;
           const extraRadius =
-            p.style === 'dismantle_slash'
+            p.style === 'dismantle_slash' || p.style === 'limitless_punch'
               ? 18
               : p.style === 'infinity_blade'
               ? 16
@@ -3502,9 +3574,11 @@ export class ChickenTdEngine {
     return best;
   }
 
-  private applySplashHit(proj: ActiveProjectile, cx: number, cy: number): void {
+    private applySplashHit(proj: ActiveProjectile, cx: number, cy: number): void {
     const ringCol =
-      proj.style === 'snow' || proj.style === 'viking_axe'
+      proj.gimmick === 'black_flash_punch'
+        ? '#E11D48'
+        : proj.style === 'limitless_punch' || proj.style === 'snow' || proj.style === 'viking_axe'
         ? '#38BDF8'
         : proj.style === 'acid' ||
           proj.style === 'matrix_beam' ||
@@ -3658,6 +3732,10 @@ export class ChickenTdEngine {
       }
     } else if (proj.gimmick === 'dismantle_cleave') {
       e.vulnTimer = Math.max(e.vulnTimer, 3.0);
+    } else if (proj.gimmick === 'black_flash_punch') {
+      e.vulnTimer = Math.max(e.vulnTimer, 4.0);
+      this.spawnPixelBurst(e.x!, e.y!, 5, '#090D16');
+      this.spawnPixelBurst(e.x!, e.y!, 4, '#E11D48');
     } else if (proj.gimmick === 'shrine_crush') {
       e.vulnTimer = Math.max(e.vulnTimer, 5.5);
       if (e.kbCooldown <= 0) {

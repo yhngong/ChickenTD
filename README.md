@@ -1,6 +1,6 @@
 # ChickenTD
 
-A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tower defense & support auras**, and **Gem Egg mutations & Cluck Cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **6 Modes / Difficulties** (including **True Fox-Hunt** and **Sandbox Lab**), deploy and upgrade **56 specialized variable-size pixel-art Chicken Troops** (spanning 5 physical size classes from compact chicks up to colossal mythic titans, including 6 **Support Aura** Chickens, **Malevolent Chicken**, and **The Complete Cluck**), fire and customize **5 rechargeable Cluck Cannons**, and earn **Gem Eggs** directly (`1 Gem Egg per 1,000 Enemies killed`) to unlock new units, **Cluck Cannon loadouts**, and **Mutations** in the **Shop**.
+A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tower defense & support auras**, and **Gem Egg mutations & Cluck Cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **6 Modes / Difficulties** (including **True Fox-Hunt** and **Sandbox Lab**), deploy and upgrade **57 specialized variable-size pixel-art Chicken Troops** (spanning 5 physical size classes from compact chicks up to colossal mythic titans, including 6 **Support Aura** Chickens, **Malevolent Chicken**, **Limitless Chicken**, and **The Complete Cluck**), fire and customize **5 rechargeable Cluck Cannons**, and earn **Gem Eggs** directly (`1 Gem Egg per 1,000 Enemies killed`) to unlock new units, **Cluck Cannon loadouts**, and **Mutations** in the **Shop**.
 
 ## Core Mechanics
 
@@ -12,7 +12,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 - **Gem Egg Progression — Full Auto-Save, Awakening `+Levels` & Mutations**:
   - **Direct Gem Egg Drops**: Earn **1 Gem Egg per 1,000 Enemies killed** (kill progress carries over across rounds and saves automatically!).
   - **Full Game Auto-Save**: Automatically saves your active run (wave, Corn, Nest HP, placed Chickens, tiers, upgrades, cannon state, and enemies) alongside your Gem Eggs, unlocked units, unlocked cannons, and Mutations in `localStorage`.
-  - **Starter vs. Gem Egg Roster**: You start with **18 Starter Chickens up to Cyber-Cluck 9000** (including **Roost Beacon** & **Espresso Brew-Hen** support towers). All **37 Gem Egg Exclusives** after Cyber-Cluck 9000 are unlocked in the **Shop**, and owning all **55** forges **#56 The Complete Cluck**!
+  - **Starter vs. Gem Egg Roster**: You start with **18 Starter Chickens up to Cyber-Cluck 9000** (including **Roost Beacon** & **Espresso Brew-Hen** support towers). All **38 Gem Egg Exclusives** after Cyber-Cluck 9000 are unlocked in the **Shop**, and owning all **56** forges **#57 The Complete Cluck**!
   - **1x, 4x & 8x Multi-Hatch Cutscene**: Crack open **1 Gem Egg**, **4 Gem Eggs at a time**, or **8 Gem Eggs at a time** in an animated crystalline egg-shattering cutscene!
   - **4-Tier Duplicate Mutations & `+Levels`**: Pulling a unit you already own awakens a **Mutation** (**Common `55%`**, **Rare `28%`**, **Epic `13%`**, **Legendary `4%`**) plus permanent Awakening **`+Levels`**!
 - **8 Distinct Combat Attack Archetypes**:
@@ -39,7 +39,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 - **Zero Enemy Gold — 100% Henhouse Economy (`12 CPS` Cap)**:
   - Defeating Bugs and Foxes awards **0 Corn**! Harvest Corn during active waves at the **Henhouse Clicker** (capped at `12 CPS`) alongside passive **Farmhand Chicks** and **9 Clicker Upgrades**.
 
-## All 56 Chicken Units (7 Tiers Each — Overdrive T5, Transcendent T6 & Omega T7!)
+## All 57 Chicken Units (7 Tiers Each — Overdrive T5, Transcendent T6 & Omega T7!)
 
 ### Starter Coop (Unlocked from Start — Units 1–18)
 1. **Brawler Bantam** — Close Melee Flurry (`95` Corn)
@@ -61,7 +61,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 17. **Sun Chantecler** — Solar Flare Rooster (`780` Corn)
 18. **Cyber-Cluck 9000** — Piercing Laser Railgun (`950` Corn)
 
-### Gem Egg Exclusive Roster (Earned from Gem Eggs — Units 19–55)
+### Gem Egg Exclusive Roster (Earned from Gem Eggs — Units 19–56)
 19. **Iron-Spur Brawler** — Knockback Gauntlet Fighter (`1,150` Corn)
 20. **Ramen Chef-Hen** — *Support Broth Chef* (`1,380` Corn)
 21. **Granite Bastion-Hen** — 360-Degree Tremor Wall (`1,620` Corn)
@@ -96,12 +96,13 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 50. **Gaia Mother-Hen** — Prismatic World-Tree (`430,000` Corn)
 51. **Singularity Hen** — Black-Hole Vortex (`660,000` Corn)
 52. **Malevolent Chicken** — Dismantle Shockwaves & T7 MAX 10s Giant Malevolent Shrine (`820,000` Corn)
-53. **Golden Roost-Deity** — Heavenly Pillar Deity (`1,000,000` Corn)
-54. **Helios Sun-Emperor** — Solar Meteor Sovereign (`1,450,000` Corn)
-55. **Astral Genesis-Wyrm** — Crossing Rift Architect (`2,150,000` Corn)
+53. **Limitless Chicken** — Fixed-Range Heavy Punches & T7 MAX 80%-Slow Infinity (`820,000` Corn)
+54. **Golden Roost-Deity** — Heavenly Pillar Deity (`1,000,000` Corn)
+55. **Helios Sun-Emperor** — Solar Meteor Sovereign (`1,450,000` Corn)
+56. **Astral Genesis-Wyrm** — Crossing Rift Architect (`2,150,000` Corn)
 
-### Completionist Pinnacle Unit (Unlocked Only by Owning All 55 Other Chickens)
-56. **The Complete Cluck** — Boomerang Blade Storm (`3,000,000` Corn! Preset **Mastered** `+150% DMG, +200% Range` <-> **Aether** `+300% DMG, +0% Extra Range`!)
+### Completionist Pinnacle Unit (Unlocked Only by Owning All 56 Other Chickens)
+57. **The Complete Cluck** — Boomerang Blade Storm (`3,000,000` Corn! Preset **Mastered** `+150% DMG, +200% Range` <-> **Aether** `+300% DMG, +0% Extra Range`!)
 
 ## Controls
 
