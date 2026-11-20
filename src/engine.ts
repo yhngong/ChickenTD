@@ -2503,13 +2503,11 @@ export class ChickenTdEngine {
         : isUppercut
         ? 2.4
         : isBlackFlash
-        ? 2.2
+        ? 1.75
         : isGoldenSeed
         ? 2.2
         : isOverchargeIon
         ? 1.35
-        : isCrossDismantle
-        ? 1.25
         : 1.0;
 
       const spreadStep =
@@ -3548,13 +3546,13 @@ export class ChickenTdEngine {
       vy: 210 / dropLife,
       curveRate: 0,
       rotation: Math.PI * 0.5,
-      damage: stats.effectiveDamage * 18.0,
+      damage: stats.effectiveDamage * 12.0,
       pierceLeft: 999,
       splashRadius: 225,
       slowFactor: 0.68,
       slowDuration: 4.5,
-      burnDps: stats.effectiveBurnDps * 2.5,
-      foxDamageMult: stats.effectiveFoxMult * 1.2,
+      burnDps: stats.effectiveBurnDps * 2.0,
+      foxDamageMult: stats.effectiveFoxMult * 1.1,
       knockback: Math.max(90, Math.round(stats.effectiveKnockback * 1.5)),
       savageCritChance: stats.effectiveCritChance,
       armorPiercing: true,
@@ -3653,7 +3651,7 @@ export class ChickenTdEngine {
       y: cy,
       radius,
       tickDamage: isShrine
-        ? Math.max(1, proj.damage * 0.14)
+        ? Math.max(1, proj.damage * 0.1)
         : Math.max(0.4, proj.damage * 0.22 + proj.burnDps * 0.14),
       slowFactor: Math.max(0.22, proj.slowFactor),
       slowDuration: Math.max(0.6, proj.slowDuration * 0.5),

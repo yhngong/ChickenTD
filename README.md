@@ -1,6 +1,6 @@
 # ChickenTD
 
-A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tower defense & support auras**, and **Gem Egg mutations & Cluck Cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **6 Modes / Difficulties** (including **True Fox-Hunt** and **Sandbox Lab**), deploy and upgrade **57 specialized variable-size pixel-art Chicken Troops** (spanning 5 physical size classes from compact chicks up to colossal mythic titans, including 6 **Support Aura** Chickens, **Malevolent Chicken**, **Limitless Chicken**, and **The Complete Cluck**), fire and customize **5 rechargeable Cluck Cannons**, and earn **Gem Eggs** directly (`1 Gem Egg per 1,000 Enemies killed`) to unlock new units, **Cluck Cannon loadouts**, and **Mutations** in the **Shop**.
+A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tower defense & support auras**, and **Gem Egg mutations & Cluck Cannon combat**! Choose across **5 Pixel-Art Biome Maps** and **6 Modes / Difficulties** (including **True Fox-Hunt** and **Sandbox Lab**), deploy and upgrade **57 specialized variable-size pixel-art Chicken Troops** (spanning 5 physical size classes from compact chicks up to colossal mythic titans, including 6 **Support Aura** Chickens, **Malevolent Chicken**, **Honored Chicken**, and **The Complete Cluck**), fire and customize **5 rechargeable Cluck Cannons**, and earn **Gem Eggs** directly (`1 Gem Egg per 1,000 Enemies killed`) to unlock new units, **Cluck Cannon loadouts**, and **Mutations** in the **Shop**.
 
 ## Core Mechanics
 
@@ -96,7 +96,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 50. **Gaia Mother-Hen** — Prismatic World-Tree (`430,000` Corn)
 51. **Singularity Hen** — Black-Hole Vortex (`660,000` Corn)
 52. **Malevolent Chicken** — Dismantle Shockwaves & T7 MAX 10s Giant Malevolent Shrine (`820,000` Corn)
-53. **Limitless Chicken** — Fixed-Range Heavy Punches & T7 MAX 80%-Slow Infinity (`820,000` Corn)
+53. **Honored Chicken** — Fixed-Range Heavy Punches & T7 MAX 80%-Slow Infinity (`820,000` Corn)
 54. **Golden Roost-Deity** — Heavenly Pillar Deity (`1,000,000` Corn)
 55. **Helios Sun-Emperor** — Solar Meteor Sovereign (`1,450,000` Corn)
 56. **Astral Genesis-Wyrm** — Crossing Rift Architect (`2,150,000` Corn)
