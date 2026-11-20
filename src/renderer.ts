@@ -983,17 +983,30 @@ export class MeadowRenderer {
         break;
       }
       case 'singularity': {
-        drawPixelCircle(ctx, zx, zy, rx + (Math.floor(nowSec * 8) % 2), '#C084FC', true);
-        drawFilledPixelDisk(ctx, zx, zy, Math.max(5, rx - 1), Math.max(4, ry), '#7E22CE');
-        const spin = -nowSec * 7 + z.id;
+        const collapse =
+          z.age > z.maxLifetime * 0.55
+            ? Math.max(0.3, (z.maxLifetime - z.age) / (z.maxLifetime * 0.45))
+            : 1;
+        const srx = Math.max(3, Math.round(rx * collapse));
+        const sry = Math.max(2, Math.round(ry * collapse));
+        drawPixelCircle(ctx, zx, zy, srx + (Math.floor(nowSec * 12) % 2), '#C084FC', true);
+        drawFilledPixelDisk(ctx, zx, zy, Math.max(3, srx - 1), Math.max(2, sry), '#7E22CE');
+        const spin = -nowSec * 10 + z.id;
         for (let a = 0; a < 4; a++) {
           const ang = spin + (a * Math.PI) / 2;
-          const sx = zx + Math.round(Math.cos(ang) * (rx * 0.6));
-          const sy = zy + Math.round(Math.sin(ang) * (ry * 0.6));
+          const sx = zx + Math.round(Math.cos(ang) * (srx * 0.6));
+          const sy = zy + Math.round(Math.sin(ang) * (sry * 0.6));
           ctx.fillStyle = a % 2 === 0 ? '#F472B6' : '#38BDF8';
           ctx.fillRect(sx - 1, sy - 1, 2, 2);
         }
-        drawFilledPixelDisk(ctx, zx, zy, Math.max(3, Math.floor(rx * 0.42)), Math.max(2, Math.floor(ry * 0.45)), '#090D16');
+        drawFilledPixelDisk(
+          ctx,
+          zx,
+          zy,
+          Math.max(2, Math.floor(srx * 0.42)),
+          Math.max(2, Math.floor(sry * 0.45)),
+          '#090D16'
+        );
         break;
       }
     }

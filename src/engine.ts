@@ -2868,8 +2868,8 @@ export class ChickenTdEngine {
       canHitCamo: proj.canHitCamo,
       color: col,
       age: 0,
-      maxLifetime: zStyle === 'singularity' ? 2.6 : 2.1,
-      tickCooldown: 0.24,
+      maxLifetime: zStyle === 'singularity' ? 0.72 : 2.1,
+      tickCooldown: zStyle === 'singularity' ? 0.18 : 0.24,
     });
   }
 
