@@ -2380,10 +2380,7 @@ export class ChickenTdEngine {
         (tower.typeId === 'chrono' || tower.typeId === 'chronos_empress') && shotNum % 3 === 0;
 
       if (isDeadeye) {
-        this.spawnMapPopup('DEADEYE!', tower.x, tower.y - 18, '#FACC15', 1.0);
         this.spawnRing(tower.x, tower.y, 32, '#FACC15');
-      } else if (isUppercut) {
-        this.spawnMapPopup('KO!', tower.x, tower.y - 18, '#FB7185', 1.0);
       }
 
       const shotGimmick: ProjectileGimmick | undefined =
@@ -2952,9 +2949,6 @@ export class ChickenTdEngine {
         isRequiem ? '#FACC15' : '#C084FC'
       );
     }
-    if (stand.punchCount % 8 === 1) {
-      this.spawnMapPopup('STAR!', stand.x, stand.y - 18, isRequiem ? '#FEF08A' : '#F0ABFC', 1.0);
-    }
   }
 
   /**
@@ -3491,9 +3485,6 @@ export class ChickenTdEngine {
       e.markTimer = Math.max(e.markTimer ?? 0, 4.5);
       if (e.hp <= e.maxHp * 0.28) {
         dmg *= 2.2;
-        if (def.isFoxBoss || Math.random() < 0.35) {
-          this.spawnMapPopup('EXECUTE!', e.x!, e.y! - 18, '#F87171', 1.0);
-        }
       }
     }
     // GIMMICK: Golden Roost-Deity % Max-HP Divine Judgment!
@@ -3511,9 +3502,6 @@ export class ChickenTdEngine {
     if (isSavageCrit) {
       dmg *= 3.0;
       this.spawnPixelBurst(e.x!, e.y!, 5, '#FACC15');
-      if (Math.random() < 0.35 || def.isFoxBoss) {
-        this.spawnMapPopup('SAVAGE!', e.x!, e.y! - 16, '#FEF08A', 1.0);
-      }
       this.audio.playSavageCrit();
     }
 
@@ -3545,9 +3533,6 @@ export class ChickenTdEngine {
           const shatterDmg = dmg * 0.65;
           e.hp -= shatterDmg;
           this.spawnRing(e.x!, e.y!, 42, '#7DD3FC');
-          if (def.isFoxBoss || Math.random() < 0.4) {
-            this.spawnMapPopup('SHATTER!', e.x!, e.y! - 16, '#BAE6FD', 1.0);
-          }
         }
       } else if (proj.gimmick === 'time_rewind' && e.kbCooldown <= 0) {
         const bossKbScale =
@@ -3559,9 +3544,6 @@ export class ChickenTdEngine {
         e.kbCooldown = def.isFoxBoss ? 0.85 : 0.45;
         syncEnemyPathPosition(e);
         this.spawnRing(e.x!, e.y!, 30, '#2DD4BF');
-        if (def.isFoxBoss || Math.random() < 0.4) {
-          this.spawnMapPopup('WARP!', e.x!, e.y! - 16, '#5EEAD4', 1.0);
-        }
       } else if (proj.gimmick === 'plague_spore') {
         e.plagueTimer = 4.5;
         e.plagueDmg = Math.max(e.plagueDmg ?? 0, rawDamage * 0.85);
@@ -3650,15 +3632,8 @@ export class ChickenTdEngine {
           : popped.typeId === 'fox_phoenix'
           ? '#FACC15'
           : '#F97316';
-      const popLabel =
-        popped.typeId === 'fox_cosmic'
-          ? 'COSMIC SLAIN!'
-          : popped.typeId === 'fox_phoenix'
-          ? 'PHOENIX SLAIN!'
-          : 'FOX SLAIN!';
       this.spawnRing(px, py, def.radius * 2.2, popCol);
       this.spawnPixelBurst(px, py, 16, def.bodyColor);
-      this.spawnMapPopup(popLabel, px, py - 18, '#FDE047', 1.05);
     } else {
       this.spawnPixelBurst(px, py, 4, def.bodyColor);
     }
