@@ -886,93 +886,87 @@ function drawStandSpiritPixelArt(requiem: boolean, punchFrame: boolean): HTMLCan
   return c;
 }
 
-type ChickenBodyModel =
-  | 'compact_chick'
-  | 'tall_strider'
-  | 'robed_arcanist'
-  | 'booth_turret'
-  | 'heavy_juggernaut'
-  | 'biped_mecha'
-  | 'levitating_mystic'
-  | 'winged_celestial'
-  | 'star_dreadnought'
-  | 'serpentine_leviathan'
-  | 'colossal_titan';
+type MochiBorbSize = 'petite' | 'classic' | 'king';
 
-function getChickenBodyModel(typeId: ChickenTypeId): {
-  model: ChickenBodyModel;
+interface ChickenSpriteLayout {
   w: number;
   h: number;
-} {
+  borb: MochiBorbSize;
+  bx: number;
+  by: number;
+  hideFeet?: boolean;
+}
+
+function getChickenSpriteLayout(typeId: ChickenTypeId): ChickenSpriteLayout {
   switch (typeId) {
+    // 1. Classic 22x22 Brawler Bantam (100% original reference!)
     case 'bantam':
+      return { w: 22, h: 22, borb: 'classic', bx: 4, by: 7 };
+
+    // 2. Petite Round Mochi-Chicks (20x20)
     case 'pecker':
     case 'sling_chick':
     case 'honey':
     case 'chilly':
     case 'ninja':
-      return { model: 'compact_chick', w: 20, h: 20 };
+      return { w: 20, h: 20, borb: 'petite', bx: 4, by: 7 };
 
+    // 3. Classic Round Mochi-Borbs with Tall Hats, Capes & Weapons (26x26)
     case 'boomerang':
+    case 'alchemist':
     case 'ranger':
     case 'cactus_hen':
-    case 'cowboy_desperado':
-    case 'samurai_shogun':
-    case 'tengu_shadow':
-      return { model: 'tall_strider', w: 24, h: 26 };
-
-    case 'alchemist':
     case 'wizard':
+    case 'phoenix':
+    case 'iron_spurs':
+    case 'cowboy_desperado':
+    case 'viking_jarl':
+    case 'chrono':
     case 'plague_doctor':
-    case 'surge_oracle':
-    case 'pharaoh_ra':
+    case 'samurai_shogun':
     case 'necro_lich':
-      return { model: 'robed_arcanist', w: 24, h: 26 };
+    case 'tengu_shadow':
+      return { w: 26, h: 26, borb: 'classic', bx: 6, by: 9 };
 
+    // 4. Classic Round Mochi-Borbs in Cozy Stalls, Open-Top Walkers & Turrets (30x28)
+    case 'mecha':
+    case 'aegis_mech':
+    case 'brew_hen':
+    case 'ramen_chef':
+      return { w: 30, h: 28, borb: 'classic', bx: 8, by: 8, hideFeet: true };
+
+    case 'lobber':
     case 'roost_beacon':
     case 'pirate':
     case 'bard':
-    case 'brew_hen':
-    case 'ramen_chef':
+    case 'bastion_shield':
+    case 'tesla':
+    case 'surge_oracle':
     case 'overclock_engie':
     case 'cyber_sniper':
+    case 'pharaoh_ra':
     case 'storm_dj':
-      return { model: 'booth_turret', w: 30, h: 30 };
-
-    case 'lobber':
-    case 'iron_spurs':
-    case 'bastion_shield':
-    case 'viking_jarl':
-    case 'paladin_crusader':
-    case 'oni_warlord':
-      return { model: 'heavy_juggernaut', w: 30, h: 30 };
-
-    case 'mecha':
-    case 'tesla':
-    case 'aegis_mech':
-      return { model: 'biped_mecha', w: 30, h: 30 };
-
-    case 'chrono':
     case 'stand_hen':
-    case 'valkyrie':
+    case 'paladin_crusader':
     case 'idol_diva':
-      return { model: 'levitating_mystic', w: 28, h: 30 };
+      return { w: 30, h: 28, borb: 'classic', bx: 8, by: 10 };
 
-    case 'phoenix':
+    // 5. Grand Winged, Cloud-Riding & Seafaring Round Mochi-Borbs (34x32)
+    case 'oni_warlord':
+      return { w: 34, h: 32, borb: 'king', bx: 8, by: 11 };
+
+    case 'valkyrie':
     case 'astral_astrologer':
+    case 'star_dread':
+    case 'leviathan_kraken':
+    case 'abyss_wyrm':
     case 'quasar':
     case 'archangel_seraph':
     case 'chronos_empress':
     case 'omega_god':
-      return { model: 'winged_celestial', w: 36, h: 34 };
+      return { w: 34, h: 32, borb: 'classic', bx: 10, by: 11 };
 
-    case 'star_dread':
-      return { model: 'star_dreadnought', w: 36, h: 34 };
-
-    case 'leviathan_kraken':
-    case 'abyss_wyrm':
-      return { model: 'serpentine_leviathan', w: 36, h: 34 };
-
+    // 6. Chubby King-Borb Mythic Titans (38x36 — extra-plump round mochi-borb!)
     case 'mech_zilla':
     case 'gaia_creator':
     case 'void_singularity':
@@ -980,13 +974,14 @@ function getChickenBodyModel(typeId: ChickenTypeId): {
     case 'solar_emperor':
     case 'eternity_weaver':
     case 'complete_cluck':
-      return { model: 'colossal_titan', w: 42, h: 40 };
+      return { w: 38, h: 36, borb: 'king', bx: 10, by: 12 };
   }
 }
 
 function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): HTMLCanvasElement {
   const def = CHICKEN_DEFS[typeId];
-  const { model, w, h } = getChickenBodyModel(typeId);
+  const layout = getChickenSpriteLayout(typeId);
+  const { w, h, borb } = layout;
   const c = makeCanvas(w, h);
   const ctx = c.getContext('2d')!;
 
@@ -997,1014 +992,934 @@ function drawChickenUnitPixelArt(typeId: ChickenTypeId, attackFrame: boolean): H
 
   const shiftX = attackFrame ? 1 : 0;
   const hopY = attackFrame ? -1 : 0;
+  const bx = layout.bx + shiftX;
+  const by = layout.by + hopY;
+  const borbW = borb === 'petite' ? 11 : borb === 'king' ? 17 : 13;
 
-  // Head/torso anchor coordinates updated per model silhouette so hats/props/eyes align cleanly!
-  let bx = 4 + shiftX;
-  let by = 6 + hopY;
-  let drawStandardBeakFace = false;
+  // ==================== 1. GROUND SHADOW & UNDER-BORB PEDESTALS / MOUNTS ====================
+  px(
+    Math.floor((w - (borbW + 2)) / 2),
+    h - 3,
+    'rgba(15,23,42,0.34)',
+    borbW + 2,
+    2
+  );
 
-  // ==================== PART A: 12 DISTINCT SILHOUETTE & BODY CHASSIS BUILDERS ====================
-  if (model === 'compact_chick') {
-    // 20x20 Nimble Baby Chick Silhouette
-    bx = 3 + shiftX;
-    by = 6 + hopY;
-    px(4, 17, 'rgba(15,23,42,0.34)', 11, 2);
-    px(bx + 2, by + 9, '#FB923C', 2, 2);
-    px(bx + 7, by + 9, '#FB923C', 2, 2);
-    px(bx - 2, by + 3, OUTLINE, 3, 3);
-    px(bx - 1, by + 4, def.accentColor, 2, 1);
-    px(bx + 2, by, OUTLINE, 7, 9);
+  // Cute bases, rune circles, clouds, waves & open-top walker legs drawn UNDER the round chicken!
+  if (typeId === 'wizard') {
+    px(4, 22, '#7E22CE', 18, 2);
+    px(6, 22, '#E879F9', 14, 1);
+  } else if (typeId === 'surge_oracle') {
+    px(5, 23, '#0E7490', 20, 2);
+    px(8, 23, '#67E8F9', 14, 1);
+  } else if (typeId === 'roost_beacon') {
+    // Cozy wooden watchtower platform under the round chicken
+    px(5, 21, OUTLINE, 20, 5);
+    px(6, 22, '#92400E', 18, 3);
+    px(6, 22, '#D97706', 18, 1);
+  } else if (typeId === 'tesla') {
+    // Copper & cobalt Tesla coil base pad
+    px(5, 22, OUTLINE, 20, 4);
+    px(6, 23, '#334155', 18, 2);
+    px(9, 23, '#38BDF8', 12, 1);
+  } else if (typeId === 'paladin_crusader') {
+    // Golden radiant sanctuary seal on ground
+    px(5, 23, '#B45309', 20, 2);
+    px(8, 23, '#FEF08A', 14, 1);
+  } else if (typeId === 'idol_diva') {
+    // Starry pastel idol stage cushion
+    px(5, 22, OUTLINE, 20, 4);
+    px(6, 23, '#BE185D', 18, 2);
+    px(8, 23, '#F9A8D4', 14, 1);
+  } else if (typeId === 'mecha' || typeId === 'aegis_mech') {
+    // Chibi open-top walker legs & seat rim underneath the round chicken!
+    const legCol = typeId === 'mecha' ? '#0891B2' : '#2563EB';
+    const trimCol = typeId === 'mecha' ? '#67E8F9' : '#FACC15';
+    px(8, 19, OUTLINE, 4, 7);
+    px(9, 20, legCol, 2, 5);
+    px(17, 19, OUTLINE, 4, 7);
+    px(18, 20, legCol, 2, 5);
+    px(6, 16, OUTLINE, 17, 5);
+    px(7, 17, '#334155', 15, 3);
+    px(9, 18, trimCol, 11, 1);
+  } else if (typeId === 'astral_astrologer') {
+    // Fluffy golden-white star cloud under the round chicken!
+    px(6, 22, OUTLINE, 22, 6);
+    px(7, 23, '#E0E7FF', 20, 4);
+    px(9, 22, '#FFFFFF', 16, 3);
+    px(12, 24, '#FDE047', 2, 2);
+    px(20, 24, '#38BDF8', 2, 2);
+  } else if (typeId === 'star_dread') {
+    // Cute flying saucer bridge deck under the round captain chicken!
+    px(4, 21, OUTLINE, 26, 6);
+    px(5, 22, '#334155', 24, 4);
+    px(7, 23, '#38BDF8', 20, 2);
+    px(10, 23, '#FEF08A', 3, 1);
+    px(16, 23, '#F43F5E', 3, 1);
+    px(22, 23, '#FEF08A', 3, 1);
+  } else if (typeId === 'leviathan_kraken') {
+    // Cresting turquoise ocean wave + cute curling tentacles under the round chicken!
+    px(4, 21, OUTLINE, 26, 7);
+    px(5, 22, '#0F766E', 24, 5);
+    px(6, 22, '#22D3EE', 22, 2);
+    px(8, 21, '#E0F2FE', 6, 1);
+    px(18, 21, '#E0F2FE', 6, 1);
+  } else if (typeId === 'golden_deity') {
+    // Fluffy divine golden cloud cushion under the chubby King-Borb!
+    px(5, 26, OUTLINE, 28, 7);
+    px(6, 27, '#FACC15', 26, 5);
+    px(8, 26, '#FEF9C3', 22, 4);
+    px(10, 27, '#FFFFFF', 18, 2);
+  }
+
+  // ==================== 2. BACK-LAYER WINGS, CAPES, TREES & SWORD HALOS ====================
+  if (typeId === 'phoenix') {
+    px(bx - 4, by + 1, OUTLINE, 6, 8);
+    px(bx - 3, by + 2, '#EA580C', 4, 6);
+    px(bx - 2, by + 3, '#FACC15', 3, 4);
+  } else if (typeId === 'viking_jarl') {
+    // Cozy snow-wolf fur cape behind the round borb
+    px(bx - 3, by + 2, OUTLINE, 5, 8);
+    px(bx - 2, by + 3, '#CBD5E1', 3, 6);
+  } else if (typeId === 'tengu_shadow') {
+    // Fluttering crimson tengu feather cloak
+    px(bx - 4, by + 1, OUTLINE, 6, 9);
+    px(bx - 3, by + 2, '#DC2626', 4, 7);
+    px(bx - 2, by + 3, '#FCA5A5', 2, 4);
+  } else if (typeId === 'paladin_crusader') {
+    px(bx - 4, by + 2, OUTLINE, 6, 8);
+    px(bx - 3, by + 3, '#F8FAFC', 4, 6);
+    px(bx - 3, by + 7, '#F59E0B', 4, 2);
+  } else if (typeId === 'valkyrie') {
+    // Fluffy sky-blue & white feathered valkyrie wings!
+    px(bx - 6, by - 1, OUTLINE, 8, 11);
+    px(bx - 5, by, '#FFFFFF', 6, 5);
+    px(bx - 5, by + 5, '#7DD3FC', 5, 4);
+    px(bx + 11, by, OUTLINE, 6, 8);
+    px(bx + 12, by + 1, '#E0F2FE', 4, 6);
+  } else if (typeId === 'archangel_seraph') {
+    // Grand 6-winged golden-white seraphim pinions behind the round borb!
+    px(bx - 7, by - 2, OUTLINE, 9, 13);
+    px(bx - 6, by - 1, '#FFFFFF', 7, 4);
+    px(bx - 6, by + 3, '#FEF08A', 7, 4);
+    px(bx - 5, by + 7, '#F59E0B', 6, 3);
+    px(bx + 11, by - 1, OUTLINE, 7, 10);
+    px(bx + 12, by, '#FFFFFF', 5, 4);
+    px(bx + 12, by + 4, '#FEF08A', 5, 4);
+  } else if (typeId === 'abyss_wyrm') {
+    // Wide obsidian & glowing cyan dragon wings behind the round borb!
+    px(bx - 7, by - 2, OUTLINE, 9, 12);
+    px(bx - 6, by - 1, '#0F172A', 7, 10);
+    px(bx - 5, by + 1, '#22D3EE', 5, 6);
+    px(bx + 11, by - 1, OUTLINE, 7, 10);
+    px(bx + 12, by, '#0F172A', 5, 8);
+    px(bx + 12, by + 2, '#06B6D4', 3, 4);
+  } else if (typeId === 'quasar') {
+    // Glowing pastel nebula halo ring behind the round borb!
+    px(bx - 5, by - 2, '#7E22CE', 23, 14);
+    px(bx - 3, by, '#22D3EE', 19, 10);
+    px(bx - 2, by + 1, '#1E1B4B', 17, 8);
+  } else if (typeId === 'chronos_empress') {
+    // Radiant golden clockwork sun-wheel behind the round borb!
+    px(bx - 5, by - 3, OUTLINE, 23, 15);
+    px(bx - 4, by - 2, '#FACC15', 21, 13);
+    px(bx - 2, by, '#1E293B', 17, 9);
+    px(bx + 6, by - 4, '#FEF08A', 2, 3);
+    px(bx - 6, by + 4, '#FEF08A', 3, 2);
+  } else if (typeId === 'omega_god') {
+    // Luminous golden-white Genesis wings!
+    px(bx - 7, by - 2, OUTLINE, 9, 12);
+    px(bx - 6, by - 1, '#FEF08A', 7, 10);
+    px(bx - 4, by + 1, '#FFFFFF', 5, 6);
+    px(bx + 11, by - 1, OUTLINE, 7, 10);
+    px(bx + 12, by, '#FEF08A', 5, 8);
+  } else if (typeId === 'mech_zilla') {
+    // Cute glowing neon-cyan crystal dorsal fins along the chubby King-Borb's back!
+    px(bx - 5, by + 1, OUTLINE, 6, 4);
+    px(bx - 4, by + 2, '#22D3EE', 4, 2);
+    px(bx - 6, by + 5, OUTLINE, 7, 4);
+    px(bx - 5, by + 6, '#67E8F9', 5, 2);
+    px(bx - 5, by + 9, OUTLINE, 6, 4);
+    px(bx - 4, by + 10, '#06B6D4', 4, 2);
+  } else if (typeId === 'gaia_creator') {
+    // Lush emerald World-Tree canopy & pink sakura blossoms behind the round King-Borb!
+    px(3, 3, OUTLINE, 32, 16);
+    px(4, 4, '#15803D', 30, 14);
+    px(6, 5, '#22C55E', 26, 10);
+    px(7, 6, '#F472B6', 3, 3);
+    px(15, 4, '#F9A8D4', 3, 3);
+    px(26, 6, '#FACC15', 3, 3);
+    px(22, 9, '#F472B6', 2, 2);
+  } else if (typeId === 'void_singularity') {
+    // Back half of tilted magenta-cyan cosmic Saturn ring!
+    px(2, by + 3, OUTLINE, 34, 7);
+    px(3, by + 4, '#A855F7', 32, 5);
+    px(5, by + 5, '#22D3EE', 28, 3);
+  } else if (typeId === 'golden_deity') {
+    // Radiant golden sun-mandala halo behind the round King-Borb!
+    px(4, 4, OUTLINE, 28, 20);
+    px(5, 5, '#FACC15', 26, 18);
+    px(7, 7, '#FEF08A', 22, 14);
+    px(9, 9, '#FFFFFF', 18, 10);
+  } else if (typeId === 'solar_emperor') {
+    // Blazing 8-rayed solar corona flare behind the round King-Borb!
+    px(3, 4, OUTLINE, 30, 22);
+    px(4, 5, '#EA580C', 28, 20);
+    px(6, 7, '#FACC15', 24, 16);
+    px(9, 10, '#FEF08A', 18, 10);
+  } else if (typeId === 'eternity_weaver') {
+    // Prismatic astral butterfly-dragon wings behind the round King-Borb!
+    px(2, 6, OUTLINE, 10, 20);
+    px(3, 7, '#A855F7', 8, 9);
+    px(3, 16, '#22D3EE', 8, 9);
+    px(5, 9, '#F472B6', 5, 6);
+    px(25, 7, OUTLINE, 9, 16);
+    px(26, 8, '#A855F7', 7, 7);
+    px(26, 15, '#22D3EE', 7, 7);
+  } else if (typeId === 'complete_cluck') {
+    // Iconic Fan of 7 Floating Prismatic Swords radiating behind the round King-Borb!
+    const fanCols = ['#4ADE80', '#22D3EE', '#38BDF8', '#FACC15', '#F472B6', '#C084FC', '#FB7185'];
+    const fanPos = [
+      [3, 14],
+      [4, 9],
+      [8, 5],
+      [15, 2],
+      [22, 5],
+      [27, 9],
+      [29, 14],
+    ];
+    for (let i = 0; i < fanPos.length; i++) {
+      const [fx, fy] = fanPos[i];
+      px(fx - 1, fy - 1, OUTLINE, 5, 8);
+      px(fx, fy, fanCols[i], 3, 6);
+      px(fx + 1, fy, '#FFFFFF', 1, 4);
+    }
+  }
+
+  // ==================== 3, 4, 5, 6. ROUND, PLUMP, SQUISHY MOCHI-BORB BODY ====================
+  // Every single Chicken unit uses the adorable Brawler-Bantam round mochi-borb silhouette!
+  const wingY =
+    borb === 'petite'
+      ? by + (attackFrame ? 3 : 4)
+      : borb === 'king'
+      ? by + (attackFrame ? 5 : 6)
+      : by + (attackFrame ? 4 : 5);
+
+  if (borb === 'petite') {
+    if (!layout.hideFeet) {
+      px(bx + 2, by + 9, '#FB923C', 2, 2);
+      px(bx + 7, by + 9, '#FB923C', 2, 2);
+    }
+    const tailY = by + (attackFrame ? 2 : 3);
+    px(bx - 2, tailY, OUTLINE, 3, 4);
+    px(bx - 1, tailY + 1, def.accentColor, 2, 2);
+    px(bx - 1, tailY + 1, def.featherColor, 1, 1);
+
+    // 11x9 Round Baby Mochi-Borb
+    px(bx + 3, by, OUTLINE, 5, 9);
     px(bx + 1, by + 1, OUTLINE, 9, 7);
     px(bx, by + 2, OUTLINE, 11, 5);
-    px(bx + 2, by + 1, def.featherColor, 7, 7);
-    px(bx + 1, by + 2, def.featherColor, 9, 5);
-    px(bx + 2, by + 6, def.bellyColor, 7, 2);
+
+    px(bx + 3, by + 1, def.featherColor, 5, 7);
+    px(bx + 2, by + 2, def.featherColor, 7, 5);
+    px(bx + 1, by + 3, def.featherColor, 9, 3);
     px(bx + 3, by + 1, '#FFFFFF', 3, 1);
-    // Wing
-    px(bx + 1, by + (attackFrame ? 3 : 4), OUTLINE, 4, 3);
-    px(bx + 2, by + (attackFrame ? 4 : 5), def.bellyColor, 2, 1);
-    // Expressive Chick Face (Ninja gets stealth mask & sharp eyes!)
-    if (typeId === 'ninja') {
-      px(bx + 1, by + 4, '#1E293B', 9, 4);
-      px(bx + 7, by + 2, '#FEF08A', 2, 2);
-      px(bx + 8, by + 2, OUTLINE, 1, 1);
-    } else {
-      px(bx + 7, by + 2, OUTLINE, 2, 3);
-      px(bx + 7, by + 2, '#FFFFFF', 1, 1);
-      px(bx + 6, by + 5, '#FB7185', 2, 1);
-      px(bx + 10, by + 3, OUTLINE, 3, 2);
-      px(bx + 10, by + 3, '#FDE047', 2, 1);
-      px(bx + 10, by + 4, '#F97316', 2, 1);
-    }
-  } else if (model === 'tall_strider') {
-    // 24x26 Tall, Lean Upright Raptor / Marksman / Ronin Rooster!
-    bx = 6 + shiftX;
-    by = 6 + hopY;
-    px(5, 23, 'rgba(15,23,42,0.36)', 13, 2);
-    // Long athletic spurred rooster legs!
-    px(bx + 2, 18 + hopY, OUTLINE, 2, 5);
-    px(bx + 6, 18 + hopY, OUTLINE, 2, 5);
-    px(bx + 2, 19 + hopY, '#F59E0B', 2, 4);
-    px(bx + 6, 19 + hopY, '#F59E0B', 2, 4);
-    px(bx + 1, 22 + hopY, '#F97316', 4, 1);
-    px(bx + 5, 22 + hopY, '#F97316', 4, 1);
-    // Dramatic 3-plume sweeping rooster tail!
-    px(bx - 5, by + 4, OUTLINE, 6, 8);
-    px(bx - 4, by + 5, def.accentColor, 4, 2);
-    px(bx - 3, by + 7, def.featherColor, 4, 2);
-    px(bx - 4, by + 9, def.accentColor, 3, 2);
-    if (typeId === 'tengu_shadow') {
-      // Wide dark crow wings on Crimson Tengu-Hen!
-      px(bx - 5, by + 1, OUTLINE, 6, 11);
-      px(bx - 4, by + 2, '#1E293B', 4, 9);
-      px(bx - 3, by + 3, '#EF4444', 2, 5);
-    }
-    // Tall slender torso + proud neck
-    if (typeId === 'cactus_hen') {
-      // Spiky green ribbed Saguaro Cactus Body with desert arms!
-      px(bx + 1, by, OUTLINE, 9, 13);
-      px(bx + 2, by + 1, '#16A34A', 7, 11);
-      px(bx + 4, by + 1, '#4ADE80', 1, 11);
-      px(bx + 7, by + 1, '#15803D', 1, 11);
-      // Left & right cactus arms!
-      px(bx - 3, by + 4, OUTLINE, 4, 5);
-      px(bx - 2, by + 5, '#16A34A', 3, 3);
-      px(bx - 2, by + 2, '#22C55E', 2, 3);
-    } else {
-      px(bx + 1, by + 4, OUTLINE, 9, 9);
-      px(bx + 2, by, OUTLINE, 7, 6);
-      px(bx + 2, by + 5, def.featherColor, 7, 7);
-      px(bx + 3, by + 1, def.featherColor, 5, 5);
-      px(bx + 4, by + 7, def.bellyColor, 4, 4);
-    }
-    // Sharp angled hunter eye + pointed hawk beak!
-    px(bx + 6, by + 2, '#0F172A', 3, 1); // fierce brow
-    px(bx + 7, by + 3, typeId === 'tengu_shadow' ? '#EF4444' : OUTLINE, 2, 2);
-    px(bx + 7, by + 3, '#FFFFFF', 1, 1);
-    px(bx + 9, by + 3, OUTLINE, 4, 2);
-    px(bx + 9, by + 3, '#FACC15', 3, 1);
-    px(bx + 9, by + 4, '#EA580C', 2, 1);
-  } else if (model === 'robed_arcanist') {
-    // 24x26 Bell-Shaped Flowing Wizard / Priest / Lich Robe (touches ground, glowing arcane eyes!)
-    bx = 5 + shiftX;
-    by = 6 + hopY;
-    px(3, 23, 'rgba(15,23,42,0.4)', 17, 2);
-    const robeCol =
-      typeId === 'wizard'
-        ? '#581C87'
-        : typeId === 'alchemist'
-        ? '#065F46'
-        : typeId === 'plague_doctor'
-        ? '#0F172A'
-        : typeId === 'surge_oracle'
-        ? '#1E293B'
-        : typeId === 'pharaoh_ra'
-        ? '#1E3A8A'
-        : '#111827';
-    const trimCol =
-      typeId === 'pharaoh_ra' || typeId === 'wizard'
-        ? '#FACC15'
-        : typeId === 'surge_oracle'
-        ? '#22D3EE'
-        : '#10B981';
-    // Flared bell-robe skirt + ornate bottom rune hem!
-    px(bx - 1, 16, OUTLINE, 15, 8);
-    px(bx, 12, OUTLINE, 13, 5);
-    px(bx + 2, by, OUTLINE, 9, 7);
-    px(bx, 17, robeCol, 13, 6);
-    px(bx + 1, 13, robeCol, 11, 4);
-    px(bx, 21, trimCol, 13, 2);
-    px(bx + 5, 14, trimCol, 3, 7); // central robe stole!
-    // Shadowed hood face + glowing mystic eyes!
-    px(bx + 3, by + 1, typeId === 'pharaoh_ra' ? def.featherColor : '#0F172A', 7, 5);
-    const eyeGlow =
-      typeId === 'surge_oracle'
-        ? '#22D3EE'
-        : typeId === 'wizard'
-        ? '#E879F9'
-        : typeId === 'pharaoh_ra'
-        ? '#FEF08A'
-        : '#34D399';
-    px(bx + 7, by + 3, eyeGlow, 2, 2);
-    if (typeId === 'plague_doctor') {
-      // Iconic long curved Plague Doctor beak-mask!
-      px(bx + 9, by + 3, OUTLINE, 6, 3);
-      px(bx + 9, by + 3, '#E2E8F0', 5, 2);
-      px(bx + 13, by + 5, '#94A3B8', 2, 1);
-    } else {
-      px(bx + 10, by + 4, '#FACC15', 2, 2);
-    }
-    // Outstretched casting sleeve
-    px(bx + 8, 13 + hopY, OUTLINE, 6, 4);
-    px(bx + 9, 14 + hopY, robeCol, 4, 2);
-    px(bx + 12, 14 + hopY, trimCol, 1, 2);
-  } else if (model === 'booth_turret') {
-    // 30x30 Full Pixel Emplacement / Stall / Deck / DJ Stage with Operator Chicken Inside!
-    bx = 8 + shiftX;
-    by = 7 + hopY;
-    px(3, 27, 'rgba(15,23,42,0.42)', 24, 2);
-    // Operator Chicken upper bust inside the booth
-    px(bx + 2, by + 2, OUTLINE, 10, 10);
-    px(bx + 3, by + 3, def.featherColor, 8, 8);
-    px(bx + 9, by + 5, OUTLINE, 2, 2);
-    px(bx + 9, by + 5, '#FFFFFF', 1, 1);
-    px(bx + 12, by + 6, '#F97316', 2, 2);
-  } else if (model === 'heavy_juggernaut') {
-    // 30x30 Hulking Broad-Shouldered Plate/Muscle Juggernaut!
-    bx = 6 + shiftX;
-    by = 7 + hopY;
-    px(4, 27, 'rgba(15,23,42,0.42)', 21, 2);
-    // Heavy armored greaves / war-boots
-    px(bx + 2, 23, OUTLINE, 5, 5);
-    px(bx + 10, 23, OUTLINE, 5, 5);
-    px(bx + 3, 24, '#475569', 3, 3);
-    px(bx + 11, 24, '#475569', 3, 3);
-    // Broad 17px hulking chest + bulky shoulder pauldrons!
-    px(bx, 12 + hopY, OUTLINE, 17, 12);
-    px(bx - 2, 13 + hopY, OUTLINE, 5, 6);  // left pauldron
-    px(bx + 14, 13 + hopY, OUTLINE, 5, 6); // right pauldron
-    px(bx + 1, 13 + hopY, def.featherColor, 15, 10);
-    px(bx - 1, 14 + hopY, def.accentColor, 3, 4);
-    px(bx + 15, 14 + hopY, def.accentColor, 3, 4);
-    px(bx + 3, 17 + hopY, def.bellyColor, 11, 5);
-    // Armored head + fierce war-brow
-    px(bx + 3, by, OUTLINE, 11, 8);
-    px(bx + 4, by + 1, def.featherColor, 9, 6);
-    px(bx + 9, by + 2, OUTLINE, 4, 1); // furrowed brow!
-    px(bx + 10, by + 3, typeId === 'oni_warlord' ? '#FEF08A' : OUTLINE, 2, 2);
-    px(bx + 13, by + 4, OUTLINE, 4, 3);
-    px(bx + 13, by + 4, '#FACC15', 3, 2);
-  } else if (model === 'biped_mecha') {
-    // 30x30 Geometric Robotic Exosuit / Cyber-Mech Chassis (LED Visor, Shoulder Pods, Thruster Legs!)
-    bx = 6 + shiftX;
-    by = 6 + hopY;
-    px(5, 27, 'rgba(15,23,42,0.42)', 19, 2);
-    const chassis = typeId === 'aegis_mech' ? '#E2E8F0' : typeId === 'tesla' ? '#312E81' : '#334155';
-    const core = typeId === 'aegis_mech' ? '#EF4444' : typeId === 'tesla' ? '#38BDF8' : '#22D3EE';
-    // Twin hydraulic mech legs + cyan jet thrusters!
-    px(bx + 2, 21, OUTLINE, 5, 7);
-    px(bx + 10, 21, OUTLINE, 5, 7);
-    px(bx + 3, 22, '#64748B', 3, 5);
-    px(bx + 11, 22, '#64748B', 3, 5);
-    if (attackFrame) {
-      px(bx, 24, '#22D3EE', 2, 3);
-    }
-    // Angular armored mecha torso + glowing reactor core!
-    px(bx, 12 + hopY, OUTLINE, 17, 10);
-    px(bx + 1, 13 + hopY, chassis, 15, 8);
-    px(bx + 6, 15 + hopY, OUTLINE, 5, 5);
-    px(bx + 7, 16 + hopY, core, 3, 3);
-    px(bx + 8, 17 + hopY, '#FFFFFF', 1, 1);
-    // Squared robotic head + glowing horizontal cyber LED visor!
-    px(bx + 3, by, OUTLINE, 11, 8);
-    px(bx + 4, by + 1, chassis, 9, 6);
-    px(bx + 5, by + 3, '#0F172A', 8, 3);
-    px(bx + 6, by + 4, core, 7, 1);
-    px(bx + 10, by + 4, '#FFFFFF', 2, 1);
-  } else if (model === 'levitating_mystic') {
-    // 28x30 Floating Mystic Hovering Mid-Air Above Glowing Ground Rune / Stage!
-    const floatY = attackFrame ? -2 : 0;
-    bx = 7 + shiftX;
-    by = 6 + floatY;
-    const runeCol =
-      typeId === 'chrono'
-        ? '#2DD4BF'
-        : typeId === 'stand_hen'
-        ? '#A855F7'
-        : typeId === 'valkyrie'
-        ? '#38BDF8'
-        : '#EC4899';
-    // Glowing ground magic seal / idol stage!
-    px(4, 26, OUTLINE, 20, 3);
-    px(5, 27, runeCol, 18, 1);
-    px(9, 26, '#FEF08A', 10, 1);
-    // Trailing sash / cape ribbons floating underneath
-    px(bx - 2, by + 10, OUTLINE, 5, 7);
-    px(bx - 1, by + 11, def.accentColor, 3, 5);
-    // Graceful hovering body
-    px(bx + 1, by + 2, OUTLINE, 11, 12);
-    px(bx + 2, by + 3, def.featherColor, 9, 10);
-    px(bx + 3, by + 9, def.bellyColor, 7, 4);
-    drawStandardBeakFace = true;
-  } else if (model === 'winged_celestial') {
-    // 36x34 Grand Symmetrical Outspread Wingspan Celestial!
-    const flap = attackFrame ? -2 : 0;
-    bx = 12;
-    by = 10 + hopY;
-    px(8, 31, 'rgba(15,23,42,0.35)', 20, 2);
-    const wOuter =
-      typeId === 'phoenix'
-        ? '#EA580C'
-        : typeId === 'astral_astrologer'
-        ? '#4338CA'
-        : typeId === 'quasar'
-        ? '#EC4899'
-        : '#F59E0B';
-    const wInner =
-      typeId === 'phoenix'
-        ? '#FACC15'
-        : typeId === 'astral_astrologer'
-        ? '#38BDF8'
-        : typeId === 'quasar'
-        ? '#67E8F9'
-        : '#FFFFFF';
-    // Massive left & right outspread wings spanning 34px!
-    px(1, 8 + flap, OUTLINE, 12, 14);
-    px(23, 8 + flap, OUTLINE, 12, 14);
-    px(2, 9 + flap, wOuter, 10, 11);
-    px(24, 9 + flap, wOuter, 10, 11);
-    px(4, 11 + flap, wInner, 8, 7);
-    px(24, 11 + flap, wInner, 8, 7);
-    if (typeId === 'archangel_seraph') {
-      // Extra upper & lower seraphim wing pairs (6 wings total!)
-      px(3, 3 + flap, '#FEF08A', 9, 4);
-      px(24, 3 + flap, '#FEF08A', 9, 4);
-      px(4, 22, '#FDE047', 8, 5);
-      px(24, 22, '#FDE047', 8, 5);
-    }
-    // Slender radiant celestial core body
-    px(12, 10 + hopY, OUTLINE, 12, 16);
-    px(13, 11 + hopY, def.featherColor, 10, 14);
-    px(14, 18 + hopY, def.bellyColor, 8, 6);
-    px(19, 13 + hopY, '#38BDF8', 2, 3);
-    px(19, 13 + hopY, '#FFFFFF', 1, 1);
-    px(23, 15 + hopY, '#FACC15', 3, 2);
-  } else if (model === 'star_dreadnought') {
-    // 36x34 Full Galactic Capital Battlecruiser Hull + Bridge Captain!
-    px(4, 30, 'rgba(15,23,42,0.42)', 28, 3);
-    // Twin cyan rear ion-engine plumes
-    px(1, 19, '#0284C7', 4, 6);
-    px(2, 20, '#67E8F9', 3, 4);
-    if (attackFrame) px(0, 20, '#FFFFFF', 2, 4);
-    // Armored steel star-cruiser hull (32px long!)
-    px(4, 16, OUTLINE, 29, 12);
-    px(5, 17, '#334155', 27, 10);
-    px(6, 18, '#64748B', 24, 5);
-    px(8, 24, '#0EA5E9', 18, 2); // glowing hull trench lights!
-    // Twin forward red antimatter capital cannons!
-    px(30, 18, OUTLINE, 6, 3);
-    px(30, 23, OUTLINE, 6, 3);
-    px(31, 19, '#F43F5E', 5, 1);
-    px(31, 24, '#F43F5E', 5, 1);
-    // Glass command dome + Captain Rooster on top!
-    px(12, 7 + hopY, OUTLINE, 12, 10);
-    px(13, 8 + hopY, '#BAE6FD', 10, 8);
-    px(14, 10 + hopY, '#FFFFFF', 8, 6); // Captain inside dome
-    px(19, 11 + hopY, OUTLINE, 2, 2);
-    px(22, 12 + hopY, '#FACC15', 2, 2);
-    bx = 13;
-    by = 7 + hopY;
-  } else if (model === 'serpentine_leviathan') {
-    // 36x34 Coiled Sea-Kraken / Winged Elder Dragon!
-    px(4, 30, 'rgba(15,23,42,0.45)', 28, 3);
-    bx = 11 + shiftX;
-    by = 7 + hopY;
-    if (typeId === 'leviathan_kraken') {
-      // 6 Writhing Bioluminescent Sea-Tentacles fanning across the base!
-      for (let t = 0; t < 6; t++) {
-        const tx0 = 3 + t * 5;
-        const wave = (t + (attackFrame ? 1 : 0)) % 2;
-        px(tx0, 22 + wave, OUTLINE, 5, 9);
-        px(tx0 + 1, 23 + wave, '#0F766E', 3, 7);
-        px(tx0 + 2, 24 + wave, '#22D3EE', 1, 5);
-      }
-      // Armored deep-sea Kraken mantle torso
-      px(10, 8 + hopY, OUTLINE, 15, 16);
-      px(11, 9 + hopY, '#115E59', 13, 14);
-      px(13, 16 + hopY, '#5EEAD4', 9, 6);
-      px(20, 12 + hopY, '#FEF08A', 3, 2); // glowing abyssal eye!
-      px(24, 14 + hopY, '#22D3EE', 3, 2);
-    } else {
-      // Coiled Winged Abyssal Elder Dragon ('abyss_wyrm')!
-      // Jagged dark-cyan dragon wings
-      px(1, 5 + hopY, OUTLINE, 12, 16);
-      px(2, 6 + hopY, '#0F172A', 10, 13);
-      px(3, 8 + hopY, '#0891B2', 7, 8);
-      // Coiled S-curve scaled dragon tail at base
-      px(4, 22, OUTLINE, 22, 9);
-      px(5, 23, '#1E293B', 20, 7);
-      px(7, 25, '#22D3EE', 14, 2);
-      // Muscular horned dragon torso & snout
-      px(12, 8 + hopY, OUTLINE, 14, 16);
-      px(13, 9 + hopY, '#1E293B', 12, 14);
-      px(16, 15 + hopY, '#67E8F9', 7, 7); // glowing reactor chest!
-      px(21, 11 + hopY, '#22D3EE', 3, 2);
-      px(25, 12 + hopY, OUTLINE, 5, 4);
-      px(25, 13 + hopY, '#334155', 4, 2);
-    }
-  } else if (model === 'colossal_titan') {
-    // 42x40 Boss-Scale Colossal Mythic Titans & #55 The Complete Cluck!
-    px(5, 36, 'rgba(15,23,42,0.46)', 32, 3);
-    bx = 14 + shiftX;
-    by = 10 + hopY;
+    px(bx + 2, by + 6, def.bellyColor, 7, 1);
+    px(bx + 3, by + 7, def.bellyColor, 5, 1);
 
-    if (typeId === 'mech_zilla') {
-      // 42x40 Towering Armored Kaiju with Sweeping Tail & 5 Glowing Dorsal Spines!
-      // Sweeping armored Kaiju tail on left
-      px(1, 26, OUTLINE, 14, 9);
-      px(2, 27, '#1E293B', 12, 7);
-      // 5 Jagged Cherenkov neon-cyan dorsal plates up the back!
-      for (let s = 0; s < 5; s++) {
-        px(8 + s, 8 + s * 4, OUTLINE, 6, 4);
-        px(9 + s, 9 + s * 4, s % 2 === 0 ? '#22D3EE' : '#67E8F9', 4, 2);
-      }
-      // Massive Kaiju legs & clawed feet
-      px(14, 28, OUTLINE, 7, 10);
-      px(23, 28, OUTLINE, 7, 10);
-      px(15, 29, '#334155', 5, 8);
-      px(24, 29, '#334155', 5, 8);
-      // Colossal hunched Kaiju torso & roaring jaws!
-      px(13, 8 + hopY, OUTLINE, 17, 22);
-      px(14, 9 + hopY, '#1E293B', 15, 20);
-      px(20, 15 + hopY, '#0284C7', 7, 12);
-      px(22, 16 + hopY, '#67E8F9', 4, 9);
-      px(25, 10 + hopY, '#22D3EE', 3, 2); // glowing atomic eye
-      px(29, 11 + hopY, OUTLINE, 7, 6);
-      px(29, 12 + hopY, '#334155', 6, 2);
-      px(30, 14 + hopY, '#67E8F9', 5, 2); // glowing atomic maw!
-    } else if (typeId === 'gaia_creator') {
-      // 42x40 Sprawling Blooming World-Tree Sanctuary!
-      // Gnarled golden-bark trunk & crystal roots
-      px(12, 24, OUTLINE, 18, 13);
-      px(14, 25, '#92400E', 14, 11);
-      px(19, 26, '#34D399', 4, 9); // glowing life-stream vein!
-      // Lush 38px-wide Emerald World-Tree Canopy studded with blossoms!
-      px(2, 3, OUTLINE, 38, 18);
-      px(4, 4, '#15803D', 34, 15);
-      px(7, 5, '#22C55E', 28, 11);
-      px(6, 7, '#F472B6', 3, 3);
-      px(32, 8, '#FACC15', 3, 3);
-      px(11, 4, '#38BDF8', 3, 3);
-      px(27, 5, '#E879F9', 3, 3);
-      // Radiant Mother-Hen Spirit nestled in the heart of the tree!
-      px(15, 12 + hopY, OUTLINE, 12, 13);
-      px(16, 13 + hopY, '#ECFCCB', 10, 11);
-      px(22, 15 + hopY, '#10B981', 2, 3);
-      px(26, 17 + hopY, '#FACC15', 3, 2);
-    } else if (typeId === 'void_singularity') {
-      // 42x40 Giant Tilted Black-Hole Accretion Disk + Event-Horizon Entity!
-      px(1, 18, OUTLINE, 40, 12);
-      px(2, 19, '#EC4899', 38, 10);
-      px(5, 20, '#A855F7', 32, 8);
-      px(9, 21, '#22D3EE', 24, 6);
-      px(13, 22, '#090D16', 16, 4);
-      // Dark-star astral entity rising from the singularity core!
-      px(14, 7 + hopY, OUTLINE, 14, 17);
-      px(15, 8 + hopY, '#1E1B4B', 12, 15);
-      px(17, 10 + hopY, '#090D16', 8, 10);
-      px(22, 12 + hopY, '#F472B6', 3, 2);
-      px(23, 12 + hopY, '#FFFFFF', 1, 1);
-      px(27, 14 + hopY, '#22D3EE', 3, 2);
-    } else if (typeId === 'golden_deity') {
-      // 42x40 Olympian Golden Roost-Deity Enthroned on Billowing Clouds + Twin Obelisks!
-      // Billowing white & gold divine clouds
-      px(4, 26, OUTLINE, 34, 11);
-      px(5, 27, '#FFFFFF', 32, 9);
-      px(8, 32, '#FEF08A', 26, 3);
-      // Twin floating golden sky-pillars on left & right!
-      px(3, 8 + hopY, OUTLINE, 5, 16);
-      px(34, 8 + hopY, OUTLINE, 5, 16);
-      px(4, 9 + hopY, '#FACC15', 3, 14);
-      px(35, 9 + hopY, '#FACC15', 3, 14);
-      // Radiant golden deity body & winged sun-crest!
-      px(13, 9 + hopY, OUTLINE, 16, 18);
-      px(14, 10 + hopY, '#FEF9C3', 14, 16);
-      px(16, 18 + hopY, '#FACC15', 10, 7);
-      px(23, 13 + hopY, '#F43F5E', 2, 3);
-      px(28, 15 + hopY, '#F59E0B', 3, 2);
-    } else if (typeId === 'solar_emperor') {
-      // 42x40 Blazing Concentric Dyson-Sphere Corona Ring + Armored Sol Monarch!
-      px(3, 2, OUTLINE, 36, 34);
-      px(5, 4, '#EA580C', 32, 30);
-      px(8, 7, '#FACC15', 26, 24);
-      px(11, 10, '#1E1B4B', 20, 18); // Dyson ring interior!
-      // Armored Solar Emperor inside the Dyson star!
-      px(14, 11 + hopY, OUTLINE, 14, 18);
-      px(15, 12 + hopY, '#FFFBEB', 12, 16);
-      px(16, 20 + hopY, '#F59E0B', 10, 7);
-      px(23, 15 + hopY, '#FEF08A', 3, 2);
-      px(27, 17 + hopY, '#EA580C', 3, 2);
-    } else if (typeId === 'eternity_weaver') {
-      // 42x40 Colossal Twin-Winged Astral Rift Wyrm!
-      px(1, 4 + hopY, OUTLINE, 14, 24);
-      px(27, 4 + hopY, OUTLINE, 14, 24);
-      px(2, 5 + hopY, '#A855F7', 12, 11);
-      px(28, 5 + hopY, '#22D3EE', 12, 11);
-      px(3, 16 + hopY, '#EC4899', 10, 10);
-      px(29, 16 + hopY, '#818CF8', 10, 10);
-      // Coiled astral wyrm body
-      px(13, 9 + hopY, OUTLINE, 16, 24);
-      px(14, 10 + hopY, '#F5D0FE', 14, 22);
-      px(16, 18 + hopY, '#67E8F9', 10, 12);
-      px(23, 13 + hopY, '#A855F7', 3, 2);
-      px(28, 15 + hopY, '#22D3EE', 4, 2);
-    } else if (typeId === 'complete_cluck') {
-      // 42x40 #55 THE COMPLETE CLUCK — Semicircular 9-Sword Floating Halo Fan + Rune Dais + Sovereign!
-      // Engraved Teal & Gold Sovereign Rune Dais at base
-      px(6, 31, OUTLINE, 30, 6);
-      px(7, 32, '#0F766E', 28, 4);
-      px(11, 33, '#2DD4BF', 20, 2);
-      px(17, 32, '#FACC15', 8, 1);
-
-      // Semicircular Floating Halo Fan of 9 Distinct Elemental Swords behind the Sovereign!
-      const haloColors = [
-        '#4ADE80',
-        '#22D3EE',
-        '#38BDF8',
-        '#818CF8',
-        '#FACC15',
-        '#E879F9',
-        '#F472B6',
-        '#FB7185',
-        '#2DD4BF',
-      ];
-      for (let s = 0; s < 9; s++) {
-        const ang = Math.PI + (s / 8) * Math.PI; // 180 deg top semicircle!
-        const r = attackFrame ? 16 : 15;
-        const sx = Math.round(20 + Math.cos(ang) * r);
-        const sy = Math.round(18 + Math.sin(ang) * r * 0.88);
-        px(sx - 2, sy - 2, OUTLINE, 4, 5);
-        px(sx - 1, sy - 1, haloColors[s], 2, 3);
-        px(sx - 1, sy - 1, '#FFFFFF', 1, 1);
-      }
-
-      // Twin Crystalline Sovereign Wings
-      px(4, 14 + hopY, OUTLINE, 10, 13);
-      px(28, 14 + hopY, OUTLINE, 10, 13);
-      px(5, 15 + hopY, '#2DD4BF', 8, 11);
-      px(29, 15 + hopY, '#E879F9', 8, 11);
-      px(7, 17 + hopY, '#FFFFFF', 5, 6);
-      px(30, 17 + hopY, '#FFFFFF', 5, 6);
-
-      // Ascended Sovereign Cluck Body
-      px(13, 11 + hopY, OUTLINE, 15, 19);
-      px(14, 12 + hopY, '#ECFDF5', 13, 17);
-      px(16, 20 + hopY, '#99F6E4', 9, 8);
-      px(23, 15 + hopY, '#0F172A', 2, 3);
-      px(23, 15 + hopY, '#2DD4BF', 1, 2);
-      px(27, 17 + hopY, '#FACC15', 4, 2);
+    px(bx + 1, wingY, OUTLINE, 4, 3);
+    px(bx + 2, wingY + 1, def.bellyColor, 2, 1);
+  } else if (borb === 'classic') {
+    // 13x11 Classic Brawler-Bantam Mochi-Borb (100% exact pixel match!)
+    if (!layout.hideFeet) {
+      px(bx + 3, by + 11, '#FB923C', 2, 2);
+      px(bx + 8, by + 11, '#FB923C', 2, 2);
     }
+    const tailY = by + (attackFrame ? 3 : 4);
+    px(bx - 2, tailY, OUTLINE, 3, 4);
+    px(bx - 1, tailY + 1, def.accentColor, 2, 2);
+    px(bx - 1, tailY + 1, def.featherColor, 1, 1);
+
+    px(bx + 3, by, OUTLINE, 7, 11);
+    px(bx + 1, by + 1, OUTLINE, 11, 9);
+    px(bx, by + 3, OUTLINE, 13, 5);
+
+    px(bx + 3, by + 1, def.featherColor, 7, 9);
+    px(bx + 2, by + 2, def.featherColor, 9, 7);
+    px(bx + 1, by + 3, def.featherColor, 11, 5);
+    px(bx + 4, by + 1, '#FFFFFF', 4, 1);
+    px(bx + 2, by + 7, def.bellyColor, 9, 2);
+    px(bx + 3, by + 9, def.bellyColor, 7, 1);
+
+    px(bx + 1, wingY, OUTLINE, 5, 4);
+    px(bx + 2, wingY + 1, def.bellyColor, 3, 2);
+    px(bx + 2, wingY + 1, '#FFFFFF', 2, 1);
+  } else {
+    // 17x15 Extra-Plump Chubby King-Borb (smooth 4-step round borb curve!)
+    if (!layout.hideFeet) {
+      px(bx + 4, by + 15, '#FB923C', 3, 2);
+      px(bx + 10, by + 15, '#FB923C', 3, 2);
+    }
+    const tailY = by + (attackFrame ? 4 : 5);
+    px(bx - 3, tailY, OUTLINE, 4, 5);
+    px(bx - 2, tailY + 1, def.accentColor, 3, 3);
+    px(bx - 2, tailY + 1, def.featherColor, 2, 2);
+
+    px(bx + 5, by, OUTLINE, 7, 15);
+    px(bx + 3, by + 1, OUTLINE, 11, 13);
+    px(bx + 2, by + 2, OUTLINE, 13, 11);
+    px(bx + 1, by + 3, OUTLINE, 15, 9);
+    px(bx, by + 5, OUTLINE, 17, 5);
+
+    px(bx + 5, by + 1, def.featherColor, 7, 13);
+    px(bx + 3, by + 2, def.featherColor, 11, 11);
+    px(bx + 2, by + 3, def.featherColor, 13, 9);
+    px(bx + 1, by + 5, def.featherColor, 15, 5);
+    px(bx + 6, by + 1, '#FFFFFF', 5, 1);
+    px(bx + 5, by + 2, '#FFFFFF', 2, 1);
+    px(bx + 3, by + 10, def.bellyColor, 11, 3);
+    px(bx + 5, by + 13, def.bellyColor, 7, 1);
+
+    px(bx + 1, wingY, OUTLINE, 6, 5);
+    px(bx + 2, wingY + 1, def.bellyColor, 4, 3);
+    px(bx + 2, wingY + 1, '#FFFFFF', 3, 1);
   }
 
-  if (drawStandardBeakFace) {
-    px(bx + 8, by + 4, OUTLINE, 2, 3);
-    px(bx + 8, by + 4, '#FFFFFF', 1, 1);
-    px(bx + 6, by + 7, '#FB7185', 2, 1);
-    px(bx + 11, by + 5, OUTLINE, 3, 2);
-    px(bx + 11, by + 5, '#FDE047', 2, 1);
-    px(bx + 11, by + 6, '#F97316', 2, 1);
-  }
-
-  // ==================== PART B: 55 UNIT-SPECIFIC CRESTS, BOOTHS, WEAPONS & DETAILS ====================
+  // ==================== 7. CUTE BESPOKE HATS, STALLS & PROPS ====================
   switch (typeId) {
     case 'bantam': {
-      // Fierce crimson dojo headband + twin red boxing gloves!
-      px(bx + 4, by - 2, '#EF4444', 3, 2);
-      px(bx + 1, by + 1, '#DC2626', 9, 2);
-      px(bx - 2, by, '#EF4444', 3, 2);
-      px(bx + 10, by + 5, OUTLINE, 4, 4);
-      px(bx + 11, by + 6, '#EF4444', 2, 2);
+      // Original Brawler Bantam: bouncy red comb tuft + crimson dojo headband + tiny boxing mitts!
+      px(bx + 5, by - 3, '#EF4444', 3, 3);
+      px(bx + 6, by - 4, '#FB7185', 2, 2);
+      px(bx + 2, by + 1, '#DC2626', 9, 2);
+      px(bx - 1, by, '#EF4444', 3, 2);
+      px(bx + 5, wingY + 1, '#EF4444', 2, 2);
       break;
     }
     case 'pecker': {
-      // Classic triple ruby rooster comb + golden kernel satchel!
+      // Bouncy ruby heart-comb + cute little golden seed pouch!
       px(bx + 3, by - 3, OUTLINE, 5, 3);
-      px(bx + 3, by - 2, '#EF4444', 5, 2);
-      px(bx + 3, by + 6, '#CA8A04', 4, 2);
+      px(bx + 3, by - 3, '#EF4444', 2, 2);
+      px(bx + 6, by - 3, '#EF4444', 2, 2);
+      px(bx + 4, by - 2, '#FB7185', 3, 2);
+      px(bx + 3, by + 6, '#CA8A04', 3, 2);
+      px(bx + 4, by + 6, '#FEF08A', 1, 1);
       break;
     }
     case 'sling_chick': {
-      // Green backwards cap + carved wooden Y-slingshot!
-      px(bx + 1, by - 2, '#16A34A', 8, 3);
-      px(bx - 1, by - 1, '#15803D', 3, 2);
-      px(bx + 11, by + 4, '#92400E', 2, 4);
-      px(bx + 10, by + 2, '#B45309', 4, 2);
-      px(bx + 11, by + 2, '#E2E8F0', 2, 2);
+      // Sporty green backwards cap + cute wooden Y-slingshot!
+      px(bx + 2, by - 2, '#16A34A', 7, 3);
+      px(bx, by - 1, '#15803D', 3, 2);
+      px(bx + 3, by - 2, '#86EFAC', 3, 1);
+      px(bx + 11, by + 5, '#92400E', 2, 3);
+      px(bx + 10, by + 3, '#B45309', 1, 2);
+      px(bx + 13, by + 3, '#B45309', 1, 2);
+      px(bx + 11, by + 3, '#94A3B8', 2, 2);
       break;
     }
     case 'honey': {
-      // Straw sunbonnet + dripping golden honey-pot & dipper!
-      px(bx + 1, by - 2, '#FACC15', 9, 3);
+      // Cozy straw sunbonnet with a pink daisy + dripping honey dipper!
+      px(bx + 1, by, '#FACC15', 9, 2);
+      px(bx + 3, by - 2, '#FDE047', 5, 2);
       px(bx + 3, by - 1, '#FB7185', 2, 2);
-      px(bx + 10, by + 5, OUTLINE, 5, 5);
-      px(bx + 11, by + 6, '#F59E0B', 3, 3);
-      px(bx + 11, by + 5, '#FEF08A', 3, 1);
+      px(bx + 4, by - 1, '#FFFFFF', 1, 1);
+      px(bx + 11, by + 5, '#92400E', 2, 1);
+      px(bx + 12, by + 4, '#F59E0B', 2, 3);
       break;
     }
     case 'boomerang': {
-      // Bushman slouch hat + large curved hardwood boomerang!
-      px(bx, by - 2, '#78350F', 11, 2);
-      px(bx + 2, by - 4, '#92400E', 7, 2);
-      px(bx + 10, by + 4, OUTLINE, 5, 6);
-      px(bx + 11, by + 5, '#F59E0B', 3, 2);
-      px(bx + 12, by + 7, '#D97706', 2, 2);
+      // Cute tilted Outback explorer hat + curved wooden boomerang!
+      px(bx + 1, by + 1, '#78350F', 11, 1);
+      px(bx + 3, by - 2, '#92400E', 7, 3);
+      px(bx + 3, by, '#FACC15', 7, 1);
+      px(bx + 14, by + 1, '#B45309', 2, 4);
+      px(bx + 15, by + 4, '#FBBF24', 3, 2);
       break;
     }
     case 'chilly': {
-      // Fuzzy winter parka hood + ice crystal wand!
-      px(bx + 1, by - 2, '#38BDF8', 9, 3);
-      px(bx + 2, by - 3, '#FFFFFF', 7, 1);
-      px(bx + 1, by + 6, '#0284C7', 9, 2);
-      px(bx + 11, by + 3, '#BAE6FD', 3, 5);
+      // Fluffy snow-pom tuft + sky earmuff + cozy winter scarf!
+      px(bx + 3, by - 3, '#FFFFFF', 5, 3);
+      px(bx + 2, by - 1, '#38BDF8', 7, 2);
+      px(bx + 1, by, '#0284C7', 2, 3);
+      px(bx + 2, by + 6, '#0284C7', 7, 2);
+      px(bx + 4, by + 6, '#BAE6FD', 2, 2);
       break;
     }
     case 'alchemist': {
-      // Brass lab goggles on hood + bubbling green acid flask!
-      px(bx + 2, by - 2, '#065F46', 9, 3);
-      px(bx + 4, by - 1, '#6EE7B7', 2, 2);
-      px(bx + 7, by - 1, '#6EE7B7', 2, 2);
-      px(bx + 13, 11 + hopY, OUTLINE, 5, 6);
-      px(bx + 14, 13 + hopY, '#84CC16', 3, 3);
-      px(bx + 15, 10 + hopY, '#BEF264', 2, 2);
+      // Cute emerald beret + shiny mint goggles on forehead + bubbling potion flask!
+      px(bx + 2, by - 2, '#065F46', 8, 3);
+      px(bx + 4, by, '#10B981', 2, 2);
+      px(bx + 7, by, '#10B981', 2, 2);
+      px(bx + 4, by, '#A7F3D0', 1, 1);
+      px(bx + 7, by, '#A7F3D0', 1, 1);
+      px(bx + 13, by + 5, OUTLINE, 5, 5);
+      px(bx + 14, by + 6, '#10B981', 3, 3);
+      px(bx + 15, by + 4, '#A7F3D0', 1, 2);
       break;
     }
     case 'ranger': {
-      // Feathered forest sniper cap + long-barrel scoped rifle!
-      px(bx + 1, by - 2, '#15803D', 9, 3);
-      px(bx + 7, by - 4, '#EF4444', 2, 2);
-      px(bx + 6, by + 7, OUTLINE, 11, 3);
-      px(bx + 7, by + 8, '#78350F', 5, 1);
-      px(bx + 12, by + 8, '#94A3B8', 4, 1);
-      px(bx + 10, by + 6, '#38BDF8', 3, 1);
+      // Forest-scout cap with gold acorn badge + sleek wooden sniper rifle!
+      px(bx + 2, by + 1, '#14532D', 10, 1);
+      px(bx + 3, by - 2, '#15803D', 7, 3);
+      px(bx + 6, by - 1, '#FACC15', 2, 2);
+      px(bx + 9, by + 7, OUTLINE, 10, 2);
+      px(bx + 12, by + 6, '#38BDF8', 3, 1);
       break;
     }
     case 'cactus_hen': {
-      // Blooming pink desert flower crown atop ribbed saguaro body!
-      px(bx + 3, by - 3, OUTLINE, 5, 3);
-      px(bx + 4, by - 3, '#EC4899', 3, 2);
-      px(bx + 5, by - 3, '#FEF08A', 1, 1);
+      // Cute green saguaro cactus crown + blooming pink desert flower!
+      px(bx + 4, by - 4, OUTLINE, 5, 5);
+      px(bx + 5, by - 3, '#16A34A', 3, 4);
+      px(bx + 2, by - 2, '#15803D', 2, 2);
+      px(bx + 9, by - 2, '#15803D', 2, 2);
+      px(bx + 5, by - 6, '#EC4899', 3, 2);
+      px(bx + 6, by - 6, '#FEF08A', 1, 1);
       break;
     }
     case 'lobber': {
-      // Heavy olive bombardier helm + big iron siege mortar barrel!
-      px(bx + 2, by - 2, '#4D7C0F', 11, 4);
-      px(bx + 15, 14, OUTLINE, 8, 9);
-      px(bx + 16, 15, '#334155', 6, 7);
-      px(bx + 17, 13, '#FDBA74', 4, 2);
+      // Oversized olive helmet + chunky green egg-mortar beside the cute round chicken!
+      px(bx + 2, by - 2, '#4D7C0F', 9, 3);
+      px(bx + 1, by + 1, '#365314', 11, 1);
+      px(bx + 4, by - 1, '#BEF264', 3, 1);
+      px(bx + 13, by + 4, OUTLINE, 7, 8);
+      px(bx + 14, by + 5, '#475569', 5, 6);
+      px(bx + 15, by + 3, '#FFFBEB', 3, 2);
       break;
     }
     case 'wizard': {
-      // Tall crooked star-spangled archmage hat + lightning staff!
-      px(bx, by - 1, '#581C87', 13, 2);
-      px(bx + 2, by - 4, '#7E22CE', 9, 3);
-      px(bx + 4, by - 6, '#A855F7', 5, 2);
-      px(bx + 5, by - 3, '#FACC15', 2, 2);
-      px(bx + 14, 7 + hopY, '#92400E', 2, 16);
-      px(bx + 13, 5 + hopY, '#C084FC', 4, 4);
-      px(bx + 14, 6 + hopY, '#FEF08A', 2, 2);
+      // Tall crooked starry purple wizard hat + glowing star wand!
+      px(bx + 1, by + 1, '#581C87', 11, 1);
+      px(bx + 3, by - 2, '#7E22CE', 7, 3);
+      px(bx + 3, by, '#FACC15', 7, 1);
+      px(bx + 4, by - 5, '#9333EA', 5, 3);
+      px(bx + 2, by - 7, '#C084FC', 4, 2);
+      px(bx + 14, by + 4, '#92400E', 1, 7);
+      px(bx + 13, by + 1, '#FEF08A', 3, 3);
+      px(bx + 14, by + 2, '#FFFFFF', 1, 1);
       break;
     }
     case 'roost_beacon': {
-      // 2-Story Stone & Timber Watchtower Battlement + Signal Brazier!
-      px(4, 16, OUTLINE, 22, 12);
-      px(5, 17, '#78350F', 20, 10);
-      px(5, 17, '#94A3B8', 4, 3);
-      px(13, 17, '#94A3B8', 4, 3);
-      px(21, 17, '#94A3B8', 4, 3);
-      // Spinning cyan-gold signal beacon on roof post
-      px(5, 5, OUTLINE, 5, 12);
-      px(6, 6, '#B45309', 3, 10);
-      px(4, 2, '#38BDF8', 7, 4);
-      px(6, 3, '#FEF08A', 3, 2);
+      // Watchtower roof cap + spinning cyan beacon + red-and-gold war drum!
+      px(bx + 1, by, '#78350F', 11, 2);
+      px(bx + 3, by - 2, '#D97706', 7, 2);
+      px(bx + 5, by - 5, '#94A3B8', 2, 3);
+      px(bx + 5, by - 7, '#38BDF8', 2, 2);
+      px(bx + 13, by + 6, OUTLINE, 6, 5);
+      px(bx + 14, by + 7, '#DC2626', 4, 3);
+      px(bx + 14, by + 7, '#FEF08A', 4, 1);
       break;
     }
     case 'ninja': {
-      // Fluttering crimson shinobi scarf + oversized 4-point steel shuriken!
-      px(bx - 3, by + 2, '#DC2626', 4, 2);
-      px(bx + 11, by + 3, '#E2E8F0', 4, 4);
-      px(bx + 12, by + 4, '#0F172A', 2, 2);
+      // Dark shinobi headband + silver plate + fluttering red ribbons + shuriken!
+      px(bx + 2, by + 1, '#1E293B', 7, 1);
+      px(bx + 5, by + 1, '#E2E8F0', 2, 1);
+      px(bx - 1, by, '#DC2626', 3, 2);
+      px(bx + 12, by + 5, '#E2E8F0', 3, 3);
+      px(bx + 13, by + 6, '#DC2626', 1, 1);
       break;
     }
     case 'pirate': {
-      // Wooden Galleon Gunwale + Captain Tricorn + Heavy Broadside Naval Cannon!
-      px(bx + 1, by - 1, '#0F172A', 11, 4);
-      px(bx + 1, by - 1, '#FACC15', 11, 1);
-      px(3, 18, OUTLINE, 24, 10);
-      px(4, 19, '#78350F', 22, 8);
-      px(5, 20, '#B45309', 20, 2);
-      px(9, 23, '#FACC15', 3, 3); // brass porthole!
-      // Iron naval cannon barrel sticking out right!
-      px(18, 14, OUTLINE, 10, 6);
-      px(19, 15, '#1E293B', 8, 4);
-      px(20, 16, '#64748B', 6, 1);
+      // Captain tricorn hat with gold trim + chunky iron broadside cannon out front!
+      px(bx + 1, by + 1, OUTLINE, 11, 1);
+      px(bx + 2, by - 3, '#0F172A', 9, 4);
+      px(bx + 2, by - 3, '#FACC15', 9, 1);
+      px(bx + 6, by - 2, '#FDA4AF', 2, 2);
+      px(bx + 13, by + 6, OUTLINE, 8, 5);
+      px(bx + 14, by + 7, '#334155', 6, 3);
+      px(bx + 15, by + 7, '#94A3B8', 4, 1);
+      px(bx + 15, by + 10, '#92400E', 3, 2);
       break;
     }
     case 'bard': {
-      // Wide Fiesta Sombrero + Wooden Stage + Acoustic Guitar!
-      px(bx - 2, by, '#E11D48', 16, 2);
-      px(bx + 2, by - 3, '#FACC15', 8, 3);
-      px(4, 20, OUTLINE, 22, 8);
-      px(5, 21, '#92400E', 20, 6);
-      px(14, 15, OUTLINE, 11, 6);
-      px(15, 16, '#F59E0B', 6, 4);
-      px(21, 17, '#78350F', 4, 2);
+      // Wide festive red-and-gold sombrero + cute acoustic guitar!
+      px(bx - 2, by + 1, '#E11D48', 17, 1);
+      px(bx - 1, by, '#FACC15', 15, 1);
+      px(bx + 4, by - 3, '#BE123C', 5, 3);
+      px(bx + 5, by - 2, '#FDE047', 3, 1);
+      px(bx + 6, by + 7, '#D97706', 5, 3);
+      px(bx + 7, by + 8, '#FEF08A', 2, 1);
+      px(bx + 11, by + 6, '#78350F', 6, 2);
       break;
     }
     case 'brew_hen': {
-      // Cozy Brick Espresso Bar Counter + Brass Espresso Machine + Steaming Mug!
-      px(bx + 2, by - 1, '#78350F', 8, 3);
-      px(3, 18, OUTLINE, 24, 10);
-      px(4, 19, '#9A3412', 22, 8);
-      px(4, 18, '#FDE68A', 22, 2); // wood countertop!
-      px(19, 11, OUTLINE, 7, 7);
-      px(20, 12, '#D97706', 5, 5);
-      px(21, 8, '#FFFFFF', 2, 3); // rising steam!
+      // Cozy wooden espresso bar counter in front of the cute barista borb + steaming mug!
+      px(bx + 2, by - 2, '#78350F', 8, 3);
+      px(bx + 4, by - 3, '#B45309', 4, 1);
+      px(4, 17, OUTLINE, 22, 8);
+      px(5, 18, '#92400E', 20, 6);
+      px(5, 18, '#FBBF24', 20, 2);
+      px(20, 13, OUTLINE, 5, 5);
+      px(21, 14, '#F59E0B', 3, 3);
+      px(22, 10, '#FFFFFF', 1, 2);
       break;
     }
     case 'phoenix': {
-      // Blazing triple-flame solar crest!
-      px(15, 4 + hopY, '#EA580C', 6, 6);
-      px(16, 2 + hopY, '#FACC15', 4, 6);
-      px(17, 4 + hopY, '#FFFFFF', 2, 3);
+      // Sunny flame-tuft crown & warm glowing wing tips!
+      px(bx + 4, by - 3, '#F97316', 2, 3);
+      px(bx + 6, by - 6, '#FACC15', 2, 6);
+      px(bx + 7, by - 5, '#FFFFFF', 1, 4);
+      px(bx + 8, by - 3, '#FB923C', 2, 3);
+      px(bx + 2, wingY + 1, '#F97316', 3, 2);
       break;
     }
     case 'mecha': {
-      // Twin shoulder rail-laser pods!
-      px(bx - 3, 9 + hopY, OUTLINE, 6, 5);
-      px(bx + 14, 9 + hopY, OUTLINE, 9, 5);
-      px(bx + 15, 10 + hopY, '#0891B2', 7, 3);
-      px(bx + 21, 10 + hopY, '#67E8F9', 2, 3);
+      // Cute cyan headset + shoulder laser railgun mounted on the open-top walker!
+      px(bx + 3, by - 3, '#06B6D4', 2, 3);
+      px(bx + 8, by - 3, '#06B6D4', 2, 3);
+      px(bx + 3, by, '#0891B2', 7, 2);
+      px(bx + 4, by + 1, '#67E8F9', 5, 1);
+      px(bx + 13, by + 6, OUTLINE, 8, 4);
+      px(bx + 14, by + 7, '#334155', 4, 2);
+      px(bx + 18, by + 7, '#22D3EE', 2, 2);
       break;
     }
     case 'iron_spurs': {
-      // Tall crimson punk mohawk + oversized spiked iron gauntlets!
-      px(bx + 5, by - 5, OUTLINE, 5, 6);
-      px(bx + 6, by - 4, '#F43F5E', 3, 5);
-      px(bx + 3, by + 1, '#DC2626', 10, 2);
-      px(bx + 15, 14 + hopY, OUTLINE, 7, 7);
-      px(bx + 16, 15 + hopY, '#E11D48', 5, 5);
-      px(bx + 21, 15 + hopY, '#FFFFFF', 2, 2);
-      px(bx + 21, 18 + hopY, '#FFFFFF', 2, 2);
+      // Spiked crimson champion headband + gold belt + gleaming brass-knuckle gauntlet!
+      px(bx + 4, by - 3, '#FACC15', 2, 3);
+      px(bx + 7, by - 4, '#FACC15', 2, 4);
+      px(bx + 2, by + 1, '#DC2626', 9, 2);
+      px(bx - 2, by + 1, '#EF4444', 3, 2);
+      px(bx + 3, by + 8, '#CA8A04', 7, 2);
+      px(bx + 13, by + 5, OUTLINE, 5, 5);
+      px(bx + 14, by + 6, '#DC2626', 3, 3);
+      px(bx + 15, by + 6, '#FACC15', 2, 2);
       break;
     }
     case 'ramen_chef': {
-      // Authentic Ramen Stall Counter + Red Paper Lantern + Steaming Noodle Bowl!
+      // Cozy wooden ramen counter + chef hachimaki + steaming red bowl of golden noodles!
       px(bx + 2, by, '#FFFFFF', 9, 2);
       px(bx + 5, by, '#EF4444', 3, 2);
-      // Overhead stall roof & glowing red chochin lantern!
-      px(3, 2, OUTLINE, 24, 4);
-      px(4, 3, '#92400E', 22, 2);
-      px(4, 6, OUTLINE, 5, 7);
-      px(5, 7, '#EF4444', 3, 5);
-      px(5, 9, '#FEF08A', 3, 1);
-      // Wooden ramen bar & steaming tonkotsu bowl!
-      px(3, 19, OUTLINE, 24, 9);
-      px(4, 20, '#B45309', 22, 7);
-      px(18, 14, OUTLINE, 8, 5);
-      px(19, 15, '#DC2626', 6, 3);
-      px(19, 15, '#FEF08A', 6, 1);
+      px(4, 17, OUTLINE, 22, 8);
+      px(5, 18, '#B45309', 20, 6);
+      px(5, 18, '#FDE68A', 20, 2);
+      px(19, 13, OUTLINE, 6, 5);
+      px(20, 15, '#DC2626', 4, 2);
+      px(20, 14, '#FDE047', 4, 1);
+      px(21, 10, '#FFFFFF', 1, 3);
       break;
     }
     case 'bastion_shield': {
-      // Cobalt crest + Colossal 9x16 Granite Fortress Tower-Shield!
-      px(bx + 4, by - 3, '#2563EB', 7, 4);
-      px(bx + 13, 9, OUTLINE, 10, 18);
-      px(bx + 14, 10, '#CBD5E1', 8, 16);
-      px(bx + 15, 12, '#3B82F6', 6, 12);
-      px(bx + 17, 15, '#FEF08A', 2, 6);
+      // Cobalt-and-granite guardian crest + chunky rune-carved tower shield!
+      px(bx + 3, by - 3, OUTLINE, 7, 4);
+      px(bx + 4, by - 2, '#E2E8F0', 5, 2);
+      px(bx + 5, by - 1, '#3B82F6', 3, 1);
+      px(bx + 13, by + 3, OUTLINE, 7, 9);
+      px(bx + 14, by + 4, '#CBD5E1', 5, 7);
+      px(bx + 15, by + 5, '#2563EB', 3, 5);
+      px(bx + 16, by + 6, '#67E8F9', 1, 3);
       break;
     }
     case 'tesla': {
-      // Twin Copper-Indigo Gigavolt Tesla Coils arcing electricity overhead!
-      px(bx - 1, 4 + hopY, OUTLINE, 5, 8);
-      px(bx + 13, 4 + hopY, OUTLINE, 5, 8);
-      px(bx, 5 + hopY, '#6366F1', 3, 6);
-      px(bx + 14, 5 + hopY, '#6366F1', 3, 6);
-      px(bx + 3, 3 + hopY, '#38BDF8', 11, 2);
-      px(bx + 6, 2 + hopY, '#FEF08A', 5, 1);
+      // Cute twin blue spark-bobbles on head + crackling yellow coil emitter!
+      px(bx + 3, by - 3, '#6366F1', 2, 3);
+      px(bx + 8, by - 3, '#6366F1', 2, 3);
+      px(bx + 3, by - 5, '#38BDF8', 2, 2);
+      px(bx + 8, by - 5, '#38BDF8', 2, 2);
+      px(bx + 5, by - 4, '#FEF08A', 3, 1);
+      px(bx + 14, by + 4, OUTLINE, 5, 7);
+      px(bx + 15, by + 5, '#4F46E5', 3, 5);
+      px(bx + 15, by + 2, '#FEF08A', 3, 2);
       break;
     }
     case 'cowboy_desperado': {
-      // Wide Western Sheriff Hat + Red Bandana + Dual Silver Six-Shooters!
-      px(bx - 2, by - 1, '#78350F', 13, 2);
-      px(bx + 1, by - 4, '#92400E', 7, 3);
-      px(bx + 4, by - 3, '#FACC15', 2, 2);
-      px(bx + 1, by + 5, '#DC2626', 8, 2);
-      px(bx + 10, by + 6, OUTLINE, 7, 3);
-      px(bx + 11, by + 7, '#E2E8F0', 5, 1);
+      // Wide-brim sheriff cowboy hat + gold star + red bandana + silver revolver!
+      px(bx - 1, by, '#78350F', 15, 2);
+      px(bx + 3, by - 3, '#92400E', 7, 3);
+      px(bx + 6, by - 2, '#FACC15', 2, 2);
+      px(bx + 3, by + 8, '#DC2626', 7, 2);
+      px(bx + 13, by + 6, '#94A3B8', 5, 2);
+      px(bx + 13, by + 8, '#78350F', 2, 2);
       break;
     }
     case 'surge_oracle': {
-      // Twin cyan ritual horns + tall Rift-Surge Staff!
-      px(bx + 1, by - 4, '#0F172A', 2, 4);
+      // Twin cyan-tipped ritual horns + dark circlet + glowing turquoise surge staff!
+      px(bx + 2, by - 4, '#0F172A', 2, 4);
       px(bx + 9, by - 4, '#0F172A', 2, 4);
-      px(bx + 1, by - 5, '#22D3EE', 2, 2);
-      px(bx + 9, by - 5, '#22D3EE', 2, 2);
-      px(bx + 14, 5 + hopY, '#1E293B', 2, 18);
-      px(bx + 12, 3 + hopY, '#06B6D4', 6, 5);
-      px(bx + 14, 4 + hopY, '#FFFFFF', 2, 3);
+      px(bx + 2, by - 6, '#22D3EE', 2, 2);
+      px(bx + 9, by - 6, '#22D3EE', 2, 2);
+      px(bx + 2, by, '#1E293B', 9, 2);
+      px(bx + 15, by, '#1E293B', 2, 12);
+      px(bx + 14, by - 3, '#06B6D4', 4, 4);
+      px(bx + 15, by - 2, '#FFFFFF', 2, 2);
       break;
     }
     case 'viking_jarl': {
-      // Horned Nordic Helm + Great Runeforged Bearded Frost-Axe!
-      px(bx + 2, by - 3, '#64748B', 11, 4);
-      px(bx - 1, by - 6, '#FEF3C7', 3, 4);
-      px(bx + 13, by - 6, '#FEF3C7', 3, 4);
-      px(bx + 16, 8, '#78350F', 2, 16);
-      px(bx + 15, 8, OUTLINE, 7, 8);
-      px(bx + 16, 9, '#38BDF8', 5, 6);
-      px(bx + 18, 10, '#E0F2FE', 2, 4);
+      // Horned iron Viking helm + frost-rune bearded axe!
+      px(bx + 2, by - 3, '#64748B', 9, 4);
+      px(bx + 4, by - 2, '#94A3B8', 5, 2);
+      px(bx, by - 5, '#FEF3C7', 2, 3);
+      px(bx + 11, by - 5, '#FEF3C7', 2, 3);
+      px(bx + 13, by + 3, '#78350F', 2, 8);
+      px(bx + 14, by + 3, '#38BDF8', 4, 4);
+      px(bx + 15, by + 4, '#E0F2FE', 2, 2);
       break;
     }
     case 'chrono': {
-      // Brass Clockwork Top-Hat + Floating Golden Hourglass!
-      px(bx + 1, by - 5, '#78350F', 9, 6);
-      px(bx - 1, by, '#92400E', 13, 1);
-      px(bx + 4, by - 3, '#5EEAD4', 3, 2);
-      px(bx + 13, by + 3, OUTLINE, 5, 7);
-      px(bx + 14, by + 4, '#FACC15', 3, 5);
-      px(bx + 15, by + 5, '#2DD4BF', 1, 3);
+      // Dapper pocket-watch top hat + floating teal hourglass!
+      px(bx + 2, by + 1, '#78350F', 9, 1);
+      px(bx + 4, by - 4, '#92400E', 5, 5);
+      px(bx + 4, by, '#FACC15', 5, 1);
+      px(bx + 5, by - 3, '#5EEAD4', 3, 2);
+      px(bx + 14, by + 5, '#FACC15', 4, 1);
+      px(bx + 15, by + 6, '#2DD4BF', 2, 3);
+      px(bx + 14, by + 9, '#FACC15', 4, 1);
       break;
     }
     case 'overclock_engie': {
-      // Industrial Dynamo Generator Console + Yellow Hard-Hat + Wrench!
-      px(bx + 2, by - 1, '#FACC15', 9, 3);
-      px(3, 18, OUTLINE, 24, 10);
-      px(4, 19, '#334155', 22, 8);
-      px(6, 21, '#0284C7', 7, 4);
-      px(7, 22, '#38BDF8', 5, 2);
-      px(19, 11, '#94A3B8', 3, 8);
-      px(18, 10, '#E2E8F0', 5, 3);
+      // Yellow hard-hat + spinning blue dynamo coil beside the cute round chicken + wrench!
+      px(bx + 1, by, '#CA8A04', 11, 1);
+      px(bx + 2, by - 3, '#FACC15', 9, 3);
+      px(bx + 5, by - 2, '#0284C7', 3, 2);
+      px(3, 15, OUTLINE, 5, 8);
+      px(4, 16, '#0284C7', 3, 6);
+      px(4, 17, '#67E8F9', 3, 2);
+      px(bx + 14, by + 4, '#94A3B8', 2, 7);
+      px(bx + 13, by + 3, '#E2E8F0', 4, 2);
       break;
     }
     case 'cyber_sniper': {
-      // High-Tech Holo-Sniper Nest + Green Matrix Visor + Long Rail Barrel!
-      px(bx + 7, by + 4, '#10B981', 6, 2);
-      px(3, 19, OUTLINE, 25, 9);
-      px(4, 20, '#0F172A', 23, 7);
-      px(6, 21, '#10B981', 6, 4); // holo-monitor!
-      px(16, 15, OUTLINE, 13, 4);
-      px(17, 16, '#34D399', 11, 2);
+      // Cute headset + forehead cyber-band + floating translucent green holo-terminal!
+      px(bx + 2, by - 2, '#334155', 9, 2);
+      px(bx + 1, by, '#10B981', 2, 3);
+      px(bx + 3, by + 1, '#064E3B', 7, 1);
+      px(bx + 5, by + 1, '#4ADE80', 4, 1);
+      px(bx + 14, by + 3, OUTLINE, 6, 6);
+      px(bx + 15, by + 4, '#065F46', 4, 4);
+      px(bx + 16, by + 5, '#4ADE80', 2, 2);
       break;
     }
     case 'plague_doctor': {
-      // Dark Apothecary Top-Hat + Bubbling Emerald Blight Censer!
-      px(bx, by - 1, '#0F172A', 13, 2);
-      px(bx + 2, by - 5, '#1E293B', 9, 4);
-      px(bx + 2, by - 2, '#10B981', 9, 1);
-      px(bx + 13, 10 + hopY, OUTLINE, 5, 6);
-      px(bx + 14, 11 + hopY, '#10B981', 3, 4);
+      // Apothecary top-hat with emerald band + glowing emerald blight flask!
+      px(bx + 1, by, '#0F172A', 11, 1);
+      px(bx + 3, by - 4, '#1E293B', 7, 4);
+      px(bx + 3, by - 1, '#10B981', 7, 1);
+      px(bx + 13, by + 5, OUTLINE, 5, 5);
+      px(bx + 14, by + 6, '#10B981', 3, 3);
+      px(bx + 15, by + 4, '#6EE7B7', 2, 2);
       break;
     }
     case 'aegis_mech': {
-      // Golden V-Crest Antenna + Long High-Output Ion Buster Rifle!
-      px(bx + 1, by - 4, '#FACC15', 4, 3);
-      px(bx + 12, by - 4, '#FACC15', 4, 3);
-      px(bx + 6, by - 3, '#EF4444', 5, 3);
-      px(bx + 14, 14 + hopY, OUTLINE, 10, 5);
-      px(bx + 15, 15 + hopY, '#2563EB', 6, 3);
-      px(bx + 21, 15 + hopY, '#FB7185', 3, 3);
+      // Golden V-crest crown on the cute round pilot borb + heavy ion buster on open-top walker!
+      px(bx + 3, by - 1, '#2563EB', 7, 2);
+      px(bx + 1, by - 4, '#FACC15', 3, 2);
+      px(bx + 4, by - 3, '#FEF08A', 5, 2);
+      px(bx + 9, by - 4, '#FACC15', 3, 2);
+      px(bx + 6, by - 2, '#EF4444', 2, 2);
+      px(bx + 13, by + 6, OUTLINE, 8, 4);
+      px(bx + 14, by + 7, '#334155', 4, 2);
+      px(bx + 18, by + 7, '#FB7185', 2, 2);
       break;
     }
     case 'pharaoh_ra': {
-      // Royal Blue & Gold Striped Nemes Crown + Blazing Solar Ankh Scepter!
-      px(bx, by - 3, '#2563EB', 13, 5);
-      px(bx + 1, by - 2, '#FACC15', 11, 1);
-      px(bx + 1, by, '#FACC15', 11, 1);
-      px(bx + 14, 6 + hopY, '#FACC15', 2, 17);
-      px(bx + 12, 4 + hopY, '#FEF08A', 6, 5);
-      px(bx + 14, 6 + hopY, '#1E3A8A', 2, 2);
+      // Blue & gold Nemes headdress + golden Ankh solar scepter!
+      px(bx + 1, by - 3, '#2563EB', 11, 4);
+      px(bx + 2, by - 2, '#FACC15', 9, 1);
+      px(bx + 1, by, '#FACC15', 2, 4);
+      px(bx + 6, by - 5, '#EF4444', 2, 2);
+      px(bx + 15, by + 4, '#FACC15', 2, 7);
+      px(bx + 14, by + 1, '#FDE047', 4, 3);
+      px(bx + 15, by + 2, '#2563EB', 2, 1);
       break;
     }
     case 'samurai_shogun': {
-      // Horned Crimson Kabuto Helm + Twin Drawn Crescent Katanas!
-      px(bx, by - 2, '#991B1B', 11, 3);
-      px(bx + 2, by - 5, '#FACC15', 7, 3);
-      px(bx + 10, by + 4, OUTLINE, 8, 3);
-      px(bx + 11, by + 5, '#F8FAFC', 6, 1);
+      // Crimson samurai kabuto + golden crescent-moon crest + gleaming silver katana!
+      px(bx + 1, by, '#991B1B', 11, 2);
+      px(bx + 3, by - 2, '#DC2626', 7, 2);
+      px(bx + 4, by - 5, '#FACC15', 5, 3);
+      px(bx + 5, by - 4, '#FEF9C3', 3, 1);
+      px(bx + 13, by + 6, '#94A3B8', 6, 2);
+      px(bx + 14, by + 6, '#FFFFFF', 4, 1);
       break;
     }
     case 'storm_dj': {
-      // Neon Rave DJ Booth + Dual Turntables + Side Subwoofers + Headphones!
-      px(bx + 1, by, '#22D3EE', 10, 2);
-      px(bx + 7, by + 4, '#EC4899', 6, 2);
-      px(2, 17, OUTLINE, 26, 11);
-      px(3, 18, '#0F172A', 24, 9);
-      // Left & right neon subwoofers + center vinyl decks!
-      px(4, 19, '#EC4899', 5, 7);
-      px(21, 19, '#EC4899', 5, 7);
-      px(10, 19, '#22D3EE', 10, 4);
-      px(12, 20, '#FEF08A', 6, 2);
+      // Neon cyan headphones + glowing turntable deck beside the cute round DJ borb!
+      px(bx + 2, by - 3, '#22D3EE', 9, 2);
+      px(bx + 1, by, '#EC4899', 3, 4);
+      px(bx + 13, by + 6, OUTLINE, 8, 5);
+      px(bx + 14, by + 7, '#1E1B4B', 6, 3);
+      px(bx + 15, by + 7, '#38BDF8', 4, 2);
+      px(bx + 16, by + 2, '#FDE047', 2, 2);
       break;
     }
     case 'stand_hen': {
-      // Star Crusader peaked Astral Cap + golden chain + guardian spirit sparkles!
-      px(bx + 1, by - 2, '#1E1B4B', 10, 4);
-      px(bx + 1, by - 2, '#FACC15', 10, 1);
-      px(2, 6, '#C084FC', 2, 2);
-      px(23, 5, '#FEF08A', 2, 2);
+      // Dark-indigo Crusader cap + gold emblem + floating purple/gold astral sparkles!
+      px(bx + 2, by - 2, '#1E1B4B', 8, 4);
+      px(bx + 3, by + 1, '#312E81', 9, 1);
+      px(bx + 2, by - 2, '#FACC15', 8, 1);
+      px(bx + 7, by - 1, '#FACC15', 2, 2);
+      px(bx + 2, by + 7, '#4C1D95', 5, 2);
+      px(3, 5, '#C084FC', 2, 2);
+      px(4, 4, '#FEF08A', 1, 1);
+      px(24, 4, '#A855F7', 2, 2);
+      px(25, 3, '#22D3EE', 1, 1);
       break;
     }
     case 'paladin_crusader': {
-      // Winged Silver Great-Helm + Sanctified Golden Warhammer!
-      px(bx + 2, by - 3, '#E2E8F0', 11, 5);
-      px(bx + 6, by - 3, '#F59E0B', 3, 5);
-      px(bx + 16, 7, '#92400E', 2, 16);
-      px(bx + 13, 6, OUTLINE, 8, 6);
-      px(bx + 14, 7, '#FACC15', 6, 4);
+      // Silver templar crest with gold cross + sanctified golden warhammer!
+      px(bx + 2, by - 3, '#CBD5E1', 9, 4);
+      px(bx + 5, by - 3, '#F59E0B', 3, 4);
+      px(bx + 4, by - 2, '#FACC15', 5, 1);
+      px(bx + 15, by + 4, '#92400E', 2, 7);
+      px(bx + 13, by + 1, OUTLINE, 6, 4);
+      px(bx + 14, by + 2, '#FACC15', 4, 2);
       break;
     }
     case 'necro_lich': {
-      // Bone Lich Crown + Floating Emerald Soul-Skull Lantern!
-      px(bx + 1, by - 4, OUTLINE, 11, 5);
-      px(bx + 2, by - 3, '#F8FAFC', 9, 3);
-      px(bx + 4, by - 2, '#10B981', 2, 1);
-      px(bx + 8, by - 2, '#10B981', 2, 1);
-      px(bx + 13, 7 + hopY, '#059669', 5, 6);
-      px(bx + 14, 8 + hopY, '#A7F3D0', 3, 4);
+      // Bone crown with emerald gems + floating emerald soul-lantern!
+      px(bx + 2, by - 3, OUTLINE, 9, 4);
+      px(bx + 3, by - 2, '#F8FAFC', 7, 3);
+      px(bx + 4, by - 1, '#10B981', 2, 1);
+      px(bx + 8, by - 1, '#10B981', 2, 1);
+      px(bx + 14, by + 1, '#059669', 4, 5);
+      px(bx + 15, by + 2, '#6EE7B7', 2, 3);
+      px(bx + 15, by, '#FFFFFF', 1, 2);
       break;
     }
     case 'oni_warlord': {
-      // Twin Curved Golden Oni Horns + Colossal Spiked Iron Kanabo Club!
-      px(bx + 2, by - 6, '#FACC15', 3, 6);
-      px(bx + 10, by - 6, '#FACC15', 3, 6);
-      px(bx + 16, 6, OUTLINE, 6, 17);
-      px(bx + 17, 7, '#334155', 4, 15);
-      px(bx + 21, 8, '#FACC15', 2, 2);
-      px(bx + 21, 13, '#FACC15', 2, 2);
-      px(bx + 21, 18, '#FACC15', 2, 2);
+      // Plump crimson King-Borb with fluffy white mane + twin golden Oni horns + spiked Kanabo!
+      px(bx + 3, by - 2, '#F8FAFC', 11, 2);
+      px(bx + 4, by - 6, '#FACC15', 3, 5);
+      px(bx + 10, by - 6, '#FACC15', 3, 5);
+      px(bx + 17, by + 1, OUTLINE, 5, 12);
+      px(bx + 18, by + 2, '#475569', 3, 10);
+      px(bx + 21, by + 3, '#FACC15', 1, 2);
+      px(bx + 21, by + 7, '#FACC15', 1, 2);
       break;
     }
     case 'valkyrie': {
-      // Winged Asgard Diadem + Bifrost Spear!
-      px(bx - 1, by - 3, '#FFFFFF', 4, 4);
-      px(bx + 9, by - 3, '#FFFFFF', 4, 4);
-      px(bx + 2, by - 1, '#FACC15', 8, 2);
-      px(bx + 13, 5, '#D97706', 2, 18);
-      px(bx + 12, 3, '#7DD3FC', 4, 5);
+      // Winged golden Valkyrie circlet + sparkling star-spear!
+      px(bx + 3, by, '#F59E0B', 7, 2);
+      px(bx + 5, by - 1, '#38BDF8', 3, 2);
+      px(bx + 1, by - 3, '#FFFFFF', 3, 3);
+      px(bx + 9, by - 3, '#FFFFFF', 3, 3);
+      px(bx + 15, by + 1, '#D97706', 2, 11);
+      px(bx + 14, by - 2, '#7DD3FC', 4, 4);
+      px(bx + 15, by - 1, '#FFFFFF', 2, 2);
       break;
     }
     case 'idol_diva': {
-      // Twin Ribbon Tails + Tiara + Star Microphone!
-      px(bx, by - 2, '#EC4899', 3, 4);
-      px(bx + 9, by - 2, '#EC4899', 3, 4);
-      px(bx + 4, by - 3, '#FACC15', 4, 2);
-      px(bx + 13, by + 4, '#F472B6', 4, 4);
+      // Twin pink idol ribbons + starlight tiara + golden mic + floating music notes!
+      px(bx + 1, by - 3, '#EC4899', 3, 3);
+      px(bx + 9, by - 3, '#EC4899', 3, 3);
+      px(bx + 4, by - 4, '#FACC15', 5, 2);
+      px(bx + 6, by - 4, '#FFFFFF', 1, 1);
+      px(bx + 14, by + 6, '#CA8A04', 2, 4);
+      px(bx + 13, by + 4, '#F472B6', 4, 2);
+      px(23, 3, '#38BDF8', 2, 3);
+      px(24, 2, '#FEF08A', 2, 1);
       break;
     }
     case 'tengu_shadow': {
-      // Crimson Tengu Brow Crest + Scarlet Odachi Blade!
-      px(bx + 2, by - 4, '#DC2626', 6, 4);
-      px(bx + 10, by + 5, OUTLINE, 8, 3);
-      px(bx + 11, by + 6, '#EF4444', 6, 1);
+      // Dark tengu war-crest + golden emblem + blazing crimson katana!
+      px(bx + 2, by - 2, '#0F172A', 9, 3);
+      px(bx + 4, by - 4, '#EF4444', 5, 2);
+      px(bx + 5, by - 1, '#FACC15', 3, 1);
+      px(bx + 13, by + 6, '#DC2626', 6, 2);
+      px(bx + 14, by + 6, '#FCA5A5', 4, 1);
       break;
     }
     case 'astral_astrologer': {
-      // Starry Cosmic Hat + Orbiting Golden Astrolabe Ring!
-      px(13, 3 + hopY, '#312E81', 10, 7);
-      px(16, 1 + hopY, '#6366F1', 5, 3);
-      px(26, 14 + hopY, '#FDE047', 6, 6);
-      px(28, 16 + hopY, '#FFFFFF', 2, 2);
+      // Tall indigo stargazer wizard hat + floating golden star-comet orb!
+      px(bx + 1, by, '#312E81', 11, 1);
+      px(bx + 3, by - 4, '#4338CA', 7, 4);
+      px(bx + 5, by - 7, '#6366F1', 4, 3);
+      px(bx + 5, by - 3, '#FDE047', 2, 2);
+      px(bx + 15, by + 3, '#FDE047', 4, 4);
+      px(bx + 16, by + 4, '#FFFFFF', 2, 2);
       break;
     }
     case 'star_dread': {
-      // Fleet Admiral Crest on Command Dome + Twin Escort Drones!
-      px(15, 4 + hopY, '#1E293B', 6, 3);
-      px(15, 6 + hopY, '#FACC15', 6, 1);
-      px(4, 5, '#94A3B8', 6, 3);
-      px(6, 4, '#38BDF8', 2, 1);
+      // Cute starfleet captain cap + twin tiny pet UFO drones hovering beside!
+      px(bx + 2, by - 2, '#1E293B', 9, 3);
+      px(bx + 2, by, '#FACC15', 10, 1);
+      px(bx + 6, by - 2, '#FB7185', 2, 2);
+      px(2, 6, '#94A3B8', 5, 2);
+      px(3, 5, '#38BDF8', 3, 1);
+      px(26, 5, '#94A3B8', 5, 2);
+      px(27, 4, '#F43F5E', 3, 1);
       break;
     }
     case 'leviathan_kraken': {
-      // Sea-Emperor Crown + Giant Abyssal Trident!
-      px(13, 4 + hopY, '#22D3EE', 9, 4);
-      px(27, 5, '#0EA5E9', 2, 22);
-      px(24, 3, '#67E8F9', 8, 5);
-      px(26, 3, '#0F172A', 1, 3);
-      px(29, 3, '#0F172A', 1, 3);
+      // Bioluminescent sea-king crown + gleaming three-pronged abyssal trident!
+      px(bx + 2, by - 3, '#0F766E', 9, 3);
+      px(bx + 3, by - 5, '#22D3EE', 2, 2);
+      px(bx + 6, by - 6, '#67E8F9', 2, 3);
+      px(bx + 9, by - 5, '#22D3EE', 2, 2);
+      px(bx + 15, by + 2, '#0EA5E9', 2, 10);
+      px(bx + 13, by - 1, '#22D3EE', 6, 4);
+      px(bx + 14, by - 1, '#0F172A', 1, 2);
+      px(bx + 17, by - 1, '#0F172A', 1, 2);
       break;
     }
     case 'abyss_wyrm': {
-      // Swept Elder-Dragon Horns + Blazing Abyssal Sphere!
-      px(12, 3 + hopY, '#22D3EE', 4, 5);
-      px(21, 3 + hopY, '#22D3EE', 4, 5);
-      px(29, 13 + hopY, '#06B6D4', 6, 6);
-      px(31, 15 + hopY, '#FFFFFF', 2, 2);
+      // Swept cyan-tipped dragon horns + glowing cyan dragon orb!
+      px(bx + 1, by - 4, '#0F172A', 3, 4);
+      px(bx + 9, by - 4, '#0F172A', 3, 4);
+      px(bx + 1, by - 6, '#22D3EE', 2, 2);
+      px(bx + 10, by - 6, '#22D3EE', 2, 2);
+      px(bx + 14, by + 4, '#22D3EE', 5, 5);
+      px(bx + 15, by + 5, '#FFFFFF', 3, 3);
       break;
     }
     case 'quasar': {
-      // Orbiting Twin Pulsar Rings!
-      px(11, 5 + hopY, '#22D3EE', 14, 2);
-      px(13, 3 + hopY, '#F472B6', 10, 2);
+      // Pastel pink-and-cyan starry halo + shooting star!
+      px(bx + 3, by - 4, '#22D3EE', 7, 1);
+      px(bx + 2, by - 3, '#F472B6', 9, 1);
+      px(bx + 5, by - 6, '#FFFFFF', 3, 2);
+      px(bx + 15, by + 2, '#F472B6', 4, 4);
+      px(bx + 16, by + 3, '#FFFFFF', 2, 2);
       break;
     }
     case 'archangel_seraph': {
-      // Radiant Floating Halo + Heavenly Lance!
-      px(13, 4 + hopY, '#FACC15', 10, 2);
-      px(15, 4 + hopY, '#FFFFFF', 6, 1);
-      px(28, 4, '#F59E0B', 2, 24);
-      px(26, 2, '#FEF08A', 6, 5);
+      // Floating golden halo ring + blazing celestial spear!
+      px(bx + 3, by - 5, '#F59E0B', 7, 2);
+      px(bx + 4, by - 5, '#FEF08A', 5, 1);
+      px(bx + 15, by, '#FACC15', 2, 12);
+      px(bx + 14, by - 3, '#FFFFFF', 4, 4);
       break;
     }
     case 'chronos_empress': {
-      // Celestial Clockwork Halo + Time-Spear!
-      px(10, 3 + hopY, '#FACC15', 16, 3);
-      px(17, 2 + hopY, '#38BDF8', 2, 3);
-      px(28, 5, '#CA8A04', 2, 23);
-      px(26, 3, '#FEF08A', 6, 4);
+      // Sapphire-and-gold diadem + golden time-spear!
+      px(bx + 3, by - 3, '#FEF08A', 7, 3);
+      px(bx + 5, by - 3, '#38BDF8', 3, 2);
+      px(bx + 15, by, '#CA8A04', 2, 12);
+      px(bx + 14, by - 3, '#FEF08A', 4, 4);
       break;
     }
     case 'omega_god': {
-      // Crown of Genesis + Orbiting Sacred Golden Egg!
-      px(13, 4 + hopY, '#FEF08A', 10, 3);
-      px(27, 11 + hopY, OUTLINE, 6, 8);
-      px(28, 12 + hopY, '#FACC15', 4, 6);
-      px(29, 13 + hopY, '#38BDF8', 2, 2);
+      // Radiant floating golden halo + hovering Sacred Golden Egg!
+      px(bx + 2, by - 5, '#FEF08A', 9, 2);
+      px(bx + 4, by - 5, '#FFFFFF', 5, 1);
+      px(bx + 14, by + 2, OUTLINE, 6, 7);
+      px(bx + 15, by + 3, '#FACC15', 4, 5);
+      px(bx + 16, by + 4, '#FFFFFF', 2, 2);
       break;
     }
     case 'mech_zilla': {
-      // Charging Cherenkov Atomic Sphere in front of roaring jaws!
-      px(34, 11 + hopY, '#0284C7', 7, 7);
-      px(35, 12 + hopY, '#67E8F9', 5, 5);
-      px(37, 14 + hopY, '#FFFFFF', 2, 2);
+      // Cute crystal kaiju crown tuft + glowing cyan atomic sphere!
+      px(bx + 4, by - 3, '#0F172A', 9, 3);
+      px(bx + 5, by - 5, '#22D3EE', 3, 3);
+      px(bx + 9, by - 6, '#67E8F9', 3, 4);
+      px(bx + 18, by + 4, OUTLINE, 6, 6);
+      px(bx + 19, by + 5, '#0284C7', 4, 4);
+      px(bx + 20, by + 6, '#FFFFFF', 2, 2);
       break;
     }
     case 'gaia_creator': {
-      // Floating Rainbow Creation Prism!
-      px(30, 14 + hopY, '#F43F5E', 7, 7);
-      px(31, 15 + hopY, '#38BDF8', 5, 5);
-      px(32, 16 + hopY, '#FEF08A', 3, 3);
+      // Emerald crystal antlers + pink/gold flower crown + floating rainbow prism!
+      px(bx + 2, by - 5, '#16A34A', 3, 5);
+      px(bx + 12, by - 5, '#16A34A', 3, 5);
+      px(bx + 5, by - 3, '#F472B6', 3, 3);
+      px(bx + 9, by - 3, '#FACC15', 3, 3);
+      px(bx + 18, by + 3, '#F43F5E', 6, 6);
+      px(bx + 19, by + 4, '#38BDF8', 4, 4);
+      px(bx + 20, by + 5, '#FEF08A', 2, 2);
       break;
     }
     case 'void_singularity': {
-      // Dark-Star Crown above Event Horizon!
-      px(15, 3 + hopY, '#EC4899', 12, 3);
-      px(18, 1 + hopY, '#22D3EE', 6, 2);
+      // Front arc of tilted cosmic ring + dark-star crown + mini black hole!
+      px(4, by + 9, '#F472B6', 29, 2);
+      px(8, by + 10, '#22D3EE', 21, 1);
+      px(bx + 4, by - 4, '#EC4899', 9, 3);
+      px(bx + 6, by - 6, '#22D3EE', 5, 2);
+      px(bx + 18, by + 4, '#F472B6', 6, 6);
+      px(bx + 19, by + 5, '#090D16', 4, 4);
       break;
     }
     case 'golden_deity': {
-      // Winged Golden Sun-Laurel Crown (zero cat ears!) + Divine Scepter!
-      px(14, 4 + hopY, '#FACC15', 14, 5);
-      px(19, 2 + hopY, '#FFFFFF', 4, 3);
-      px(20, 5 + hopY, '#F43F5E', 2, 2);
+      // Royal winged sun-crown + ruby jewel + divine golden scepter!
+      px(bx + 3, by - 4, OUTLINE, 11, 4);
+      px(bx + 4, by - 3, '#FACC15', 9, 3);
+      px(bx + 7, by - 3, '#F43F5E', 3, 2);
+      px(bx + 2, by - 6, '#FFFFFF', 13, 1);
+      px(bx + 18, by + 1, OUTLINE, 5, 11);
+      px(bx + 19, by + 2, '#EC4899', 3, 3);
+      px(bx + 19, by + 5, '#FACC15', 3, 6);
       break;
     }
     case 'solar_emperor': {
-      // 5-Spiked Sol Invictus Crown!
-      px(15, 6 + hopY, '#FEF08A', 12, 4);
-      px(20, 3 + hopY, '#FFFFFF', 2, 4);
+      // 5-rayed golden Sol Invictus crown + captive miniature blazing sun!
+      px(bx + 3, by - 3, '#EA580C', 11, 3);
+      px(bx + 4, by - 6, '#FACC15', 2, 4);
+      px(bx + 7, by - 7, '#FEF08A', 3, 5);
+      px(bx + 11, by - 6, '#FACC15', 2, 4);
+      px(bx + 18, by + 3, '#EA580C', 7, 7);
+      px(bx + 19, by + 4, '#FDE047', 5, 5);
+      px(bx + 20, by + 5, '#FFFFFF', 3, 3);
       break;
     }
     case 'eternity_weaver': {
-      // Twin Continuum Horns + Crossing Rift Glaive!
-      px(14, 4 + hopY, '#22D3EE', 3, 5);
-      px(25, 4 + hopY, '#E879F9', 3, 5);
+      // Prismatic continuum horns + twin dimensional rift crescent blades!
+      px(bx + 3, by - 5, '#22D3EE', 3, 5);
+      px(bx + 11, by - 5, '#E879F9', 3, 5);
+      px(bx + 7, by - 4, '#FFFFFF', 3, 2);
+      px(bx + 18, by + 1, OUTLINE, 5, 11);
+      px(bx + 19, by + 2, '#A855F7', 3, 9);
+      px(bx + 20, by + 1, '#22D3EE', 3, 4);
+      px(bx + 20, by + 8, '#F472B6', 3, 4);
       break;
     }
     case 'complete_cluck': {
-      // Twin-Gem Sovereign Diadem + Forged Prismatic Infinity Greatsword!
-      px(15, 7 + hopY, OUTLINE, 11, 4);
-      px(16, 8 + hopY, '#FACC15', 9, 2);
-      px(17, 6 + hopY, '#2DD4BF', 3, 2);
-      px(21, 6 + hopY, '#E879F9', 3, 2);
-      // Forged Infinity Greatsword held forward!
-      px(29, 20 + hopY, '#FACC15', 6, 2);
-      px(31, 8 + hopY, OUTLINE, 5, 13);
-      px(32, 9 + hopY, '#2DD4BF', 3, 4);
-      px(32, 13 + hopY, '#38BDF8', 3, 4);
-      px(32, 17 + hopY, '#E879F9', 3, 3);
-      px(33, 9 + hopY, '#FFFFFF', 1, 9);
+      // Sovereign Twin-Gem Crown + Forged Prismatic Infinity Greatsword!
+      px(bx + 3, by - 4, OUTLINE, 11, 4);
+      px(bx + 4, by - 3, '#FACC15', 9, 3);
+      px(bx + 5, by - 5, '#2DD4BF', 3, 2);
+      px(bx + 9, by - 5, '#E879F9', 3, 2);
+      px(bx + 8, by - 6, '#FFFFFF', 1, 2);
+      // Forged Sovereign Infinity Greatsword held beside the chubby King-Borb!
+      px(bx + 17, by + 10, '#FACC15', 7, 2);
+      px(bx + 18, by, OUTLINE, 5, 11);
+      px(bx + 19, by + 1, '#2DD4BF', 3, 3);
+      px(bx + 19, by + 4, '#38BDF8', 3, 3);
+      px(bx + 19, by + 7, '#E879F9', 3, 3);
+      px(bx + 20, by + 1, '#FFFFFF', 1, 8);
       break;
+    }
+  }
+
+  // ==================== 8. PROTECTED KAWAII FACE (SPARKLE EYE + ROSY BLUSH + CHIRP BEAK!) ====================
+  // Drawn LAST so every single Chicken unit always keeps Brawler Bantam's round, cute kawaii expression!
+  if (borb === 'petite') {
+    px(bx + 7, by + 2, OUTLINE, 2, 3);
+    px(bx + 7, by + 2, '#FFFFFF', 1, 1);
+    px(bx + 8, by + 4, '#64748B', 1, 1);
+
+    px(bx + 5, by + 5, '#FB7185', 2, 1);
+    px(bx + 5, by + 5, '#FDA4AF', 1, 1);
+
+    px(bx + 10, by + 3, OUTLINE, 3, 2);
+    px(bx + 10, by + 3, '#FDE047', 2, 1);
+    px(bx + 10, by + 4, '#F97316', 2, 1);
+    if (attackFrame) {
+      px(bx + 10, by + 5, '#FB7185', 2, 1);
+    }
+  } else if (borb === 'classic') {
+    px(bx + 9, by + 3, OUTLINE, 2, 3);
+    px(bx + 9, by + 3, '#FFFFFF', 1, 1);
+    px(bx + 10, by + 5, '#64748B', 1, 1);
+
+    px(bx + 7, by + 6, '#FB7185', 2, 1);
+    px(bx + 7, by + 6, '#FDA4AF', 1, 1);
+
+    px(bx + 12, by + 4, OUTLINE, 3, 2);
+    px(bx + 12, by + 4, '#FDE047', 2, 1);
+    px(bx + 12, by + 5, '#F97316', 2, 1);
+    if (attackFrame) {
+      px(bx + 12, by + 6, '#FB7185', 2, 1);
+    }
+  } else {
+    px(bx + 12, by + 4, OUTLINE, 2, 4);
+    px(bx + 12, by + 4, '#FFFFFF', 1, 2);
+    px(bx + 13, by + 7, '#64748B', 1, 1);
+
+    px(bx + 9, by + 8, '#FB7185', 3, 1);
+    px(bx + 9, by + 8, '#FDA4AF', 2, 1);
+
+    px(bx + 16, by + 6, OUTLINE, 4, 2);
+    px(bx + 16, by + 6, '#FDE047', 3, 1);
+    px(bx + 16, by + 7, '#F97316', 3, 1);
+    if (attackFrame) {
+      px(bx + 16, by + 8, '#FB7185', 2, 1);
     }
   }
 

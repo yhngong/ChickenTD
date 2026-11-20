@@ -136,7 +136,6 @@ const placementBanner = document.getElementById('placement-banner') as HTMLDivEl
 const placementText = document.getElementById('placement-text') as HTMLElement;
 const btnCancelPlace = document.getElementById('btn-cancel-place') as HTMLButtonElement;
 
-const stageCannonCluster = document.getElementById('stage-cannon-cluster') as HTMLDivElement;
 const btnCluckCannon = document.getElementById('btn-cluck-cannon') as HTMLButtonElement;
 const iconCluckCannon = document.getElementById('icon-cluck-cannon') as HTMLImageElement;
 const lblCannonState = document.getElementById('lbl-cannon-state') as HTMLElement;
@@ -1372,6 +1371,13 @@ function formatInspectorStats(towerId: number): string {
   const def = CHICKEN_DEFS[tower.typeId];
   const eff = engine.getEffectiveChickenStats(tower);
 
+  const dmgText =
+    eff.effectiveDamage >= 10000
+      ? formatCompactCost(Math.round(eff.effectiveDamage))
+      : Number.isInteger(eff.effectiveDamage)
+      ? eff.effectiveDamage.toLocaleString()
+      : eff.effectiveDamage.toFixed(1);
+
   if (def.isSupport) {
     const buffedCount = engine.getTowersBuffedBy(tower).length;
     if (eff.effectiveDamage <= 0) {
@@ -1379,30 +1385,21 @@ function formatInspectorStats(towerId: number): string {
         buffedCount === 1 ? 'UNIT' : 'UNITS'
       }`;
     }
-    const dmgText = Number.isInteger(eff.effectiveDamage)
-      ? eff.effectiveDamage.toLocaleString()
-      : eff.effectiveDamage.toFixed(1);
-    return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
-      eff.effectiveRange
-    } | BUFFING ${buffedCount}`;
+    return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(1)}/S | RNG ${eff.effectiveRange} | BUFFING ${buffedCount}`;
   }
 
+  const dealtText = formatCompactCost(Math.round(tower.totalPopDamage));
   const buffTag =
     tower.typeId === 'complete_cluck'
-      ? ' | NO AURA BUFFS'
+      ? ' | SOLO'
       : eff.supportBuffCount > 0
-      ? ` | BUFFED x${eff.supportBuffCount}`
+      ? ` | BUFF x${eff.supportBuffCount}`
       : '';
   const camoTag = eff.effectiveCamo ? ' | CAMO' : '';
   const kbTag = eff.effectiveKnockback > 0 ? ' | KB' : '';
   const critTag =
     eff.effectiveCritChance > 0 ? ` | ${Math.round(eff.effectiveCritChance * 100)}% CRIT` : '';
-  const dmgText = Number.isInteger(eff.effectiveDamage)
-    ? eff.effectiveDamage.toLocaleString()
-    : eff.effectiveDamage.toFixed(1);
-  return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(2)}/S | RNG ${
-    eff.effectiveRange
-  } | DEALT ${Math.round(tower.totalPopDamage).toLocaleString()}${buffTag}${camoTag}${kbTag}${critTag}`;
+  return `DMG ${dmgText} | ${eff.effectiveFireRate.toFixed(1)}/S | RNG ${eff.effectiveRange} | DEALT ${dealtText}${buffTag}${camoTag}${kbTag}${critTag}`;
 }
 
 function renderInspector(): void {
@@ -1413,7 +1410,6 @@ function renderInspector(): void {
 
   if (!tower) {
     inspectorCard.classList.add('hidden');
-    stageCannonCluster.classList.remove('lifted');
     return;
   }
 
@@ -1423,8 +1419,10 @@ function renderInspector(): void {
   const spr = PIXEL_ATLAS.getChickenSprite(tower.typeId);
 
   inspPortrait.src = spr?.portraitUrl ?? '';
-  setText(inspName, `${def.name}${eff.plusLevel > 0 ? ` +${eff.plusLevel}` : ''} — ${eff.tierName}`);
-  setText(inspTierBadge, tower.tier === 3 ? 'TIER 4 MAX' : `TIER ${tierNum}/4`);
+  const fullTitle = `${def.name}${eff.plusLevel > 0 ? ` +${eff.plusLevel}` : ''} — ${eff.tierName}`;
+  setText(inspName, fullTitle);
+  inspName.title = fullTitle;
+  setText(inspTierBadge, tower.tier === 3 ? 'T4 MAX' : `T${tierNum}/4`);
 
   if (eff.mutationTier) {
     setText(inspMutBadge, `${MUTATION_DEFS[eff.mutationTier].name.toUpperCase()}`);
@@ -1433,13 +1431,15 @@ function renderInspector(): void {
     inspMutBadge.className = 'mut-badge hidden';
   }
 
-  setText(inspStats, formatInspectorStats(tower.id));
+  const statsLine = formatInspectorStats(tower.id);
+  setText(inspStats, statsLine);
+  inspStats.title = statsLine;
   setText(btnInspTarget, `AIM: ${tower.targetMode.toUpperCase()}`);
   btnInspTarget.classList.toggle('hidden', eff.effectiveDamage <= 0);
 
   if (tower.typeId === 'complete_cluck') {
     const isAether = eff.mutationTier === 'aether';
-    setText(btnInspCompleteMut, isAether ? 'SWAP: MASTERED' : 'SWAP: AETHER');
+    setText(btnInspCompleteMut, isAether ? 'MASTERED' : 'AETHER');
     btnInspCompleteMut.classList.toggle('is-aether', isAether);
     btnInspCompleteMut.title = isAether
       ? 'Currently AETHER (+300% DMG, +0% Range). Click to swap to MASTERED (+150% DMG, +200% Range)!'
@@ -1453,19 +1453,25 @@ function renderInspector(): void {
     const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
     const nextTier = def.tiers[nextTierIdx];
     const upgCost = engine.getTowerUpgradeCost(tower.typeId, nextTierIdx);
-    setText(inspNextDesc, `NEXT (${nextTier.tierName}): ${nextTier.description}`);
-    setText(btnInspUpgrade, `TIER ${tierNum + 1} (${formatCompactCost(upgCost)} CORN)`);
+    const nextText = `NEXT (${nextTier.tierName}): ${nextTier.description}`;
+    setText(inspNextDesc, nextText);
+    inspNextDesc.title = nextText;
+    setText(btnInspUpgrade, `T${tierNum + 1} (${formatCompactCost(upgCost)})`);
+    btnInspUpgrade.title = `Upgrade to Tier ${tierNum + 1}: ${nextTier.tierName} (${upgCost.toLocaleString()} Corn) — ${nextTier.description}`;
     btnInspUpgrade.disabled = engine.corn < upgCost;
   } else {
-    setText(inspNextDesc, 'MAXIMUM CHICKEN EVOLUTION ACHIEVED!');
-    setText(btnInspUpgrade, 'MAX TIER');
+    const maxText = 'MAXIMUM CHICKEN EVOLUTION ACHIEVED!';
+    setText(inspNextDesc, maxText);
+    inspNextDesc.title = maxText;
+    setText(btnInspUpgrade, 'MAX');
+    btnInspUpgrade.title = maxText;
     btnInspUpgrade.disabled = true;
   }
 
   const refund = Math.round(tower.totalSpent * 0.7);
-  setText(btnInspSell, `SELL (+${formatCompactCost(refund)})`);
+  setText(btnInspSell, `SELL +${formatCompactCost(refund)}`);
+  btnInspSell.title = `Sell ${def.name} for +${refund.toLocaleString()} Corn (70% refund)`;
   inspectorCard.classList.remove('hidden');
-  stageCannonCluster.classList.add('lifted');
 }
 
 function populateDefeatEndscreen(): void {

@@ -245,18 +245,18 @@ button {
 .stage-banner {
   position: absolute;
   top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 8px;
+  right: 176px;
   background: rgba(17, 26, 19, 0.92);
   border: 2px solid var(--gold);
   box-shadow: 0 3px 0 var(--pixel-shadow);
-  padding: 5px 12px;
-  font-size: 11px;
+  padding: 5px 10px;
+  font-size: 10px;
   white-space: nowrap;
-  max-width: 94%;
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
+  z-index: 14;
 }
 
 .stage-banner strong {
@@ -265,85 +265,117 @@ button {
 
 .placement-banner {
   position: absolute;
-  top: 42px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 38px;
+  left: 8px;
+  max-width: calc(100% - 178px);
   background: #14532d;
   border: 2px solid #4ade80;
   box-shadow: 0 3px 0 var(--pixel-shadow);
-  padding: 5px 10px;
-  font-size: 11px;
+  padding: 4px 9px;
+  font-size: 10px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  z-index: 15;
+}
+
+.placement-banner span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .placement-banner button {
   background: #991b1b;
   color: #ffffff;
   border: 2px solid #fca5a5;
-  padding: 2px 7px;
-  font-size: 10px;
+  padding: 2px 6px;
+  font-size: 9px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
-/* ==================== SELECTED TOWER INSPECTOR ==================== */
+/* ==================== SELECTED TOWER INSPECTOR (COMPACT BOTTOM BAR) ==================== */
 .inspector-card {
   position: absolute;
-  bottom: 8px;
-  left: 10px;
-  right: 10px;
-  background: rgba(19, 29, 22, 0.96);
-  border: 3px solid var(--gold);
-  box-shadow: 0 4px 0 var(--pixel-shadow);
-  padding: 7px 10px;
+  bottom: 6px;
+  left: 8px;
+  right: 8px;
+  z-index: 16;
+  background: rgba(16, 25, 19, 0.96);
+  border: 2px solid var(--gold);
+  box-shadow: 0 3px 0 var(--pixel-shadow);
+  padding: 5px 8px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  max-height: 58px;
+  overflow: hidden;
 }
 
 .insp-portrait {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
   background: #26392b;
   border: 2px solid #578060;
+  padding: 1px;
   flex-shrink: 0;
 }
 
 .insp-left {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .insp-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 #insp-name {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--gold-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .tier-pill {
   background: #365314;
-  border: 2px solid #84cc16;
+  border: 1px solid #84cc16;
   color: #ecfccb;
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 8px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.inspector-card .mut-badge {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .insp-stats {
-  font-size: 11px;
+  font-size: 9.5px;
   color: #e2e8f0;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .insp-desc {
-  font-size: 10px;
+  font-size: 9px;
   color: #94a3b8;
-  margin-top: 2px;
+  margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -352,17 +384,18 @@ button {
 .insp-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
 .insp-btn {
   border: 2px solid #64748b;
-  box-shadow: 0 3px 0 var(--pixel-shadow);
-  padding: 6px 8px;
-  font-size: 10px;
+  box-shadow: 0 2px 0 var(--pixel-shadow);
+  padding: 4px 6px;
+  font-size: 9px;
   font-weight: 700;
   color: #ffffff;
+  white-space: nowrap;
 }
 
 .target-btn {
@@ -391,9 +424,34 @@ button {
   background: #334155;
   border: 2px solid #94a3b8;
   color: #ffffff;
-  padding: 5px 8px;
-  font-size: 11px;
+  padding: 4px 6px;
+  font-size: 9px;
   font-weight: 700;
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .stage-banner {
+    right: 152px;
+    font-size: 9px;
+    padding: 4px 7px;
+  }
+
+  .inspector-card {
+    flex-wrap: wrap;
+    max-height: 78px;
+    padding: 4px 6px;
+    gap: 4px 6px;
+  }
+
+  .insp-desc {
+    display: none;
+  }
+
+  .insp-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 /* ==================== RIGHT COMMAND SIDEBAR ==================== */
@@ -659,6 +717,7 @@ button {
 .troop-portrait {
   width: 34px;
   height: 34px;
+  object-fit: contain;
   background: #243829;
   border: 2px solid #486b4f;
   flex-shrink: 0;
@@ -1324,20 +1383,15 @@ button {
   border-color: #facc15;
 }
 
-/* ==================== CLUCK CANNON & QUICK LOADOUT CLUSTER ON STAGE ==================== */
+/* ==================== CLUCK CANNON FIRE BUTTON (TOP-RIGHT OF STAGE) ==================== */
 .stage-cannon-cluster {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   z-index: 15;
   display: flex;
   align-items: stretch;
   gap: 6px;
-  transition: bottom 0.08s steps(2);
-}
-
-.stage-cannon-cluster.lifted {
-  bottom: 72px;
 }
 
 .cannon-swap-btn {
@@ -1362,11 +1416,12 @@ button {
 .cluck-cannon-btn {
   position: relative;
   background: rgba(15, 23, 42, 0.94);
-  border: 3px solid #475569;
-  box-shadow: 0 4px 0 var(--pixel-shadow);
-  padding: 6px 10px;
+  border: 2px solid #475569;
+  box-shadow: 0 3px 0 var(--pixel-shadow);
+  padding: 4px 8px;
   color: #94a3b8;
-  min-width: 162px;
+  min-width: 142px;
+  max-width: 162px;
   text-align: left;
 }
 
@@ -1395,14 +1450,17 @@ button {
 .cannon-top-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-family: var(--font-px-head);
-  font-size: 9px;
-  margin-bottom: 5px;
+  font-size: 8px;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cannon-bar-track {
-  height: 7px;
+  height: 5px;
   background: #090d16;
   border: 1px solid #334155;
 }
@@ -1827,6 +1885,7 @@ button {
 .coll-portrait {
   width: 42px;
   height: 42px;
+  object-fit: contain;
   background: #1f1b36;
   border: 2px solid #4c3b78;
   flex-shrink: 0;
@@ -2094,6 +2153,7 @@ button {
 .reveal-unit-img {
   width: 58px;
   height: 58px;
+  object-fit: contain;
   background: rgba(15, 23, 42, 0.65);
   border: 2px solid #94a3b8;
   animation: pxUnitPopIn 0.26s steps(4) forwards;
@@ -2355,6 +2415,7 @@ button {
 .defeat-mvp-img {
   width: 28px;
   height: 28px;
+  object-fit: contain;
   background: #1e293b;
   border: 1px solid #facc15;
   flex-shrink: 0;
