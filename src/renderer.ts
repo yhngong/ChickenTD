@@ -776,14 +776,27 @@ export class MeadowRenderer {
 
     if (isSelected) {
       drawPixelCircle(ctx, px, py + 2, footPx, '#FACC15', false);
+    } else if (tower.tier === 6) {
+      // Omega Tier 7 radiant alternating rose-gold aura!
+      const auraR = footPx + (Math.floor(nowSec * 6) % 2);
+      drawPixelCircle(
+        ctx,
+        px,
+        py + 2,
+        auraR,
+        Math.floor(nowSec * 8) % 2 === 0 ? '#F43F5E' : '#FEF08A',
+        false
+      );
     } else if (mutColor) {
       const auraR =
         footPx - (mutTier === 'legendary' || mutTier === 'mastered' || mutTier === 'aether' ? 0 : 1) +
         (Math.floor(nowSec * 5) % 2);
       drawPixelCircle(ctx, px, py + 2, auraR, mutColor, true);
-    } else if (tower.tier === 3) {
+    } else if (tower.tier >= 3) {
+      const tierCol =
+        tower.tier === 5 ? '#E879F9' : tower.tier === 4 ? '#38BDF8' : '#FDE047';
       const auraR = Math.max(8, footPx - 1) + (Math.floor(nowSec * 4) % 2);
-      drawPixelCircle(ctx, px, py + 2, auraR, '#FDE047', true);
+      drawPixelCircle(ctx, px, py + 2, auraR, tierCol, true);
     }
 
     const frame = tower.recoil > 0.35 ? spr.attack : spr.idle;
@@ -803,6 +816,43 @@ export class MeadowRenderer {
       ctx.drawImage(frame, px - halfW, py + cuteIdleBob - halfH - 1);
     }
 
+    // Passive Orbiting Guardian Satellites ('phoenix', 'quasar', 'gaia_creator', 'omega_god')!
+    if (
+      tower.typeId === 'phoenix' ||
+      tower.typeId === 'quasar' ||
+      tower.typeId === 'gaia_creator' ||
+      tower.typeId === 'omega_god'
+    ) {
+      const orbCount = tower.typeId === 'phoenix' ? 2 : 3;
+      const orbR = toPx(tower.typeId === 'phoenix' ? 62 : 76);
+      const baseAng = tower.orbitAngle ?? nowSec * 3.5;
+      const orbOuter =
+        tower.typeId === 'phoenix'
+          ? '#EA580C'
+          : tower.typeId === 'quasar'
+          ? '#F472B6'
+          : tower.typeId === 'gaia_creator'
+          ? '#10B981'
+          : '#F59E0B';
+      const orbCore =
+        tower.typeId === 'quasar'
+          ? '#22D3EE'
+          : tower.typeId === 'gaia_creator'
+          ? '#F472B6'
+          : '#FEF08A';
+      for (let k = 0; k < orbCount; k++) {
+        const ang = baseAng + (Math.PI * 2 * k) / orbCount;
+        const ox = px + Math.round(Math.cos(ang) * orbR);
+        const oy = py + Math.round(Math.sin(ang) * orbR);
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(ox - 3, oy - 3, 6, 6);
+        ctx.fillStyle = orbOuter;
+        ctx.fillRect(ox - 2, oy - 2, 4, 4);
+        ctx.fillStyle = orbCore;
+        ctx.fillRect(ox - 1, oy - 1, 2, 2);
+      }
+    }
+
     // Crisp Pixel Buff Indicator Arrow above Chicken if buffed by a nearby Support Chicken!
     if (eff.supportBuffCount > 0 && !def.isSupport) {
       const bx = px + Math.max(5, halfW - 4);
@@ -814,8 +864,9 @@ export class MeadowRenderer {
       ctx.fillRect(bx + 1, by + 1, 3, 1);
     }
 
-    // Crisp Pixel Tier Pips underneath the Chicken (1..4 golden stars/pips + Mutation Crystal!)
-    const pipCount = tower.tier + 1;
+    // Crisp Pixel Tier Pips underneath the Chicken (T1-4 gold/cyan pips; T5-7 compact Overdrive/Omega pips!)
+    const isPrestige = tower.tier >= 4;
+    const pipCount = isPrestige ? tower.tier - 2 : tower.tier + 1; // T1..T4 -> 1..4; T5..T7 -> 2..4 compact pips!
     const extraMutWidth = mutColor ? 4 : 0;
     const totalW = pipCount * 3 - 1 + extraMutWidth;
     const startX = px - Math.floor(totalW / 2);
@@ -823,7 +874,18 @@ export class MeadowRenderer {
     ctx.fillStyle = OUTLINE;
     ctx.fillRect(startX - 1, pipY - 1, totalW + 2, 4);
     for (let p = 0; p < pipCount; p++) {
-      ctx.fillStyle = tower.tier === 3 ? '#38BDF8' : '#FACC15';
+      if (isPrestige) {
+        ctx.fillStyle =
+          p === 0
+            ? '#FEF08A'
+            : tower.tier === 6
+            ? '#F43F5E'
+            : tower.tier === 5
+            ? '#E879F9'
+            : '#38BDF8';
+      } else {
+        ctx.fillStyle = tower.tier === 3 ? '#38BDF8' : '#FACC15';
+      }
       ctx.fillRect(startX + p * 3, pipY, 2, 2);
     }
     if (mutColor) {
@@ -845,7 +907,7 @@ export class MeadowRenderer {
     const oy = toPx(owner.y);
     const sx = toPx(stand.x);
     const sy = toPx(stand.y);
-    const isRequiem = owner.tier === 3;
+    const isRequiem = owner.tier >= 3;
 
     // 1. Dotted Astral Spirit Tether linking Guardian Chicken -> Summoned Spirit!
     const distPx = Math.hypot(sx - ox, sy - oy);
@@ -1132,6 +1194,19 @@ export class MeadowRenderer {
       ctx.fillStyle = '#F97316';
       ctx.fillRect(px + 1, py - Math.floor(img.height / 2) - 2, 2, 2);
     }
+    if ((e.plagueTimer && e.plagueTimer > 0) || (e.curseTimer && e.curseTimer > 0)) {
+      ctx.fillStyle = '#10B981';
+      ctx.fillRect(px - 6, py - Math.floor(img.height / 2) - 2, 2, 2);
+    }
+    // Hunter's Bullseye Crosshair above Marked Enemies (+30% DMG taken!)
+    if (e.markTimer && e.markTimer > 0) {
+      const my = py - Math.floor(img.height / 2) - (def.isFoxBoss ? 10 : 7);
+      ctx.fillStyle = '#EF4444';
+      ctx.fillRect(px - 3, my, 7, 1);
+      ctx.fillRect(px, my - 3, 1, 7);
+      ctx.fillStyle = '#FEF08A';
+      ctx.fillRect(px, my, 1, 1);
+    }
 
     // Pixel HP Bar
     if (def.isFoxBoss) {
@@ -1182,6 +1257,23 @@ export class MeadowRenderer {
       drawPixelLine(ctx, px - 5, py - 4, px + 5, py + 4, 2, '#A855F7');
       drawPixelLine(ctx, px - 5, py + 4, px + 5, py - 4, 2, '#22D3EE');
       drawPixelLine(ctx, px - 3, py - 2, px + 3, py + 2, 1, '#FFFFFF');
+    } else if (p.gimmick === 'deadeye_slug') {
+      const tx = px - Math.round(Math.cos(p.rotation) * 14);
+      const ty = py - Math.round(Math.sin(p.rotation) * 14);
+      drawPixelLine(ctx, tx, ty, px, py, 3, '#F59E0B');
+      drawPixelLine(ctx, tx, ty, px, py, 1, '#FEF9C3');
+    } else if (p.gimmick === 'ghost_march') {
+      // Cute spectral emerald ghost-chick wisp marching UP the road!
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(px - 4, py - 4, 8, 8);
+      ctx.fillStyle = '#10B981';
+      ctx.fillRect(px - 3, py - 3, 6, 6);
+      ctx.fillStyle = '#A7F3D0';
+      ctx.fillRect(px - 2, py - 2, 4, 3);
+      ctx.fillStyle = OUTLINE;
+      ctx.fillRect(px - 2, py - 1, 1, 2);
+      ctx.fillRect(px + 1, py - 1, 1, 2);
+      return;
     } else if (
       p.motionMode === 'ellipse_return' &&
       (p.style === 'boomerang' || p.style === 'viking_axe') &&

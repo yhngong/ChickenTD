@@ -1,6 +1,7 @@
 import {
   CannonDef,
   CannonTypeId,
+  ChickenTierStats,
   ChickenTowerDef,
   ChickenTypeId,
   ClickerUpgradeId,
@@ -8,6 +9,7 @@ import {
   DifficultyId,
   EnemyDef,
   EnemyTypeId,
+  SupportAuraSpec,
   TdUpgradeId,
   UpgradeDef,
   WaveDefinition,
@@ -257,7 +259,7 @@ export const REQUIRED_FOR_COMPLETE_CLUCK_IDS: readonly ChickenTypeId[] = CHICKEN
   (id) => id !== 'complete_cluck'
 );
 
-export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
+const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
   // 1. BRAWLER BANTAM — Cheap fast close-range martial artist
   bantam: {
     id: 'bantam',
@@ -5275,6 +5277,284 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
   },
 };
 
+const UNIT_GIMMICK_TAG: Record<ChickenTypeId, string> = {
+  bantam: '5th-Jab KO Uppercut shockwave!',
+  pecker: 'Every 4th shot fires an Armor-Cracking Golden Seed!',
+  sling_chick: 'Pinball Ricochet pebbles bounce enemy-to-enemy!',
+  honey: 'Every 3rd pot snares foes solid in Golden Amber!',
+  boomerang: 'Wide returning boomerang slices outbound & inbound!',
+  chilly: '3x Frostbite stacks trigger an Ice-Shatter Nova!',
+  alchemist: 'Plagued foes explode into contagious acid clouds on death!',
+  ranger: 'Paints +30% DMG Bullseye Marks & 2.4x Executes <25% HP!',
+  cactus_hen: 'Fires a 360-degree ring of desert needles all around itself!',
+  lobber: 'Jumbo Egg Mortar splits into 3 bouncing cluster-eggs!',
+  wizard: 'Forked rune-lightning arcs & jumps across whole swarms!',
+  roost_beacon: 'Watchtower aura grants Range, Camo Sight & Flare support!',
+  ninja: 'Every 4th throw hurls a Shadow-Clone Fan & strips armor!',
+  pirate: 'Broadside Cannonball bursts into 3 cluster shrapnel bombs!',
+  bard: '360-degree Sonic Mariachi shockwaves slow & rattle foes!',
+  brew_hen: 'Espresso aura supercharges nearby allies Fire Rate & Crit!',
+  phoenix: '2 Orbiting Solar Fireballs sear nearby foes passively!',
+  mecha: 'Lock-On Rail Laser ramps up to 2.4x DMG on tough Bosses!',
+  iron_spurs: 'Every 5th gauntlet strike lands a Heavy KO Boss-Slam!',
+  ramen_chef: 'Rich Broth aura boosts ally DMG, vs-Fox power & Armor-Pierce!',
+  bastion_shield: '360-degree Granite Tremor slams knock whole lanes backward!',
+  tesla: 'Gigavolt Chain-Arcs jump 10+ targets & micro-stun bugs!',
+  cowboy_desperado: '6th-Shot DEADEYE fires a 4x Golden Rail-Magnum slug!',
+  surge_oracle: 'Calls down Heavenly Surge Pillars directly from the sky!',
+  viking_jarl: 'Returning Frost-Axe cleaves outbound & returning with chill!',
+  chrono: 'Every 3rd orb REWINDS hit enemies backward up the road!',
+  overclock_engie: 'Dynamo aura overclocks ally Attack Speed & Shot Power!',
+  cyber_sniper: 'Orbital Matrix Beam marks bosses (+30% DMG) & slows!',
+  plague_doctor: 'Blight pools + Contagion Death-Pop spreads armor-melt!',
+  aegis_mech: 'Every 4th Ion Buster triggers a Twin Overcharge Blast!',
+  pharaoh_ra: 'Lock-On Solar Obelisk Beam ramps up to 2.4x Boss Melt!',
+  samurai_shogun: 'Every 3rd slash unleashes a guaranteed 3x Crit Iaijutsu Wave!',
+  storm_dj: '360-degree Sub-Bass Drops knock back & slow the entire Pit!',
+  stand_hen: 'Summons an Astral Guardian Spirit that dashes & flurry-punches!',
+  paladin_crusader: 'Holy Templar aura grants +DMG, Knockback & Boss-Slaying!',
+  necro_lich: 'Slain cursed foes rise as Ghost-Wisps marching UP the road!',
+  oni_warlord: 'Crushing Kanabo slams stun & hurl Giant Foxes backward!',
+  valkyrie: 'Twin Celestial Spears pierce lanes with lightning aftershocks!',
+  idol_diva: 'Starlight Choir aura boosts ally Crit Chance, DMG & Power!',
+  tengu_shadow: 'High-speed Crimson Dash-Slash executes wounded Fox Bosses!',
+  astral_astrologer: 'Rains Constellation Star-Comets vertically from orbit!',
+  star_dread: 'Calls down Orbital Antimatter Fleet strikes that shatter armor!',
+  leviathan_kraken: 'Spawns spinning Abyssal Whirlpools on the road!',
+  abyss_wyrm: 'Draconic Plasma Orbs detonate in armor-melting shockwaves!',
+  quasar: '360-degree Supernova Pulse + 3 Orbiting Star-Wisps!',
+  archangel_seraph: 'Radiant Halo-Spears smite & vulnerability-mark Fox Bosses!',
+  chronos_empress: 'Every 3rd strike REWINDS & freezes Giant Foxes in time!',
+  omega_god: 'Piercing Genesis Ray + 3 Orbiting Sacred Golden Eggs!',
+  mech_zilla: 'Lock-On Atomic Breath Beam ramps up to 2.5x Kaiju Melt!',
+  gaia_creator: '3 Orbiting World-Tree Prisms + Blooming Nature Bursts!',
+  void_singularity: 'Imploding Black Holes pull enemies inward before collapsing!',
+  golden_deity: 'Heavenly Wrath Pillars deal bonus % HP Divine Judgment!',
+  solar_emperor: 'Calls down colossal Dyson Corona Meteors from the sun!',
+  eternity_weaver: 'Crossing X-shaped Reality Rifts cleave & warp space-time!',
+  complete_cluck: 'Sovereign Boomerang Blades slice foes outbound & returning!',
+};
+
+const MORTAR_OR_SKY_SET = new Set<ChickenTypeId>([
+  'honey',
+  'alchemist',
+  'lobber',
+  'pirate',
+  'ramen_chef',
+  'surge_oracle',
+  'plague_doctor',
+  'astral_astrologer',
+  'star_dread',
+  'leviathan_kraken',
+  'void_singularity',
+  'golden_deity',
+  'solar_emperor',
+]);
+
+const TWIN_SHOT_SPECIALISTS = new Set<ChickenTypeId>([
+  'ninja',
+  'cowboy_desperado',
+  'samurai_shogun',
+  'valkyrie',
+  'eternity_weaver',
+]);
+
+function roundNiceCost(raw: number): number {
+  if (raw < 1000) return Math.round(raw / 10) * 10;
+  if (raw < 10000) return Math.round(raw / 50) * 50;
+  if (raw < 100000) return Math.round(raw / 500) * 500;
+  if (raw < 1000000) return Math.round(raw / 5000) * 5000;
+  if (raw < 10000000) return Math.round(raw / 50000) * 50000;
+  if (raw < 100000000) return Math.round(raw / 500000) * 500000;
+  return Math.round(raw / 5000000) * 5000000;
+}
+
+function roundCleanDmg(val: number): number {
+  if (val <= 0) return 0;
+  if (val < 10) return Number(val.toFixed(2));
+  if (val < 100) return Number(val.toFixed(1));
+  return Math.round(val);
+}
+
+function declutterTierStats(id: ChickenTypeId, t: ChickenTierStats, tierIdx: number): ChickenTierStats {
+  if (t.damage <= 0 || t.projectiles <= 0) {
+    return { ...t };
+  }
+
+  let targetProj = 1;
+  let maxRate = 3.0;
+
+  if (id === 'cactus_hen') {
+    // Radial 360-degree thorn burst right around Cactus-Hen!
+    targetProj = tierIdx >= 3 ? 8 : 6;
+    maxRate = 1.75;
+  } else if (id === 'complete_cluck') {
+    // Sleek twin/triple boomeranging Infinity Blades instead of 7+ screen-filling blades!
+    targetProj = tierIdx >= 4 ? 3 : 2;
+    maxRate = 4.2;
+  } else if (TWIN_SHOT_SPECIALISTS.has(id)) {
+    targetProj = Math.min(2, t.projectiles);
+    maxRate = 2.8;
+  } else if (MORTAR_OR_SKY_SET.has(id)) {
+    targetProj = 1;
+    maxRate = 1.75;
+  } else if (
+    t.splashRadius > 90 ||
+    id === 'bard' ||
+    id === 'bastion_shield' ||
+    id === 'storm_dj' ||
+    id === 'quasar'
+  ) {
+    targetProj = 1;
+    maxRate = 2.4;
+  } else if (id === 'stand_hen') {
+    targetProj = 1;
+    maxRate = 5.0;
+  } else {
+    targetProj = 1;
+    maxRate = 3.0;
+  }
+
+  const newRate = Math.min(t.fireRate, maxRate);
+  const totalDpsFactor = (t.projectiles / targetProj) * (t.fireRate / newRate);
+  const newDamage = roundCleanDmg(t.damage * totalDpsFactor);
+
+  const aura = t.supportAura
+    ? {
+        ...t.supportAura,
+        // Keep aura power high via damageBonus instead of projectile spam!
+        damageBonus: Number(
+          (t.supportAura.damageBonus + t.supportAura.bonusProjectiles * 0.18).toFixed(3)
+        ),
+        bonusProjectiles: 0,
+      }
+    : undefined;
+
+  return {
+    ...t,
+    damage: newDamage,
+    fireRate: Number(newRate.toFixed(2)),
+    projectiles: targetProj,
+    supportAura: aura,
+  };
+}
+
+function scaleSupportAura(
+  baseAura: SupportAuraSpec | undefined,
+  dmgScale: number,
+  rateScale: number,
+  rngScale: number,
+  extraPierce: number,
+  extraCrit: number
+): SupportAuraSpec | undefined {
+  if (!baseAura) return undefined;
+  return {
+    damageBonus: Number((baseAura.damageBonus * dmgScale).toFixed(3)),
+    fireRateBonus: Number((baseAura.fireRateBonus * rateScale).toFixed(3)),
+    rangeBonus: Number((baseAura.rangeBonus * rngScale).toFixed(3)),
+    bonusPierce: baseAura.bonusPierce + extraPierce,
+    bonusProjectiles: 0,
+    foxDamageBonus: Number((baseAura.foxDamageBonus * dmgScale).toFixed(3)),
+    grantsCamo: true,
+    grantsArmorPierce: true,
+    bonusCritChance: Number((baseAura.bonusCritChance + extraCrit).toFixed(3)),
+    bonusKnockback: Math.round(baseAura.bonusKnockback * dmgScale),
+  };
+}
+
+function buildSevenTierChickenDefs(
+  rawRecord: Record<ChickenTypeId, ChickenTowerDef>
+): Record<ChickenTypeId, ChickenTowerDef> {
+  const out = {} as Record<ChickenTypeId, ChickenTowerDef>;
+
+  for (const id of Object.keys(rawRecord) as ChickenTypeId[]) {
+    const raw = rawRecord[id];
+    const baseFour = raw.tiers.map((t, idx) => declutterTierStats(id, t, idx));
+    // Inject signature gimmick reminder into Tier 1 description!
+    baseFour[0] = {
+      ...baseFour[0],
+      description: `${UNIT_GIMMICK_TAG[id]} ${baseFour[0].description}`,
+    };
+
+    const t4 = baseFour[3];
+    const refCost = Math.max(raw.baseCost * 3.0, t4.upgradeCost);
+    const cost5 = roundNiceCost(refCost * 6.5);
+    const cost6 = roundNiceCost(cost5 * 9.5);
+    const cost7 = roundNiceCost(cost6 * 12.5);
+
+    const isComplete = id === 'complete_cluck';
+    const t5Proj = isComplete ? 3 : t4.projectiles;
+    const projCompensation = isComplete ? t4.projectiles / 3 : 1;
+
+    const t5: ChickenTierStats = {
+      ...t4,
+      tierName: `${raw.name} Overdrive`,
+      upgradeCost: cost5,
+      damage: roundCleanDmg(t4.damage * 3.8 * projCompensation),
+      burnDps: Math.round(t4.burnDps * 3.8),
+      fireRate: Number((t4.fireRate * 1.08).toFixed(2)),
+      range: t4.range + 20,
+      pierce: t4.pierce > 0 ? t4.pierce + 2 : 0,
+      projectiles: t5Proj,
+      splashRadius: t4.splashRadius > 0 ? Math.round(t4.splashRadius * 1.1) : 0,
+      foxDamageMult: Number((t4.foxDamageMult * 1.18).toFixed(2)),
+      camoSight: true,
+      knockback: t4.knockback ? Math.round(t4.knockback * 1.12) : undefined,
+      savageCritChance: Math.min(0.75, Number(((t4.savageCritChance ?? 0.04) + 0.05).toFixed(2))),
+      supportAura: scaleSupportAura(t4.supportAura, 1.35, 1.26, 1.22, 1, 0.03),
+      description: `TIER 5 OVERDRIVE: ~4.8x Boss DPS & enhanced ${UNIT_GIMMICK_TAG[id]}`,
+    };
+
+    const t6: ChickenTierStats = {
+      ...t4,
+      tierName: `Transcendent ${raw.name}`,
+      upgradeCost: cost6,
+      damage: roundCleanDmg(t4.damage * 16.5 * projCompensation),
+      burnDps: Math.round(t4.burnDps * 16.0),
+      fireRate: Number((t4.fireRate * 1.16).toFixed(2)),
+      range: t4.range + 42,
+      pierce: t4.pierce > 0 ? t4.pierce + 5 : 0,
+      projectiles: t5Proj,
+      splashRadius: t4.splashRadius > 0 ? Math.round(t4.splashRadius * 1.22) : 0,
+      foxDamageMult: Number((t4.foxDamageMult * 1.38).toFixed(2)),
+      camoSight: true,
+      knockback: t4.knockback ? Math.round(t4.knockback * 1.25) : undefined,
+      savageCritChance: Math.min(0.78, Number(((t4.savageCritChance ?? 0.05) + 0.11).toFixed(2))),
+      supportAura: scaleSupportAura(t4.supportAura, 1.75, 1.54, 1.44, 3, 0.06),
+      description: `TIER 6 TRANSCENDENT: Massive Freeplay power spike! ${UNIT_GIMMICK_TAG[id]}`,
+    };
+
+    const t7: ChickenTierStats = {
+      ...t4,
+      tierName: `Omega ${raw.name}`,
+      upgradeCost: cost7,
+      damage: roundCleanDmg(t4.damage * 78.0 * projCompensation),
+      burnDps: Math.round(t4.burnDps * 72.0),
+      fireRate: Number((t4.fireRate * 1.25).toFixed(2)),
+      range: t4.range + 68,
+      pierce: t4.pierce > 0 ? t4.pierce + 10 : 0,
+      projectiles: t5Proj,
+      splashRadius: t4.splashRadius > 0 ? Math.round(t4.splashRadius * 1.35) : 0,
+      foxDamageMult: Number((t4.foxDamageMult * 1.65).toFixed(2)),
+      camoSight: true,
+      knockback: t4.knockback ? Math.round(t4.knockback * 1.4) : undefined,
+      savageCritChance: Math.min(0.82, Number(((t4.savageCritChance ?? 0.06) + 0.17).toFixed(2))),
+      supportAura: scaleSupportAura(t4.supportAura, 2.25, 1.88, 1.68, 5, 0.10),
+      description: `TIER 7 OMEGA MAX: Wave-50 Endgame Pinnacle! ${UNIT_GIMMICK_TAG[id]}`,
+    };
+
+    out[id] = {
+      ...raw,
+      tiers: [...baseFour, t5, t6, t7],
+    };
+  }
+
+  return out;
+}
+
+export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> =
+  buildSevenTierChickenDefs(RAW_CHICKEN_DEFS);
+
 /**
  * Multi-stage Bug swarms + Giant Fox Bosses!
  * NOTE: Zero Corn is awarded on defeat — all income comes strictly from the Clicker during waves!
@@ -5604,9 +5884,10 @@ export const FOX_BOSS_IDS: readonly EnemyTypeId[] = [
 
 export const ENEMY_ORDER: readonly EnemyTypeId[] = [...BUG_ENEMY_IDS, ...FOX_BOSS_IDS];
 
-// ==================== CLICKER UPGRADES (9 UPGRADES, SCALING TO 1,000,000+ UNITS!) ====================
+// ==================== CLICKER UPGRADES (9 UPGRADES, SCALING TO WAVE 50 TIER-7 UNITS!) ====================
 const BEAK_VALUES = [
   2, 4, 7, 11, 17, 25, 37, 54, 78, 112, 160, 205, 260, 330, 415, 520, 650, 810, 1000, 1280, 1650,
+  2250, 3100, 4300, 6000, 8500, 12500,
 ];
 
 const FARMHAND_RATES = [
@@ -5656,7 +5937,10 @@ export function getCornSiloDividendRate(siloLevel: number): number {
 
 export function getCornucopiaWaveMult(cornucopiaLevel: number, waveNumber: number): number {
   if (cornucopiaLevel <= 0) return 1.0;
-  return 1.0 + Math.max(1, waveNumber) * (cornucopiaLevel * 0.008);
+  const base = 1.0 + Math.max(1, waveNumber) * (cornucopiaLevel * 0.008);
+  if (waveNumber <= CAMPAIGN_WAVES) return base;
+  const freeSteps = Math.min(35, waveNumber - CAMPAIGN_WAVES);
+  return base * Math.pow(1.062, freeSteps * (cornucopiaLevel / 10));
 }
 
 export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
@@ -5664,7 +5948,7 @@ export const CLICKER_UPGRADES: readonly UpgradeDef<ClickerUpgradeId>[] = [
     id: 'beakPower',
     name: 'Sharper Beak',
     iconId: 'beak_upg',
-    maxLevel: 20,
+    maxLevel: 26,
     baseCost: 115,
     costMult: 2.15,
     getEffectLabel: (lvl) => `${getBaseCornPerClick(lvl).toLocaleString()} Corn / Peck`,
@@ -6057,10 +6341,11 @@ const HANDCRAFTED_WAVES: readonly WaveDefinition[] = [
 ];
 
 /**
- * Accelerating exponential enemy HP scaling for all waves after Wave 10!
+ * Accelerating exponential enemy HP scaling after Wave 10, tuned for Tier 5–7 Freeplay up to Wave 50!
  * Waves 1-10: 1.0x
- * Waves 11-25: (1.19 + (w-10)*0.0172)^(w-10) -> ~233x on Wave 25 (on top of 52,000-HP Cosmic Foxes!)
- * Freeplay (26+): compounds at 1.70x per wave!
+ * Waves 11-25: (1.19 + (w-10)*0.0172)^(w-10) -> ~260x on Wave 25
+ * Waves 26-50: compounds steeply (~1.84x/wave) so Tier 7 Omega upgrades are essential for Wave 50!
+ * Waves 51+: sudden-death 1.90x/wave!
  */
 export function getWaveHpScale(waveNumber: number): number {
   if (waveNumber <= 10) return 1.0;
@@ -6070,20 +6355,27 @@ export function getWaveHpScale(waveNumber: number): number {
   }
   const dEnd = CAMPAIGN_WAVES - 10;
   const campaignEndScale = Math.pow(1.19 + dEnd * 0.0172, dEnd);
-  return campaignEndScale * Math.pow(1.7, waveNumber - CAMPAIGN_WAVES);
+  if (waveNumber <= 50) {
+    return campaignEndScale * Math.pow(1.876, waveNumber - CAMPAIGN_WAVES);
+  }
+  const w50Scale = campaignEndScale * Math.pow(1.876, 50 - CAMPAIGN_WAVES);
+  return w50Scale * Math.pow(1.9, waveNumber - 50);
 }
 
 /**
- * Accelerated enemy movement speed scaling for all waves after Wave 10!
+ * Accelerated enemy movement speed scaling after Wave 10!
  * Waves 1-10: 1.0x | Waves 11-25: +7%/wave (2.05x on Wave 25)
- * Freeplay (26+): +12%/wave up to 4.0x cap!
+ * Waves 26-50: +3.6%/wave (2.95x on Wave 50) | Waves 51+: up to 4.0x cap!
  */
 export function getWaveSpeedScale(waveNumber: number): number {
   if (waveNumber <= 10) return 1.0;
   if (waveNumber <= CAMPAIGN_WAVES) {
     return 1 + (waveNumber - 10) * 0.07;
   }
-  return Math.min(4.0, 2.05 + (waveNumber - CAMPAIGN_WAVES) * 0.12);
+  if (waveNumber <= 50) {
+    return 2.05 + (waveNumber - CAMPAIGN_WAVES) * 0.036;
+  }
+  return Math.min(4.0, 2.95 + (waveNumber - 50) * 0.08);
 }
 
 const TRUE_FOX_HUNT_EARLY_FOXES: Record<
@@ -6248,15 +6540,19 @@ export function getWaveDefinition(
   }
   const extra = waveNumber - HANDCRAFTED_WAVES.length;
   const isTrueFox = difficultyId === 'true_fox_hunt';
-  const cosmicCount = 2 + extra + Math.floor(extra * extra * 0.18) + (isTrueFox ? 2 : 0);
-  const phoenixCount = 3 + extra * 2 + (isTrueFox ? 2 : 0);
-  const mechaCount = 4 + extra * 2;
-  const phantomCount = 6 + extra * 3;
+  const cosmicCount = 2 + Math.floor(extra * 0.52) + (waveNumber >= 50 ? 3 : 0) + (isTrueFox ? 2 : 0);
+  const phoenixCount = 3 + Math.floor(extra * 0.85) + (isTrueFox ? 2 : 0);
+  const mechaCount = 4 + extra;
+  const phantomCount = 6 + Math.floor(extra * 1.25);
   const hpMult = getWaveHpScale(waveNumber);
   const spdMult = getWaveSpeedScale(waveNumber);
+  const title =
+    waveNumber === 50
+      ? 'GRAND OVERDRIVE: Wave 50 Finale!'
+      : `Freeplay Cataclysm #${waveNumber}`;
   return {
     waveNumber,
-    title: `Freeplay Cataclysm #${waveNumber}`,
+    title,
     callout: `[${Math.round(hpMult).toLocaleString()}x HP • ${spdMult.toFixed(
       2
     )}x SPD] ${cosmicCount} Cosmic Foxes, ${phoenixCount} Phoenix Foxes & ${phantomCount} Wraiths!`,
@@ -6264,26 +6560,26 @@ export function getWaveDefinition(
       {
         enemyType: 'fox_phantom',
         count: phantomCount,
-        intervalSec: Math.max(0.3, 0.85 - extra * 0.05),
+        intervalSec: Math.max(0.38, 0.9 - extra * 0.02),
         startDelaySec: 0.2,
       },
       {
         enemyType: 'fox_mecha',
         count: mechaCount,
-        intervalSec: Math.max(0.45, 1.4 - extra * 0.08),
+        intervalSec: Math.max(0.55, 1.45 - extra * 0.03),
         startDelaySec: isTrueFox ? 0.35 : 1.0,
       },
       {
         enemyType: 'fox_phoenix',
         count: phoenixCount,
-        intervalSec: Math.max(0.6, 2.0 - extra * 0.1),
+        intervalSec: Math.max(0.75, 2.1 - extra * 0.045),
         startDelaySec: isTrueFox ? 0.6 : 2.2,
       },
       {
         enemyType: 'fox_cosmic',
         count: cosmicCount,
-        intervalSec: Math.max(1.1, 4.2 - extra * 0.2),
-        startDelaySec: isTrueFox ? 0.9 : 4.0,
+        intervalSec: Math.max(1.45, 4.2 - extra * 0.1),
+        startDelaySec: isTrueFox ? 0.9 : 3.8,
       },
     ],
   };

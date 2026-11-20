@@ -41,10 +41,12 @@ import { PIXEL_ATLAS } from './sprites';
 import {
   CannonTypeId,
   ChickenTypeId,
+  ChickenUpgradeTierIndex,
   DifficultyId,
   EggRollOutcome,
   EnemyTypeId,
   MapId,
+  MAX_CHICKEN_TIER_INDEX,
 } from './types';
 
 // Main Menu Elements
@@ -343,7 +345,10 @@ function formatCompactCost(n: number): string {
     const m = n / 1000000;
     return m >= 100 ? `${Math.round(m)}M` : `${m.toFixed(1).replace(/\.0$/, '')}M`;
   }
-  if (n >= 100000) return `${Math.round(n / 1000)}K`;
+  if (n >= 10000) {
+    const k = n / 1000;
+    return k >= 100 ? `${Math.round(k)}K` : `${k.toFixed(1).replace(/\.0$/, '')}K`;
+  }
   return n.toLocaleString();
 }
 
@@ -1422,7 +1427,7 @@ function renderInspector(): void {
   const fullTitle = `${def.name}${eff.plusLevel > 0 ? ` +${eff.plusLevel}` : ''} — ${eff.tierName}`;
   setText(inspName, fullTitle);
   inspName.title = fullTitle;
-  setText(inspTierBadge, tower.tier === 3 ? 'T4 MAX' : `T${tierNum}/4`);
+  setText(inspTierBadge, tower.tier === MAX_CHICKEN_TIER_INDEX ? 'T7 MAX' : `T${tierNum}/7`);
 
   if (eff.mutationTier) {
     setText(inspMutBadge, `${MUTATION_DEFS[eff.mutationTier].name.toUpperCase()}`);
@@ -1449,8 +1454,8 @@ function renderInspector(): void {
     btnInspCompleteMut.classList.add('hidden');
   }
 
-  if (tower.tier < 3) {
-    const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
+  if (tower.tier < MAX_CHICKEN_TIER_INDEX) {
+    const nextTierIdx = (tower.tier + 1) as ChickenUpgradeTierIndex;
     const nextTier = def.tiers[nextTierIdx];
     const upgCost = engine.getTowerUpgradeCost(tower.typeId, nextTierIdx);
     const nextText = `NEXT (${nextTier.tierName}): ${nextTier.description}`;
@@ -1460,10 +1465,10 @@ function renderInspector(): void {
     btnInspUpgrade.title = `Upgrade to Tier ${tierNum + 1}: ${nextTier.tierName} (${upgCost.toLocaleString()} Corn) — ${nextTier.description}`;
     btnInspUpgrade.disabled = engine.corn < upgCost;
   } else {
-    const maxText = 'MAXIMUM CHICKEN EVOLUTION ACHIEVED!';
+    const maxText = 'OMEGA TIER 7 EVOLUTION ACHIEVED!';
     setText(inspNextDesc, maxText);
     inspNextDesc.title = maxText;
-    setText(btnInspUpgrade, 'MAX');
+    setText(btnInspUpgrade, 'MAX T7');
     btnInspUpgrade.title = maxText;
     btnInspUpgrade.disabled = true;
   }
@@ -1770,8 +1775,8 @@ function syncLiveShopAffordability(): void {
   }
   if (selectedTowerId !== null) {
     const tower = engine.getTowerById(selectedTowerId);
-    if (tower && tower.tier < 3) {
-      const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
+    if (tower && tower.tier < MAX_CHICKEN_TIER_INDEX) {
+      const nextTierIdx = (tower.tier + 1) as ChickenUpgradeTierIndex;
       const upgCost = engine.getTowerUpgradeCost(tower.typeId, nextTierIdx);
       btnInspUpgrade.disabled = cornNow < upgCost;
     }

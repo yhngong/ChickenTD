@@ -295,6 +295,25 @@ export interface ChickenTierStats {
   description: string;
 }
 
+export type ChickenTierIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type ChickenUpgradeTierIndex = 1 | 2 | 3 | 4 | 5 | 6;
+export const MAX_CHICKEN_TIER_INDEX: ChickenTierIndex = 6;
+
+export type ProjectileGimmick =
+  | 'ricochet'
+  | 'cluster_parent'
+  | 'deadeye_slug'
+  | 'ghost_march'
+  | 'snare_honey'
+  | 'frost_shatter'
+  | 'time_rewind'
+  | 'execute_mark'
+  | 'plague_spore'
+  | 'soul_curse'
+  | 'divine_smite'
+  | 'uppercut_ko'
+  | 'iaijutsu_wave';
+
 export interface ChickenTowerDef {
   id: ChickenTypeId;
   name: string;
@@ -305,7 +324,7 @@ export interface ChickenTowerDef {
   accentColor: string;
   projectileStyle: ProjectileStyle;
   isSupport?: boolean;
-  tiers: readonly [ChickenTierStats, ChickenTierStats, ChickenTierStats, ChickenTierStats];
+  tiers: readonly ChickenTierStats[];
 }
 
 export interface EnemySpawnChild {
@@ -333,13 +352,19 @@ export interface PlacedChicken {
   typeId: ChickenTypeId;
   x: number;
   y: number;
-  tier: 0 | 1 | 2 | 3; // 0 = Lv1, 3 = Lv4 MAX
+  tier: ChickenTierIndex; // 0 = Lv1, 6 = Lv7 MAX
   targetMode: TargetMode;
   angle: number;
   cooldown: number;
   recoil: number; // 0..1 pixel attack animation timer
   totalPopDamage: number;
   totalSpent: number;
+  // Runtime signature gimmick state
+  shotCounter?: number;
+  lockTargetId?: number;
+  lockStacks?: number;
+  orbitAngle?: number;
+  orbitTickTimer?: number;
 }
 
 export interface ActiveStand {
@@ -362,13 +387,22 @@ export interface ActiveEnemy {
   lateralOffset: number; // slight visual jitter for swarms
   slowFactor: number;
   slowTimer: number;
-  freezeTimer: number; // >0 = frozen solid at 0 speed (Time-Stop Cannon)
-  vulnTimer: number; // >0 = shattered armor & takes +35% bonus damage (Orbital Nova Cannon)
+  freezeTimer: number; // >0 = frozen solid at 0 speed
+  vulnTimer: number; // >0 = shattered armor & takes +35% bonus damage
   burnDps: number;
   burnTimer: number;
   kbCooldown: number; // prevents infinite perma-knockback lock
   hitFlash: number;
   walkPhase: number;
+  // Signature combat gimmick statuses
+  markTimer?: number; // Hunter's Bullseye Mark (+30% incoming damage from all units!)
+  plagueTimer?: number; // Contagion Spore (explodes into toxic AoE cloud on death!)
+  plagueDmg?: number;
+  plagueOwnerId?: number;
+  curseTimer?: number; // Soul Curse (spawns backward-marching Ghost Wisp on death!)
+  curseDmg?: number;
+  curseOwnerId?: number;
+  frostStacks?: number; // Frostbite Brittle (shatters every 3rd chill hit!)
   // Runtime cached world coordinates & liveness (avoids millions of per-frame path recomputations)
   x?: number;
   y?: number;
@@ -383,7 +417,8 @@ export type ProjectileMotionMode =
   | 'lob_arc'
   | 'sky_drop'
   | 'dash_streak'
-  | 'rift_cross';
+  | 'rift_cross'
+  | 'path_reverse';
 
 export type HazardZoneStyle = 'honey' | 'acid' | 'miasma' | 'whirlpool' | 'singularity';
 
@@ -412,8 +447,11 @@ export interface ActiveProjectile {
   age: number;
   maxLifetime: number;
   color: string;
-  // Specialized attack trajectory fields (boomeranging blades, mortar arcs, sky pillars, rifts)
+  // Specialized attack trajectory & gimmick fields
   motionMode?: ProjectileMotionMode;
+  gimmick?: ProjectileGimmick;
+  bouncesLeft?: number;
+  marchDist?: number;
   originX?: number;
   originY?: number;
   targetX?: number;

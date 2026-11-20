@@ -39,8 +39,10 @@ import {
   ActiveStand,
   CannonDef,
   CannonTypeId,
+  ChickenTierIndex,
   ChickenTierStats,
   ChickenTypeId,
+  ChickenUpgradeTierIndex,
   ClickResult,
   ClickerUpgradeId,
   DifficultyDef,
@@ -50,9 +52,11 @@ import {
   FloatingMapPopup,
   HazardZoneStyle,
   MapId,
+  MAX_CHICKEN_TIER_INDEX,
   MutationTier,
   PixelParticle,
   PlacedChicken,
+  ProjectileGimmick,
   RoundEndSummary,
   SavedRunState,
   SupportAuraSpec,
@@ -309,7 +313,7 @@ export class ChickenTdEngine {
     );
   }
 
-  public getTowerUpgradeCost(typeId: ChickenTypeId, tierIdx: 1 | 2 | 3): number {
+  public getTowerUpgradeCost(typeId: ChickenTypeId, tierIdx: ChickenUpgradeTierIndex): number {
     const mut = PROGRESSION.getMutation(typeId);
     const mutCostMult = mut ? MUTATION_DEFS[mut].costMult : 1.0;
     return Math.max(
@@ -582,7 +586,7 @@ export class ChickenTdEngine {
             typeId: t.typeId,
             x: Number(t.x),
             y: Number(t.y),
-            tier: ([0, 1, 2, 3].includes(t.tier) ? t.tier : 0) as 0 | 1 | 2 | 3,
+            tier: ([0, 1, 2, 3, 4, 5, 6].includes(t.tier) ? t.tier : 0) as ChickenTierIndex,
             targetMode: ['first', 'strong', 'last', 'close'].includes(t.targetMode)
               ? t.targetMode
               : 'first',
@@ -1398,7 +1402,20 @@ export class ChickenTdEngine {
     const hasArmorPierce =
       sup.grantsArmorPierce || !BASIC_PECK_SET.has(tower.typeId) || tower.tier >= 2;
 
-    const rawDamage = base.damage * mutDmg * plusDmgMult * (1 + sup.damageBonus) * cannonDmgMult;
+    // Convert extra projectile bonuses from Mutations / Support into clean Damage scaling (zero projectile clutter!)
+    const extraProj = mutProj + sup.bonusProjectiles;
+    const extraProjDmgMult =
+      base.projectiles > 0 && extraProj > 0
+        ? 1 + (extraProj * 0.65) / Math.max(1, base.projectiles)
+        : 1.0;
+
+    const rawDamage =
+      base.damage *
+      extraProjDmgMult *
+      mutDmg *
+      plusDmgMult *
+      (1 + sup.damageBonus) *
+      cannonDmgMult;
     const effectiveDamage =
       base.damage <= 0
         ? 0
@@ -1417,7 +1434,7 @@ export class ChickenTdEngine {
       effectiveRange: Math.round(base.range * rangeMult),
       effectiveFireRate: base.fireRate * rateMult,
       effectivePierce: base.pierce > 0 ? base.pierce + bonusPierce : 0,
-      effectiveProjectiles: base.projectiles > 0 ? base.projectiles + mutProj + sup.bonusProjectiles : 0,
+      effectiveProjectiles: base.projectiles,
       effectiveFoxMult: foxMult,
       effectiveCamo: hasCamo,
       effectiveArmorPierce: hasArmorPierce,
@@ -1474,8 +1491,8 @@ export class ChickenTdEngine {
 
   public upgradeChickenTower(towerId: number): boolean {
     const tower = this.towerById.get(towerId);
-    if (!tower || tower.tier >= 3) return false;
-    const nextTierIdx = (tower.tier + 1) as 1 | 2 | 3;
+    if (!tower || tower.tier >= MAX_CHICKEN_TIER_INDEX) return false;
+    const nextTierIdx = (tower.tier + 1) as ChickenUpgradeTierIndex;
     const upgCost = this.getTowerUpgradeCost(tower.typeId, nextTierIdx);
     if (!this.isSandboxMode() && this.corn < upgCost) return false;
 
@@ -1487,9 +1504,23 @@ export class ChickenTdEngine {
     tower.tier = nextTierIdx;
     tower.totalSpent += upgCost;
     this.invalidateStatsCache();
-    this.spawnRing(tower.x, tower.y, 46, '#4ADE80');
-    this.spawnPixelBurst(tower.x, tower.y, 12, '#4ADE80');
-    this.spawnMapPopup(`TIER ${nextTierIdx + 1}!`, tower.x, tower.y - 24, '#FDE047', 1.0);
+    const fxCol =
+      nextTierIdx === 6
+        ? '#F43F5E'
+        : nextTierIdx === 5
+        ? '#E879F9'
+        : nextTierIdx === 4
+        ? '#38BDF8'
+        : '#4ADE80';
+    const popTxt =
+      nextTierIdx === 6
+        ? 'OMEGA T7!'
+        : nextTierIdx >= 4
+        ? `OVERDRIVE T${nextTierIdx + 1}!`
+        : `TIER ${nextTierIdx + 1}!`;
+    this.spawnRing(tower.x, tower.y, nextTierIdx >= 4 ? 58 : 46, fxCol);
+    this.spawnPixelBurst(tower.x, tower.y, nextTierIdx >= 4 ? 16 : 12, fxCol);
+    this.spawnMapPopup(popTxt, tower.x, tower.y - 24, nextTierIdx === 6 ? '#FEF08A' : fxCol, 1.05);
     this.audio.playUpgrade();
     this.notifyUi();
     return true;
@@ -1757,6 +1788,15 @@ export class ChickenTdEngine {
       if (e.vulnTimer > 0) {
         e.vulnTimer = Math.max(0, e.vulnTimer - dt);
       }
+      if (e.markTimer && e.markTimer > 0) {
+        e.markTimer = Math.max(0, e.markTimer - dt);
+      }
+      if (e.plagueTimer && e.plagueTimer > 0) {
+        e.plagueTimer = Math.max(0, e.plagueTimer - dt);
+      }
+      if (e.curseTimer && e.curseTimer > 0) {
+        e.curseTimer = Math.max(0, e.curseTimer - dt);
+      }
 
       if (e.slowTimer > 0) {
         e.slowTimer -= dt;
@@ -1833,6 +1873,74 @@ export class ChickenTdEngine {
       const def = CHICKEN_DEFS[tower.typeId];
       const baseTier = def.tiers[tower.tier];
 
+      // GIMMICK: Passive Orbiting Guardian Satellites ('phoenix', 'quasar', 'gaia_creator', 'omega_god')!
+      if (
+        tower.typeId === 'phoenix' ||
+        tower.typeId === 'quasar' ||
+        tower.typeId === 'gaia_creator' ||
+        tower.typeId === 'omega_god'
+      ) {
+        tower.orbitAngle = ((tower.orbitAngle ?? 0) + dt * 3.5) % (Math.PI * 2);
+        tower.orbitTickTimer = (tower.orbitTickTimer ?? 0) - dt;
+        if (tower.orbitTickTimer <= 0 && this.enemies.length > 0) {
+          tower.orbitTickTimer = 0.28;
+          const oStats = this.getEffectiveChickenStats(tower);
+          const orbCount = tower.typeId === 'phoenix' ? 2 : 3;
+          const orbR = tower.typeId === 'phoenix' ? 62 : 76;
+          const orbHitR = 26;
+          const orbCarrier: ActiveProjectile = {
+            id: this.nextEntityId++,
+            ownerTowerId: tower.id,
+            style: def.projectileStyle,
+            x: tower.x,
+            y: tower.y,
+            vx: 0,
+            vy: 0,
+            curveRate: 0,
+            rotation: 0,
+            damage: oStats.effectiveDamage * 0.35,
+            pierceLeft: 6,
+            splashRadius: 24,
+            slowFactor: oStats.slowFactor,
+            slowDuration: oStats.slowDuration,
+            burnDps: oStats.effectiveBurnDps,
+            foxDamageMult: oStats.effectiveFoxMult,
+            knockback: 0,
+            savageCritChance: oStats.effectiveCritChance,
+            armorPiercing: true,
+            canHitCamo: oStats.effectiveCamo,
+            hitEnemyIds: null,
+            age: 0,
+            maxLifetime: 0.05,
+            color: def.accentColor,
+          };
+          for (let k = 0; k < orbCount; k++) {
+            const oAng = tower.orbitAngle + (Math.PI * 2 * k) / orbCount;
+            const ox = tower.x + Math.cos(oAng) * orbR;
+            const oy = tower.y + Math.sin(oAng) * orbR;
+            const snapLen = this.enemies.length;
+            let hitAny = false;
+            for (let i = 0; i < snapLen; i++) {
+              const e = this.enemies[i];
+              if (!e || e.alive === false) continue;
+              const eDef = ENEMY_DEFS[e.typeId];
+              if (eDef.isCamo && !oStats.effectiveCamo) continue;
+              const dx = e.x! - ox;
+              const dy = e.y! - oy;
+              const maxD = orbHitR + eDef.radius;
+              if (dx * dx + dy * dy <= maxD * maxD) {
+                this.damageEnemy(e, orbCarrier.damage, orbCarrier);
+                hitAny = true;
+                towerDirectKillPossible = true;
+              }
+            }
+            if (hitAny) {
+              this.spawnPixelBurst(ox, oy, 2, def.accentColor);
+            }
+          }
+        }
+      }
+
       // Pure Support Aura Towers (e.g. Roost Beacon Tiers 1-3): drum & broadcast warm aura pulses!
       if (baseTier.damage <= 0 || baseTier.projectiles <= 0) {
         if (this.waveActive && tower.cooldown <= 0) {
@@ -1860,6 +1968,21 @@ export class ChickenTdEngine {
       tower.angle = baseAngle;
       tower.cooldown = 1 / Math.max(0.2, stats.effectiveFireRate);
       tower.recoil = 1.0;
+      const shotNum = (tower.shotCounter = (tower.shotCounter ?? 0) + 1);
+
+      // GIMMICK: Escalating Lock-On Laser Inferno ('mecha', 'pharaoh_ra', 'mech_zilla')!
+      if (
+        tower.typeId === 'mecha' ||
+        tower.typeId === 'pharaoh_ra' ||
+        tower.typeId === 'mech_zilla'
+      ) {
+        if (tower.lockTargetId === target.id) {
+          tower.lockStacks = Math.min(12, (tower.lockStacks ?? 1) + 1);
+        } else {
+          tower.lockTargetId = target.id;
+          tower.lockStacks = 1;
+        }
+      }
 
       const armorPiercing = stats.effectiveArmorPierce;
 
@@ -2076,6 +2199,7 @@ export class ChickenTdEngine {
             maxLifetime: dropLife,
             color: def.accentColor,
             motionMode: 'sky_drop',
+            gimmick: pStyle === 'god_wrath' ? 'divine_smite' : undefined,
             originX: startX,
             originY: startY,
             targetX: strikeX,
@@ -2107,6 +2231,14 @@ export class ChickenTdEngine {
             ? 'whirlpool'
             : pStyle === 'black_hole'
             ? 'singularity'
+            : undefined;
+        const lobGimmick: ProjectileGimmick | undefined =
+          pStyle === 'egg_bomb' || pStyle === 'cannonball'
+            ? 'cluster_parent'
+            : pStyle === 'acid' || pStyle === 'miasma_vial'
+            ? 'plague_spore'
+            : pStyle === 'honey' && shotNum % 3 === 0
+            ? 'snare_honey'
             : undefined;
         const dist = Math.max(36, Math.hypot(tx - tower.x, ty - tower.y));
         const flightTime = Math.max(0.2, Math.min(0.54, dist / Math.max(380, stats.projectileSpeed)));
@@ -2145,6 +2277,7 @@ export class ChickenTdEngine {
             maxLifetime: flightTime,
             color: def.accentColor,
             motionMode: 'lob_arc',
+            gimmick: lobGimmick,
             originX: tower.x,
             originY: tower.y,
             targetX: landX,
@@ -2156,13 +2289,137 @@ export class ChickenTdEngine {
         continue;
       }
 
-      // ARCHETYPE G & H: Sweeping Blade Crescents, Crimson Dash-Streaks, Reality Rifts & Directed Volleys!
+      // GIMMICK: Prickly Cactus-Hen 360-Degree Radial Needle Ring!
+      if (tower.typeId === 'cactus_hen') {
+        const ringSpikes = Math.max(6, count);
+        const speed = stats.projectileSpeed;
+        const maxLife = Math.min(0.32, (stats.effectiveRange + 28) / speed);
+        for (let m = 0; m < ringSpikes; m++) {
+          if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
+          const ang = baseAngle + (Math.PI * 2 * m) / ringSpikes;
+          const cosA = Math.cos(ang);
+          const sinA = Math.sin(ang);
+          this.projectiles.push({
+            id: this.nextEntityId++,
+            ownerTowerId: tower.id,
+            style: pStyle,
+            x: tower.x + cosA * 12,
+            y: tower.y + sinA * 12,
+            vx: cosA * speed,
+            vy: sinA * speed,
+            curveRate: 0,
+            rotation: ang,
+            damage: stats.effectiveDamage,
+            pierceLeft: stats.effectivePierce,
+            splashRadius: stats.splashRadius,
+            slowFactor: stats.slowFactor,
+            slowDuration: stats.slowDuration,
+            burnDps: stats.effectiveBurnDps,
+            foxDamageMult: stats.effectiveFoxMult,
+            knockback: stats.effectiveKnockback,
+            savageCritChance: stats.effectiveCritChance,
+            armorPiercing,
+            canHitCamo: stats.effectiveCamo,
+            hitEnemyIds: null,
+            age: 0,
+            maxLifetime: maxLife,
+            color: def.accentColor,
+            motionMode: 'linear',
+            originX: tower.x,
+            originY: tower.y,
+          });
+        }
+        this.spawnRing(tower.x, tower.y, Math.min(72, stats.effectiveRange * 0.55), '#86EFAC');
+        continue;
+      }
+
+      // GIMMICK: Necro-Cluck Lich periodically raises a Spectral Ghost-Wisp marching UP the road!
+      if (tower.typeId === 'necro_lich' && shotNum % 3 === 0 && this.projectiles.length < MAX_ACTIVE_PROJECTILES) {
+        const startDist = Math.max(18, target.distance);
+        const pt = getPointAlongPath(startDist);
+        this.projectiles.push({
+          id: this.nextEntityId++,
+          ownerTowerId: tower.id,
+          style: 'soul_wisp',
+          x: pt.x,
+          y: pt.y,
+          vx: 0,
+          vy: 0,
+          curveRate: 0,
+          rotation: pt.angle + Math.PI,
+          damage: stats.effectiveDamage * 1.45,
+          pierceLeft: Math.max(3, stats.effectivePierce),
+          splashRadius: Math.max(38, stats.splashRadius),
+          slowFactor: stats.slowFactor,
+          slowDuration: stats.slowDuration,
+          burnDps: stats.effectiveBurnDps,
+          foxDamageMult: stats.effectiveFoxMult,
+          knockback: stats.effectiveKnockback,
+          savageCritChance: stats.effectiveCritChance,
+          armorPiercing: true,
+          canHitCamo: true,
+          hitEnemyIds: new Set<number>(),
+          age: 0,
+          maxLifetime: 2.2,
+          color: '#34D399',
+          motionMode: 'path_reverse',
+          gimmick: 'ghost_march',
+          marchDist: startDist,
+        });
+      }
+
+      // ARCHETYPE G & H: Signature Gimmick Shots, Blade Crescents, Dash-Streaks & Crossing Rifts!
+      const isDeadeye = tower.typeId === 'cowboy_desperado' && shotNum % 6 === 0;
+      const isUppercut =
+        (tower.typeId === 'bantam' || tower.typeId === 'iron_spurs') && shotNum % 5 === 0;
+      const isIaijutsu = tower.typeId === 'samurai_shogun' && shotNum % 3 === 0;
+      const isGoldenSeed = tower.typeId === 'pecker' && shotNum % 4 === 0;
+      const isOverchargeIon = tower.typeId === 'aegis_mech' && shotNum % 4 === 0;
+      const isShadowFan = tower.typeId === 'ninja' && shotNum % 4 === 0;
+      const isTimeRewind =
+        (tower.typeId === 'chrono' || tower.typeId === 'chronos_empress') && shotNum % 3 === 0;
+
+      if (isDeadeye) {
+        this.spawnMapPopup('DEADEYE!', tower.x, tower.y - 18, '#FACC15', 1.0);
+        this.spawnRing(tower.x, tower.y, 32, '#FACC15');
+      } else if (isUppercut) {
+        this.spawnMapPopup('KO!', tower.x, tower.y - 18, '#FB7185', 1.0);
+      }
+
+      const shotGimmick: ProjectileGimmick | undefined =
+        tower.typeId === 'sling_chick'
+          ? 'ricochet'
+          : isDeadeye
+          ? 'deadeye_slug'
+          : isUppercut
+          ? 'uppercut_ko'
+          : isIaijutsu
+          ? 'iaijutsu_wave'
+          : isTimeRewind
+          ? 'time_rewind'
+          : tower.typeId === 'chilly'
+          ? 'frost_shatter'
+          : tower.typeId === 'ranger' || tower.typeId === 'tengu_shadow' || tower.typeId === 'archangel_seraph'
+          ? 'execute_mark'
+          : tower.typeId === 'necro_lich'
+          ? 'soul_curse'
+          : undefined;
+
+      const actualCount = isDeadeye ? 1 : isShadowFan ? 3 : isOverchargeIon ? 2 : count;
+      const dmgMult = isDeadeye
+        ? 4.0 * count
+        : isUppercut
+        ? 2.4
+        : isGoldenSeed
+        ? 2.2
+        : isOverchargeIon
+        ? 1.35
+        : 1.0;
+
       const spreadStep =
         pStyle === 'feather_slash' || pStyle === 'moon_slash' || pStyle === 'kanabo_crush'
           ? 0.24
-          : pStyle === 'cactus_needle'
-          ? 0.19
-          : 0.13;
+          : 0.14;
       const specMode =
         pStyle === 'shadow_talon'
           ? 'dash_streak'
@@ -2170,11 +2427,11 @@ export class ChickenTdEngine {
           ? 'rift_cross'
           : 'linear';
 
-      for (let m = 0; m < count; m++) {
+      for (let m = 0; m < actualCount; m++) {
         if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
-        const angOffset = count === 1 ? 0 : (m - (count - 1) / 2) * spreadStep;
+        const angOffset = actualCount === 1 ? 0 : (m - (actualCount - 1) / 2) * spreadStep;
         const ang = baseAngle + angOffset;
-        const speed = stats.projectileSpeed;
+        const speed = stats.projectileSpeed * (isDeadeye ? 1.45 : 1.0);
         const maxLife = (stats.effectiveRange + 75) / speed;
         const cosA = Math.cos(ang);
         const sinA = Math.sin(ang);
@@ -2189,22 +2446,25 @@ export class ChickenTdEngine {
           vy: sinA * speed,
           curveRate: 0,
           rotation: ang,
-          damage: stats.effectiveDamage,
-          pierceLeft: stats.effectivePierce,
-          splashRadius: stats.splashRadius,
+          damage: stats.effectiveDamage * dmgMult,
+          pierceLeft: stats.effectivePierce + (isDeadeye ? 10 : isIaijutsu ? 4 : 0),
+          splashRadius:
+            stats.splashRadius + (isUppercut ? 26 : isIaijutsu ? 38 : isOverchargeIon ? 24 : 0),
           slowFactor: stats.slowFactor,
           slowDuration: stats.slowDuration,
           burnDps: stats.effectiveBurnDps,
           foxDamageMult: stats.effectiveFoxMult,
-          knockback: stats.effectiveKnockback,
-          savageCritChance: stats.effectiveCritChance,
-          armorPiercing,
+          knockback: stats.effectiveKnockback * (isUppercut ? 2.2 : isDeadeye ? 1.8 : 1.0),
+          savageCritChance: isIaijutsu || isDeadeye ? 1.0 : stats.effectiveCritChance,
+          armorPiercing: armorPiercing || isGoldenSeed || isDeadeye || isShadowFan,
           canHitCamo: stats.effectiveCamo,
           hitEnemyIds: null,
           age: 0,
           maxLifetime: maxLife,
-          color: def.accentColor,
+          color: isDeadeye ? '#FACC15' : def.accentColor,
           motionMode: specMode,
+          gimmick: shotGimmick,
+          bouncesLeft: tower.typeId === 'sling_chick' ? 3 + Math.floor(tower.tier / 2) : undefined,
           originX: tower.x,
           originY: tower.y,
         });
@@ -2226,6 +2486,7 @@ export class ChickenTdEngine {
       this.inProjectilePhase = true;
       const buckets = this.spatialBuckets;
       let writeProj = 0;
+      const spawnedSubProjs: ActiveProjectile[] = [];
 
       for (let pIdx = 0; pIdx < this.projectiles.length; pIdx++) {
         const p = this.projectiles[pIdx];
@@ -2255,6 +2516,50 @@ export class ChickenTdEngine {
             if (p.spawnsZone) {
               this.spawnHazardZone(p, lx, ly);
             }
+            // GIMMICK: Cluster Shrapnel Bomblets ('pirate' Cannonball & 'lobber' Egg Mortar)!
+            if (
+              p.gimmick === 'cluster_parent' &&
+              this.projectiles.length + spawnedSubProjs.length < MAX_ACTIVE_PROJECTILES
+            ) {
+              for (let k = 0; k < 3; k++) {
+                const cAng = p.rotation + (Math.PI * 2 * k) / 3 + 0.4;
+                const cDist = 38;
+                const cx = Math.max(24, Math.min(896, lx + Math.cos(cAng) * cDist));
+                const cy = Math.max(24, Math.min(576, ly + Math.sin(cAng) * cDist));
+                spawnedSubProjs.push({
+                  id: this.nextEntityId++,
+                  ownerTowerId: p.ownerTowerId,
+                  style: p.style,
+                  x: lx,
+                  y: ly,
+                  vx: (cx - lx) / 0.22,
+                  vy: (cy - ly) / 0.22,
+                  curveRate: 0,
+                  rotation: cAng,
+                  damage: p.damage * 0.36,
+                  pierceLeft: 4,
+                  splashRadius: Math.max(28, Math.round(p.splashRadius * 0.62)),
+                  slowFactor: p.slowFactor,
+                  slowDuration: p.slowDuration,
+                  burnDps: p.burnDps,
+                  foxDamageMult: p.foxDamageMult,
+                  knockback: Math.round(p.knockback * 0.5),
+                  savageCritChance: p.savageCritChance,
+                  armorPiercing: true,
+                  canHitCamo: p.canHitCamo,
+                  hitEnemyIds: null,
+                  age: 0,
+                  maxLifetime: 0.22,
+                  color: p.color,
+                  motionMode: 'lob_arc',
+                  originX: lx,
+                  originY: ly,
+                  targetX: cx,
+                  targetY: cy,
+                  arcHeight: 16,
+                });
+              }
+            }
             continue;
           }
           const t = p.age / p.maxLifetime;
@@ -2269,7 +2574,16 @@ export class ChickenTdEngine {
 
         if (p.age >= p.maxLifetime) continue;
 
-        if (mode === 'ellipse_return') {
+        if (mode === 'path_reverse') {
+          // GIMMICK: Necro Ghost-Wisps march backward UP the road into oncoming enemies!
+          const nextD = (p.marchDist ?? 0) - 185 * dt;
+          if (nextD <= 2) continue;
+          p.marchDist = nextD;
+          const pt = getPointAlongPath(nextD);
+          p.x = pt.x;
+          p.y = pt.y;
+          p.rotation = pt.angle + Math.PI;
+        } else if (mode === 'ellipse_return') {
           const prog = p.age / p.maxLifetime;
           if (!p.returnPhaseReset && prog >= 0.5) {
             p.returnPhaseReset = true;
@@ -2346,18 +2660,50 @@ export class ChickenTdEngine {
                 if (dx * dx + dy * dy <= hitDist * hitDist) {
                   if (p.pierceLeft > 1 || mode === 'ellipse_return') {
                     if (p.hitEnemyIds === null) p.hitEnemyIds = new Set<number>();
-                    p.hitEnemyIds.add(e.id);
                   }
 
-                  if (p.splashRadius > 0 && mode !== 'ellipse_return') {
+                  if (p.splashRadius > 0 && mode !== 'ellipse_return' && p.gimmick !== 'ricochet') {
                     this.applySplashHit(p, ex, ey);
+                    if (p.hitEnemyIds !== null) p.hitEnemyIds.add(e.id);
                     p.pierceLeft--;
                   } else {
+                    if (p.hitEnemyIds !== null) p.hitEnemyIds.add(e.id);
                     this.damageEnemy(e, p.damage, p);
                     if (mode === 'ellipse_return' && p.splashRadius > 0) {
                       this.spawnPixelBurst(ex, ey, 2, p.color);
                     }
                     p.pierceLeft--;
+                  }
+
+                  // GIMMICK: Pebbleshot Chick Pinball Ricochet — snaps directly toward next unhit enemy!
+                  if (p.gimmick === 'ricochet' && (p.bouncesLeft ?? 0) > 0 && p.pierceLeft > 0) {
+                    if (p.hitEnemyIds === null) p.hitEnemyIds = new Set<number>();
+                    p.hitEnemyIds.add(e.id);
+                    let bestNext: ActiveEnemy | null = null;
+                    let bestD = 185 * 185;
+                    for (let k = 0; k < this.enemies.length; k++) {
+                      const cand = this.enemies[k];
+                      if (!cand || cand.alive === false || p.hitEnemyIds.has(cand.id)) continue;
+                      const cDef = ENEMY_DEFS[cand.typeId];
+                      if (cDef.isCamo && !p.canHitCamo) continue;
+                      const d2 = (cand.x! - ex) ** 2 + (cand.y! - ey) ** 2;
+                      if (d2 < bestD) {
+                        bestD = d2;
+                        bestNext = cand;
+                      }
+                    }
+                    if (bestNext) {
+                      const spd = Math.max(480, Math.hypot(p.vx, p.vy));
+                      const bAng = Math.atan2(bestNext.y! - ey, bestNext.x! - ex);
+                      p.x = ex;
+                      p.y = ey;
+                      p.vx = Math.cos(bAng) * spd;
+                      p.vy = Math.sin(bAng) * spd;
+                      p.rotation = bAng;
+                      p.bouncesLeft = (p.bouncesLeft ?? 1) - 1;
+                      p.maxLifetime = Math.max(p.maxLifetime, p.age + 0.35);
+                      this.spawnPixelBurst(ex, ey, 3, '#FEF08A');
+                    }
                   }
 
                   if (p.pierceLeft <= 0) {
@@ -2376,6 +2722,10 @@ export class ChickenTdEngine {
       }
 
       this.projectiles.length = writeProj;
+      for (let s = 0; s < spawnedSubProjs.length; s++) {
+        if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
+        this.projectiles.push(spawnedSubProjs[s]);
+      }
       this.inProjectilePhase = false;
       this.compactAliveEnemies();
     }
@@ -2528,7 +2878,7 @@ export class ChickenTdEngine {
     if (dist > punchReach) {
       stand.state = 'charging';
       if (Math.random() < dt * 10) {
-        this.spawnPixelBurst(stand.x, stand.y, 1, tower.tier === 3 ? '#FEF08A' : '#C084FC');
+        this.spawnPixelBurst(stand.x, stand.y, 1, tower.tier >= 3 ? '#FEF08A' : '#C084FC');
       }
       return;
     }
@@ -2543,7 +2893,7 @@ export class ChickenTdEngine {
     stand.punchAnim = 1.0;
     stand.punchCount++;
 
-    const isRequiem = tower.tier === 3;
+    const isRequiem = tower.tier >= 3;
     const punchCarrier: ActiveProjectile = {
       id: this.nextEntityId++,
       ownerTowerId: tower.id,
@@ -2742,12 +3092,16 @@ export class ChickenTdEngine {
         ? '#38BDF8'
         : '#22D3EE';
     const coreCol = pStyle === 'genesis_beam' ? '#FEF08A' : '#FFFFFF';
-    const beamCount = Math.min(6, Math.max(1, stats.effectiveProjectiles));
+    const lockStacks = tower.lockStacks ?? 0;
+    const lockMult = lockStacks > 1 ? 1 + (lockStacks - 1) * 0.12 : 1.0;
+    const beamDmg = stats.effectiveDamage * lockMult;
+    const beamCount = Math.min(3, Math.max(1, stats.effectiveProjectiles));
     const beamLen = stats.effectiveRange + 28;
     const corridorHalf =
       pStyle === 'atomic_breath' ? 24 : pStyle === 'genesis_beam' ? 18 : 13;
     const beamPxWidth =
-      pStyle === 'atomic_breath' ? 5 : pStyle === 'genesis_beam' ? 4 : 3;
+      (pStyle === 'atomic_breath' ? 5 : pStyle === 'genesis_beam' ? 4 : 3) +
+      (lockStacks >= 6 ? 2 : lockStacks >= 3 ? 1 : 0);
 
     const carrier: ActiveProjectile = {
       id: this.nextEntityId++,
@@ -2759,7 +3113,7 @@ export class ChickenTdEngine {
       vy: 0,
       curveRate: 0,
       rotation: baseAngle,
-      damage: stats.effectiveDamage,
+      damage: beamDmg,
       pierceLeft: stats.effectivePierce,
       splashRadius: stats.splashRadius,
       slowFactor: stats.slowFactor,
@@ -2774,6 +3128,7 @@ export class ChickenTdEngine {
       age: 0,
       maxLifetime: 0.05,
       color: outerCol,
+      gimmick: pStyle === 'matrix_beam' ? 'execute_mark' : undefined,
     };
 
     const snapLen = this.enemies.length;
@@ -2794,7 +3149,7 @@ export class ChickenTdEngine {
             { x: ex, y: ey },
           ],
           width: beamPxWidth,
-          outerColor: outerCol,
+          outerColor: lockStacks >= 6 ? '#F43F5E' : outerCol,
           coreColor: coreCol,
           age: 0,
           lifetime: 0.14,
@@ -2814,7 +3169,7 @@ export class ChickenTdEngine {
         if (along < -eDef.radius || along > beamLen + eDef.radius) continue;
         const perp = Math.abs(-rx * sinA + ry * cosA);
         if (perp <= corridorHalf + eDef.radius) {
-          this.damageEnemy(e, stats.effectiveDamage, carrier);
+          this.damageEnemy(e, beamDmg, carrier);
           hits++;
         }
       }
@@ -2921,6 +3276,25 @@ export class ChickenTdEngine {
           const dy = e.y! - z.y;
           const maxR = z.radius + eDef.radius;
           if (dx * dx + dy * dy <= maxR * maxR) {
+            // GIMMICK: Singularity Black Hole sucks enemies inward toward the vortex center!
+            if (z.zoneStyle === 'singularity' && e.hp > 0 && e.kbCooldown <= 0) {
+              const fwdX = Math.cos(e.angle ?? 0);
+              const fwdY = Math.sin(e.angle ?? 0);
+              const signedAhead = dx * fwdX + dy * fwdY;
+              const bossKbScale =
+                eDef.isFoxBoss && this.waveNumber > 25
+                  ? Math.max(0.25, 1 - (this.waveNumber - 25) * 0.028)
+                  : 1.0;
+              const pullAmt = (eDef.isFoxBoss ? 14 : 26) * bossKbScale;
+              if (signedAhead > 4) {
+                e.distance = Math.max(0, e.distance - pullAmt);
+                e.kbCooldown = eDef.isFoxBoss ? 0.65 : 0.3;
+                syncEnemyPathPosition(e);
+              } else if (signedAhead < -8) {
+                e.distance += pullAmt * 0.45;
+                syncEnemyPathPosition(e);
+              }
+            }
             this.damageEnemy(e, z.tickDamage, zoneCarrier);
             didDamage = true;
             hits++;
@@ -3063,6 +3437,10 @@ export class ChickenTdEngine {
             const dy = e.y! - cy;
             const maxR = proj.splashRadius + def.radius;
             if (dx * dx + dy * dy <= maxR * maxR) {
+              if (proj.hitEnemyIds !== null) {
+                if (proj.hitEnemyIds.has(e.id)) continue;
+                proj.hitEnemyIds.add(e.id);
+              }
               this.damageEnemy(e, proj.damage, proj);
             }
           }
@@ -3104,6 +3482,29 @@ export class ChickenTdEngine {
     if (e.vulnTimer > 0) {
       dmg *= 1.35;
     }
+    // GIMMICK: Hunter's Bullseye Mark (+30% incoming damage from ALL towers!)
+    if (e.markTimer && e.markTimer > 0) {
+      dmg *= 1.3;
+    }
+    // GIMMICK: Low-HP Headshot Execute ('ranger', 'tengu_shadow', 'archangel_seraph')!
+    if (proj.gimmick === 'execute_mark') {
+      e.markTimer = Math.max(e.markTimer ?? 0, 4.5);
+      if (e.hp <= e.maxHp * 0.28) {
+        dmg *= 2.2;
+        if (def.isFoxBoss || Math.random() < 0.35) {
+          this.spawnMapPopup('EXECUTE!', e.x!, e.y! - 18, '#F87171', 1.0);
+        }
+      }
+    }
+    // GIMMICK: Golden Roost-Deity % Max-HP Divine Judgment!
+    if (proj.gimmick === 'divine_smite') {
+      const pctChunk = Math.min(dmg * 0.45, e.maxHp * (def.isFoxBoss ? 0.0025 : 0.02));
+      dmg += pctChunk;
+      if (!def.isFoxBoss && e.kbCooldown <= 0) {
+        e.freezeTimer = Math.max(e.freezeTimer, 0.35);
+        e.kbCooldown = 1.2;
+      }
+    }
 
     // 3x Savage Critical Strike!
     const isSavageCrit = proj.savageCritChance > 0 && Math.random() < proj.savageCritChance;
@@ -3127,12 +3528,63 @@ export class ChickenTdEngine {
     e.hp -= dmg;
     e.hitFlash = 1.0;
 
+    // Signature Status Gimmicks on Surviving Targets!
+    if (e.hp > 0) {
+      if (proj.gimmick === 'snare_honey' && e.kbCooldown <= 0) {
+        e.freezeTimer = Math.max(e.freezeTimer, def.isFoxBoss ? 0.24 : 0.6);
+        e.kbCooldown = def.isFoxBoss ? 2.2 : 1.1;
+        this.spawnPixelBurst(e.x!, e.y!, 3, '#FACC15');
+      } else if (proj.gimmick === 'frost_shatter') {
+        e.frostStacks = (e.frostStacks ?? 0) + 1;
+        if (e.frostStacks >= 3) {
+          e.frostStacks = 0;
+          if (e.kbCooldown <= 0) {
+            e.freezeTimer = Math.max(e.freezeTimer, def.isFoxBoss ? 0.3 : 0.7);
+            e.kbCooldown = def.isFoxBoss ? 2.2 : 1.1;
+          }
+          const shatterDmg = dmg * 0.65;
+          e.hp -= shatterDmg;
+          this.spawnRing(e.x!, e.y!, 42, '#7DD3FC');
+          if (def.isFoxBoss || Math.random() < 0.4) {
+            this.spawnMapPopup('SHATTER!', e.x!, e.y! - 16, '#BAE6FD', 1.0);
+          }
+        }
+      } else if (proj.gimmick === 'time_rewind' && e.kbCooldown <= 0) {
+        const bossKbScale =
+          def.isFoxBoss && this.waveNumber > 25
+            ? Math.max(0.25, 1 - (this.waveNumber - 25) * 0.028)
+            : 1.0;
+        const rewind = (def.isFoxBoss ? 34 : 78) * bossKbScale;
+        e.distance = Math.max(0, e.distance - rewind);
+        e.kbCooldown = def.isFoxBoss ? 0.85 : 0.45;
+        syncEnemyPathPosition(e);
+        this.spawnRing(e.x!, e.y!, 30, '#2DD4BF');
+        if (def.isFoxBoss || Math.random() < 0.4) {
+          this.spawnMapPopup('WARP!', e.x!, e.y! - 16, '#5EEAD4', 1.0);
+        }
+      } else if (proj.gimmick === 'plague_spore') {
+        e.plagueTimer = 4.5;
+        e.plagueDmg = Math.max(e.plagueDmg ?? 0, rawDamage * 0.85);
+        e.plagueOwnerId = proj.ownerTowerId;
+        e.vulnTimer = Math.max(e.vulnTimer, 3.0);
+      } else if (proj.gimmick === 'soul_curse') {
+        e.curseTimer = 4.5;
+        e.curseDmg = Math.max(e.curseDmg ?? 0, rawDamage * 1.1);
+        e.curseOwnerId = proj.ownerTowerId;
+      }
+    }
+
     // Path Knockback (pushes enemy backward along the path with brief KB immunity)!
     if (proj.knockback > 0 && e.kbCooldown <= 0 && e.hp > 0) {
       const oldCell = this.inProjectilePhase ? this.getSpatialCell(e.x!, e.y!) : -1;
-      const kbDist = def.isFoxBoss ? proj.knockback * 0.38 : proj.knockback;
+      const bossKbScale =
+        def.isFoxBoss && this.waveNumber > 25
+          ? Math.max(0.22, 1 - (this.waveNumber - 25) * 0.028)
+          : 1.0;
+      const rawKb = (def.isFoxBoss ? proj.knockback * 0.32 : proj.knockback) * bossKbScale;
+      const kbDist = Math.min(def.isFoxBoss ? 18 * bossKbScale : 90, rawKb);
       e.distance = Math.max(0, e.distance - kbDist);
-      e.kbCooldown = 0.45;
+      e.kbCooldown = def.isFoxBoss && this.waveNumber > 25 ? 0.85 : 0.45;
       syncEnemyPathPosition(e);
       if (this.inProjectilePhase && e.gridIdx !== undefined) {
         const newCell = this.getSpatialCell(e.x!, e.y!);
@@ -3209,6 +3661,78 @@ export class ChickenTdEngine {
       this.spawnMapPopup(popLabel, px, py - 18, '#FDE047', 1.05);
     } else {
       this.spawnPixelBurst(px, py, 4, def.bodyColor);
+    }
+
+    // GIMMICK: Plague Contagion Spore Burst on Death ('alchemist' & 'plague_doctor')!
+    if (popped.plagueTimer && popped.plagueTimer > 0 && (popped.plagueDmg ?? 0) > 0) {
+      const pDmg = popped.plagueDmg!;
+      const pOwner = popped.plagueOwnerId ?? -1;
+      this.spawnRing(px, py, 68, '#4ADE80');
+      this.spawnPixelBurst(px, py, 6, '#84CC16');
+      const snapLen = this.enemies.length;
+      let spreadHits = 0;
+      for (let i = 0; i < snapLen && spreadHits < 12; i++) {
+        const other = this.enemies[i];
+        if (!other || other.alive === false) continue;
+        const dx = (other.x ?? 0) - px;
+        const dy = (other.y ?? 0) - py;
+        if (dx * dx + dy * dy <= 76 * 76) {
+          other.vulnTimer = Math.max(other.vulnTimer, 3.0);
+          other.burnDps = Math.max(other.burnDps, pDmg * 0.35);
+          other.burnTimer = Math.max(other.burnTimer, 2.5);
+          const dealt = Math.min(Math.max(0, other.hp), pDmg);
+          if (pOwner > 0) {
+            const tw = this.towerById.get(pOwner);
+            if (tw) tw.totalPopDamage += dealt;
+          }
+          other.hp -= pDmg;
+          spreadHits++;
+          if (other.hp <= 0) {
+            other.plagueTimer = 0;
+            this.defeatEnemy(other);
+          }
+        }
+      }
+    }
+
+    // GIMMICK: Necro-Cluck Lich Reanimates Slain Cursed Foes as Ghost-Wisps Marching UP the Road!
+    if (
+      popped.curseTimer &&
+      popped.curseTimer > 0 &&
+      (popped.curseDmg ?? 0) > 0 &&
+      popped.distance > 25 &&
+      this.projectiles.length < MAX_ACTIVE_PROJECTILES
+    ) {
+      const pt = getPointAlongPath(popped.distance);
+      this.projectiles.push({
+        id: this.nextEntityId++,
+        ownerTowerId: popped.curseOwnerId ?? -1,
+        style: 'soul_wisp',
+        x: pt.x,
+        y: pt.y,
+        vx: 0,
+        vy: 0,
+        curveRate: 0,
+        rotation: pt.angle + Math.PI,
+        damage: popped.curseDmg!,
+        pierceLeft: 4,
+        splashRadius: 36,
+        slowFactor: 0.35,
+        slowDuration: 1.4,
+        burnDps: 0,
+        foxDamageMult: 2.5,
+        knockback: 18,
+        savageCritChance: 0,
+        armorPiercing: true,
+        canHitCamo: true,
+        hitEnemyIds: new Set<number>(),
+        age: 0,
+        maxLifetime: 1.9,
+        color: '#34D399',
+        motionMode: 'path_reverse',
+        gimmick: 'ghost_march',
+        marchDist: popped.distance,
+      });
     }
 
     let childIdx = 0;

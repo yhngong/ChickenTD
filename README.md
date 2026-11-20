@@ -39,7 +39,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 - **Zero Enemy Gold — 100% Henhouse Economy (`12 CPS` Cap)**:
   - Defeating Bugs and Foxes awards **0 Corn**! Harvest Corn during active waves at the **Henhouse Clicker** (capped at `12 CPS`) alongside passive **Farmhand Chicks** and **9 Clicker Upgrades**.
 
-## All 55 Chicken Units (4 Tiers Each)
+## All 55 Chicken Units (7 Tiers Each — Overdrive T5, Transcendent T6 & Omega T7!)
 
 ### Starter Coop (Unlocked from Start — Units 1–18)
 1. **Brawler Bantam** — Close Melee Flurry (`95` Corn)
@@ -110,7 +110,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 | **Click Chicken Card in Troops Tab** | Select any unlocked Chicken Troop to deploy on the map |
 | `Tab` / **Cluck Cannon Button** | Fire equipped Cluck Cannon when 100% charged |
 | **`SHOP` (Main Menu)** | Open Gem Eggs & select your Cluck Cannon loadout before starting a game |
-| **Click Placed Chicken** | Open Inspector to Upgrade (`Tier 1–4`), change Targeting, or Sell |
+| **Click Placed Chicken** | Open Inspector to Upgrade (`Tier 1–7`), change Targeting, or Sell |
 | `Space` | Start Next Wave (or Skip Gem Egg Cutscene) |
 | `Esc` / Right-Click | Cancel placement or close inspector / shop |
 
