@@ -605,6 +605,10 @@ export class ChickenTdEngine {
               typeof t.shrineCooldown === 'number' && Number.isFinite(t.shrineCooldown)
                 ? Math.max(0, t.shrineCooldown)
                 : 0,
+            hollowPurpleCooldown:
+              typeof t.hollowPurpleCooldown === 'number' && Number.isFinite(t.hollowPurpleCooldown)
+                ? Math.max(0, t.hollowPurpleCooldown)
+                : 0,
             deathrayCooldown:
               typeof t.deathrayCooldown === 'number' && Number.isFinite(t.deathrayCooldown)
                 ? Math.max(0, t.deathrayCooldown)
@@ -1505,6 +1509,8 @@ export class ChickenTdEngine {
     tower.totalSpent += upgCost;
     if (tower.typeId === 'malevolent_chicken' && nextTierIdx === MAX_CHICKEN_TIER_INDEX) {
       tower.shrineCooldown = 0.25;
+    } else if (tower.typeId === 'limitless_chicken' && nextTierIdx === MAX_CHICKEN_TIER_INDEX) {
+      tower.hollowPurpleCooldown = 0.25;
     }
     this.invalidateStatsCache();
     const fxCol =
@@ -1771,7 +1777,7 @@ export class ChickenTdEngine {
       }
     }
 
-    // 2. Move enemies, tick DoTs, check Nest leaks (+ Lv7 Limitless Chicken 80% Infinity slow field!)
+    // 2. Move enemies, tick DoTs, check Nest leaks (+ Honored Chicken's innate 80%-slow Infinity field!)
     const totalPathLen = getTotalPathLength();
     const speedScale = getWaveSpeedScale(this.waveNumber) * this.getDifficulty().enemySpeedMult;
     const moveCount = this.enemies.length;
@@ -1782,7 +1788,7 @@ export class ChickenTdEngine {
     if (moveCount > 0) {
       for (let t = 0; t < this.towers.length; t++) {
         const tw = this.towers[t];
-        if (tw.typeId === 'limitless_chicken' && tw.tier === MAX_CHICKEN_TIER_INDEX) {
+        if (tw.typeId === 'limitless_chicken') {
           infFields.push({
             x: tw.x,
             y: tw.y,
@@ -2012,6 +2018,22 @@ export class ChickenTdEngine {
             tower.angle = Math.atan2(shrineTarget.y! - tower.y, shrineTarget.x! - tower.x);
             tower.recoil = 1.0;
             this.summonMalevolentShrine(tower, mStats, shrineTarget);
+          }
+        }
+      }
+
+      // GIMMICK: Max-Level Honored Chicken fuses Blue & Red every 10.0s to launch Hollow Purple!
+      if (tower.typeId === 'limitless_chicken' && tower.tier === MAX_CHICKEN_TIER_INDEX) {
+        tower.hollowPurpleCooldown = Math.max(0, (tower.hollowPurpleCooldown ?? 0) - dt);
+        if (tower.hollowPurpleCooldown <= 0 && this.enemies.length > 0) {
+          const lStats = this.getEffectiveChickenStats(tower);
+          const purpleTarget =
+            this.pickTargetForTower(tower, lStats) ?? this.pickAnyMapTargetForTower(tower, lStats);
+          if (purpleTarget) {
+            tower.hollowPurpleCooldown = 10.0;
+            tower.angle = Math.atan2(purpleTarget.y! - tower.y, purpleTarget.x! - tower.x);
+            tower.recoil = 1.0;
+            this.fireHollowPurple(tower, lStats, purpleTarget);
           }
         }
       }
@@ -2767,6 +2789,12 @@ export class ChickenTdEngine {
           }
           p.x += p.vx * dt;
           p.y += p.vy * dt;
+          if (
+            p.style === 'hollow_purple' &&
+            (p.x < -90 || p.x > 1010 || p.y < -90 || p.y > 690)
+          ) {
+            continue;
+          }
           if (p.style === 'shuriken' || p.style === 'rift_slash') {
             p.rotation += dt * 18;
           } else {
@@ -2777,12 +2805,15 @@ export class ChickenTdEngine {
         if (this.enemies.length > 0) {
           const cCol = Math.max(0, Math.min(SPATIAL_COLS - 1, (p.x | 0) >> SPATIAL_CELL_SHIFT));
           const cRow = Math.max(0, Math.min(SPATIAL_ROWS - 1, (p.y | 0) >> SPATIAL_CELL_SHIFT));
-          const rMin = cRow > 0 ? cRow - 1 : 0;
-          const rMax = cRow < SPATIAL_ROWS - 1 ? cRow + 1 : SPATIAL_ROWS - 1;
-          const cMin = cCol > 0 ? cCol - 1 : 0;
-          const cMax = cCol < SPATIAL_COLS - 1 ? cCol + 1 : SPATIAL_COLS - 1;
+          const cellSpan = p.style === 'hollow_purple' ? 2 : 1;
+          const rMin = Math.max(0, cRow - cellSpan);
+          const rMax = Math.min(SPATIAL_ROWS - 1, cRow + cellSpan);
+          const cMin = Math.max(0, cCol - cellSpan);
+          const cMax = Math.min(SPATIAL_COLS - 1, cCol + cellSpan);
           const extraRadius =
-            p.style === 'dismantle_slash' || p.style === 'limitless_punch'
+            p.style === 'hollow_purple'
+              ? 48
+              : p.style === 'dismantle_slash' || p.style === 'limitless_punch'
               ? 18
               : p.style === 'infinity_blade'
               ? 16
@@ -3529,6 +3560,60 @@ export class ChickenTdEngine {
   }
 
   /**
+   * Launches Honored Chicken's Tier-7 Hollow Purple (Blue + Red convergence -> map-piercing Imaginary Mass orb)!
+   */
+  private fireHollowPurple(
+    tower: PlacedChicken,
+    stats: EffectiveChickenStats,
+    target: ActiveEnemy
+  ): void {
+    const tx = target.x ?? tower.x + 60;
+    const ty = target.y ?? tower.y;
+    const ang = Math.atan2(ty - tower.y, tx - tower.x);
+    const cosA = Math.cos(ang);
+    const sinA = Math.sin(ang);
+    const speed = 460;
+
+    // Converging Lapse Blue + Reversal Red -> Hollow Purple cast flash!
+    this.spawnRing(tower.x - 10, tower.y - 6, 36, '#38BDF8');
+    this.spawnRing(tower.x + 10, tower.y - 6, 36, '#EF4444');
+    this.spawnRing(tower.x, tower.y, 72, '#A855F7');
+    this.spawnPixelBurst(tower.x, tower.y, 14, '#E879F9');
+    this.audio.playHollowPurple();
+
+    this.projectiles.push({
+      id: this.nextEntityId++,
+      ownerTowerId: tower.id,
+      style: 'hollow_purple',
+      x: tower.x + cosA * 18,
+      y: tower.y + sinA * 18,
+      vx: cosA * speed,
+      vy: sinA * speed,
+      curveRate: 0,
+      rotation: ang,
+      damage: stats.effectiveDamage * 11.5,
+      pierceLeft: 9999,
+      splashRadius: 135,
+      slowFactor: 0.68,
+      slowDuration: 4.0,
+      burnDps: stats.effectiveBurnDps * 2.2,
+      foxDamageMult: stats.effectiveFoxMult * 1.15,
+      knockback: Math.max(75, stats.effectiveKnockback),
+      savageCritChance: stats.effectiveCritChance,
+      armorPiercing: true,
+      canHitCamo: true,
+      hitEnemyIds: new Set<number>(),
+      age: 0,
+      maxLifetime: 2.6,
+      color: '#A855F7',
+      motionMode: 'linear',
+      gimmick: 'hollow_purple_erase',
+      originX: tower.x,
+      originY: tower.y,
+    });
+  }
+
+  /**
    * Summons Malevolent Chicken's Max-Level Giant Malevolent Shrine directly from the sky onto its target!
    */
   private summonMalevolentShrine(
@@ -3840,7 +3925,8 @@ export class ChickenTdEngine {
           proj.style === 'moon_slash' ||
           proj.style === 'shadow_talon'
         ? '#FB7185'
-        : proj.style === 'stand_fist' ||
+        : proj.style === 'hollow_purple' ||
+          proj.style === 'stand_fist' ||
           proj.style === 'lightning' ||
           proj.style === 'black_hole' ||
           proj.style === 'star_comet' ||
@@ -3960,6 +4046,10 @@ export class ChickenTdEngine {
       e.vulnTimer = Math.max(e.vulnTimer, 4.0);
       this.spawnPixelBurst(e.x!, e.y!, 5, '#090D16');
       this.spawnPixelBurst(e.x!, e.y!, 4, '#E11D48');
+    } else if (proj.gimmick === 'hollow_purple_erase') {
+      e.vulnTimer = Math.max(e.vulnTimer, 5.5);
+      this.spawnPixelBurst(e.x!, e.y!, 5, '#A855F7');
+      this.spawnPixelBurst(e.x!, e.y!, 3, '#E879F9');
     } else if (proj.gimmick === 'shrine_crush') {
       e.vulnTimer = Math.max(e.vulnTimer, 5.5);
       if (e.kbCooldown <= 0) {

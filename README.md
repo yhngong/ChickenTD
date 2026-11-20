@@ -96,7 +96,7 @@ A 16-bit pixel-art mashup of an **active Clicker game**, **strategic layered tow
 50. **Gaia Mother-Hen** — Prismatic World-Tree (`430,000` Corn)
 51. **Singularity Hen** — Black-Hole Vortex (`660,000` Corn)
 52. **Malevolent Chicken** — Dismantle Shockwaves & T7 MAX 10s Giant Malevolent Shrine (`820,000` Corn)
-53. **Honored Chicken** — Fixed-Range Heavy Punches & T7 MAX 80%-Slow Infinity (`820,000` Corn)
+53. **Honored Chicken** — Innate 80%-Slow Infinity (Fixed `150` Range) & T7 MAX 10s Map-Piercing Hollow Purple (`820,000` Corn)
 54. **Golden Roost-Deity** — Heavenly Pillar Deity (`1,000,000` Corn)
 55. **Helios Sun-Emperor** — Solar Meteor Sovereign (`1,450,000` Corn)
 56. **Astral Genesis-Wyrm** — Crossing Rift Architect (`2,150,000` Corn)

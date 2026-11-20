@@ -1463,7 +1463,7 @@ function renderInspector(): void {
       tower.typeId === 'malevolent_chicken'
         ? 'DOMAIN EXPANSION ACTIVE: Drops a Giant Malevolent Shrine every 10s for massive splash damage!'
         : tower.typeId === 'limitless_chicken'
-        ? 'INFINITY ACTIVE: Passively slows ALL enemies in its attack radius by 80% + Black-Flash punches!'
+        ? 'HOLLOW PURPLE & INFINITY ACTIVE: Launches map-piercing Hollow Purple every 10s + 80%-slow Infinity!'
         : tower.typeId === 'complete_cluck'
         ? 'PHANTASMAL DEATHRAY ACTIVE: Fires a concentrated Moon Lord Deathray every 8s that splashes nearby foes!'
         : 'OMEGA TIER 7 EVOLUTION ACHIEVED!';

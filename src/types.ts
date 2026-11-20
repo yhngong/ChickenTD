@@ -117,6 +117,7 @@ export type ProjectileStyle =
   | 'dismantle_slash'
   | 'malevolent_shrine'
   | 'limitless_punch'
+  | 'hollow_purple'
   | 'phantasmal_deathray'
   | 'infinity_blade';
 
@@ -321,7 +322,8 @@ export type ProjectileGimmick =
   | 'iaijutsu_wave'
   | 'dismantle_cleave'
   | 'shrine_crush'
-  | 'black_flash_punch';
+  | 'black_flash_punch'
+  | 'hollow_purple_erase';
 
 export interface ChickenTowerDef {
   id: ChickenTypeId;
@@ -375,6 +377,7 @@ export interface PlacedChicken {
   orbitAngle?: number;
   orbitTickTimer?: number;
   shrineCooldown?: number;
+  hollowPurpleCooldown?: number;
   deathrayCooldown?: number;
 }
 

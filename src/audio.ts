@@ -147,6 +147,14 @@ export class ChickenAudioEngine {
     this.tone('square', 293.66, 110.0, 1.15, 0.14, 0.14);
   }
 
+  public playHollowPurple(): void {
+    // Blue + Red harmonic convergence -> thunderous Imaginary-Mass Hollow Purple blast!
+    this.tone('sine', 523.25, 1046.5, 0.14, 0.18, 0);
+    this.tone('triangle', 783.99, 1046.5, 0.14, 0.18, 0.04);
+    this.tone('sawtooth', 440, 46.25, 0.65, 0.28, 0.12);
+    this.tone('square', 220, 38.89, 0.72, 0.22, 0.14);
+  }
+
   public playCluckCannon(cannonId: CannonTypeId = 'shockwave'): void {
     if (cannonId === 'time_stop') {
       // Dramatic Chrono Time-Stop pitch-warp + clock-halt chime!

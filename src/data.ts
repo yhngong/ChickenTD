@@ -5279,12 +5279,12 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // E18. HONORED CHICKEN — White-Haired Six-Eyes Close-Range Puncher & Lv7 80%-Slow Infinity Titan!
-  // Upgrades NEVER increase its fixed 150px range — all power goes into heavy Limitless & Black-Flash punches!
+  // E18. HONORED CHICKEN — White-Haired Six-Eyes Brawler with Innate 80%-Slow Infinity & T7 Hollow Purple!
+  // Starts with 80%-slow Infinity at Tier 1; upgrades NEVER increase its fixed 150px range, and Tier 7 unlocks Hollow Purple!
   limitless_chicken: {
     id: 'limitless_chicken',
     name: 'Honored Chicken',
-    role: 'Close Punch & Infinity',
+    role: 'Infinity & Hollow Purple',
     baseCost: 820000,
     featherColor: '#F8FAFC',
     bellyColor: '#1E293B',
@@ -5309,7 +5309,7 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         knockback: 42,
         savageCritChance: 0.3,
         description:
-          'Fixed 150 range! Blue-infused Cursed Fist punches deal heavy close-range damage!',
+          'Starts with Infinity (80% slow in its fixed 150 radius!) + heavy Blue-infused punches!',
       },
       {
         tierName: 'Lapse Blue Striker',
@@ -5329,7 +5329,7 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         knockback: 54,
         savageCritChance: 0.36,
         description:
-          'Range stays 150! Heavy Lapse-Blue punches hit 6.9x vs Foxes with 36% 3x Crits!',
+          'Fixed 150 Infinity zone (80% slow)! Heavy Lapse-Blue punches hit 6.9x vs Foxes!',
       },
       {
         tierName: 'Black-Flash Sensei',
@@ -5349,12 +5349,12 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         knockback: 66,
         savageCritChance: 0.42,
         description:
-          'Fixed 150 range! Crushing Black-Flash fist combos shatter armor & pummel bosses!',
+          '80% Infinity slow traps foes inside crushing Black-Flash fist combos!',
       },
       {
         tierName: 'The Honored Rooster',
         upgradeCost: 3000000,
-        damage: 5500,
+        damage: 4900,
         fireRate: 9.8,
         range: 150,
         pierce: 15,
@@ -5369,7 +5369,7 @@ const RAW_CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         knockback: 82,
         savageCritChance: 0.48,
         description:
-          'Fixed 150 range & 8.9x Boss punch fury! Reach Tier 7 MAX to unlock 80% Infinity slow!',
+          '80% Infinity slow & 8.9x Boss punches! Reach Tier 7 MAX to unlock Hollow Purple!',
       },
     ],
   },
@@ -5521,7 +5521,7 @@ const UNIT_GIMMICK_TAG: Record<ChickenTypeId, string> = {
   gaia_creator: '3 Orbiting World-Tree Prisms + Blooming Nature Bursts!',
   void_singularity: 'Imploding Black Holes pull enemies inward before collapsing!',
   malevolent_chicken: 'Dismantle shockwaves; T7 MAX drops a Giant Shrine every 10s!',
-  limitless_chicken: 'Fixed 150 range heavy punches; T7 MAX Infinity slows radius 80%!',
+  limitless_chicken: 'Innate 80%-slow Infinity (fixed 150 rng); T7 MAX fires Hollow Purple!',
   golden_deity: 'Heavenly Wrath Pillars deal bonus % HP Divine Judgment!',
   solar_emperor: 'Calls down colossal Dyson Corona Meteors from the sun!',
   eternity_weaver: 'Crossing X-shaped Reality Rifts cleave & warp space-time!',
@@ -5729,7 +5729,7 @@ function buildSevenTierChickenDefs(
         id === 'malevolent_chicken'
           ? 'King of Curses: Malevolent Shrine'
           : id === 'limitless_chicken'
-          ? 'The Strongest: Limitless Infinity'
+          ? 'Honored One: Hollow Purple'
           : `Omega ${raw.name}`,
       upgradeCost: cost7,
       damage: roundCleanDmg(t4.damage * 78.0 * projCompensation),
@@ -5748,7 +5748,7 @@ function buildSevenTierChickenDefs(
         id === 'malevolent_chicken'
           ? 'TIER 7 MAX DOMAIN EXPANSION: Summons a Giant Malevolent Shrine every 10s that drops onto the targeted enemy for massive splash damage!'
           : id === 'limitless_chicken'
-          ? 'TIER 7 MAX INFINITY UNLOCKED: Passively slows ALL enemies in its attack radius by 80% while delivering catastrophic Limitless punches!'
+          ? 'TIER 7 MAX HOLLOW PURPLE: Fuses Blue & Red every 10s to launch a giant map-piercing Hollow Purple orb + innate 80%-slow Infinity!'
           : `TIER 7 OMEGA MAX: Wave-50 Endgame Pinnacle! ${UNIT_GIMMICK_TAG[id]}`,
     };
 

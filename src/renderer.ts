@@ -594,10 +594,10 @@ export class MeadowRenderer {
       this.drawPixelHazardZone(ctx, engine.hazardZones[i], nowSec);
     }
 
-    // 4.7. Level 7 Limitless Chicken Passive Infinity Spatial Barrier (80% Slow Field!)
+    // 4.7. Honored Chicken Passive Infinity Spatial Barrier (Innate 80% Slow Field from Tier 1!)
     for (let i = 0; i < engine.towers.length; i++) {
       const tw = engine.towers[i];
-      if (tw.typeId === 'limitless_chicken' && tw.tier === 6) {
+      if (tw.typeId === 'limitless_chicken') {
         const eff = engine.getEffectiveChickenStats(tw);
         const ix = toPx(tw.x);
         const iy = toPx(tw.y);
@@ -820,8 +820,8 @@ export class MeadowRenderer {
             : '#FB7185'
           : tower.typeId === 'limitless_chicken'
           ? Math.floor(nowSec * 9) % 2 === 0
-            ? '#38BDF8'
-            : '#FFFFFF'
+            ? '#A855F7'
+            : '#38BDF8'
           : Math.floor(nowSec * 8) % 2 === 0
           ? '#F43F5E'
           : '#FEF08A';
@@ -2107,6 +2107,62 @@ export class MeadowRenderer {
         ctx.fillRect(px - 2, py - 2, 4, 4);
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(px - 1 + Math.round(fx), py - 1 + Math.round(fy), 2, 2);
+        break;
+      }
+      case 'hollow_purple': {
+        // Gojo's Imaginary-Mass Hollow Purple: giant ~30x30px sphere fusing Lapse Blue & Reversal Red!
+        const fx = Math.cos(p.rotation);
+        const fy = Math.sin(p.rotation);
+        const rx = -fy;
+        const ry = fx;
+        const spin = p.age * 16 + p.id;
+        const pulse = Math.floor(p.age * 14) % 2;
+
+        // Trailing spatial-erasure wake + Blue & Red convergence sparks behind the orb!
+        const t2x = Math.round(px - fx * 15);
+        const t2y = Math.round(py - fy * 15);
+        const t1x = Math.round(px - fx * 8);
+        const t1y = Math.round(py - fy * 8);
+        drawFilledPixelDisk(ctx, t2x, t2y, 6, 6, 'rgba(107, 33, 168, 0.45)');
+        drawFilledPixelDisk(ctx, t1x, t1y, 9, 9, 'rgba(168, 85, 247, 0.6)');
+
+        const convWave = Math.sin(spin) * 6;
+        const blueX = Math.round(px - fx * 11 + rx * convWave);
+        const blueY = Math.round(py - fy * 11 + ry * convWave);
+        const redX = Math.round(px - fx * 11 - rx * convWave);
+        const redY = Math.round(py - fy * 11 - ry * convWave);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillRect(blueX - 2, blueY - 2, 4, 4);
+        ctx.fillStyle = '#F43F5E';
+        ctx.fillRect(redX - 2, redY - 2, 4, 4);
+
+        // Outer spatial-distortion ring & 4 crackling purple-white lightning arcs!
+        drawPixelCircle(
+          ctx,
+          px,
+          py,
+          15 + pulse,
+          pulse === 0 ? '#E879F9' : '#C084FC',
+          true
+        );
+        for (let a = 0; a < 4; a++) {
+          const ang = spin + a * (Math.PI * 0.5);
+          const ax0 = Math.round(px + Math.cos(ang) * 10);
+          const ay0 = Math.round(py + Math.sin(ang) * 10);
+          const ax1 = Math.round(px + Math.cos(ang + 0.35) * (16 + ((a + pulse) % 2) * 2));
+          const ay1 = Math.round(py + Math.sin(ang + 0.35) * (16 + ((a + pulse) % 2) * 2));
+          drawPixelLine(ctx, ax0, ay0, ax1, ay1, 1, a % 2 === 0 ? '#FFFFFF' : '#E879F9');
+        }
+
+        // Giant concentric Imaginary-Mass sphere: dark outline -> deep violet -> Hollow Purple -> magenta -> void core!
+        drawFilledPixelDisk(ctx, px, py, 13, 13, '#090D16');
+        drawFilledPixelDisk(ctx, px, py, 12, 12, '#6B21A8');
+        drawFilledPixelDisk(ctx, px, py, 9, 9, '#A855F7');
+        drawFilledPixelDisk(ctx, px, py, 6, 6, '#E879F9');
+        drawFilledPixelDisk(ctx, px, py, 3, 3, '#090D16');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px - 2, py - 2, 2, 2);
+        ctx.fillRect(px + 1, py + 1, 1, 1);
         break;
       }
       case 'bass_pulse':
