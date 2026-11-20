@@ -1179,61 +1179,91 @@ export class MeadowRenderer {
     const oy = toPx(dr.originY);
     const fx = toPx(dr.focalX);
     const fy = toPx(dr.focalY);
-    const sr = Math.max(12, toPx(dr.splashRadius));
+    const sr = Math.max(20, toPx(dr.splashRadius));
     const fade =
-      dr.age > dr.maxLifetime * 0.72
-        ? Math.max(0.2, (dr.maxLifetime - dr.age) / (dr.maxLifetime * 0.28))
+      dr.age > dr.maxLifetime * 0.82
+        ? Math.max(0.2, (dr.maxLifetime - dr.age) / (dr.maxLifetime * 0.18))
         : 1.0;
     const pulse = (Math.floor(nowSec * 24) % 2) === 0 ? 1 : 0;
 
     ctx.save();
     ctx.globalAlpha = Math.min(0.98, fade);
 
-    // 1. Nearby-Enemy Phantasmal Splash Zone around the concentrated target!
-    drawFilledPixelDisk(ctx, fx, fy, sr, Math.round(sr * 0.72), 'rgba(45, 212, 191, 0.16)');
+    // 1. Wide Nearby-Enemy Phantasmal Splash Zone around the concentrated target!
+    drawFilledPixelDisk(ctx, fx, fy, sr, Math.round(sr * 0.74), 'rgba(45, 212, 191, 0.18)');
+    drawFilledPixelDisk(
+      ctx,
+      fx,
+      fy,
+      Math.round(sr * 0.56),
+      Math.round(sr * 0.42),
+      'rgba(153, 246, 228, 0.16)'
+    );
     drawPixelCircle(ctx, fx, fy, sr, pulse ? '#2DD4BF' : '#99F6E4', true);
-    drawPixelCircle(ctx, fx, fy, Math.round(sr * 0.52), '#5EEAD4', true);
+    drawPixelCircle(ctx, fx, fy, Math.round(sr * 0.65), '#5EEAD4', true);
+    drawPixelCircle(ctx, fx, fy, Math.round(sr * 0.35), '#CCFBF1', false);
 
-    // 2. 4-Layer Terraria Moon Lord Phantasmal Deathray Shaft (concentrated onto (fx, fy)!)
-    const wScale = 0.65 + 0.35 * fade;
-    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(5, Math.round((8 + pulse) * wScale)), '#0D9488');
-    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(4, Math.round((6 + pulse) * wScale)), '#2DD4BF');
-    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(2, Math.round(4 * wScale)), '#99F6E4');
-    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(1, Math.round(2 * wScale)), '#FFFFFF');
+    // 2. Colossal 5-Layer Terraria Moon Lord Phantasmal Deathray Shaft (concentrated onto (fx, fy)!)
+    const wScale = 0.7 + 0.3 * fade;
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(9, Math.round((18 + pulse * 2) * wScale)), '#0F766E');
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(7, Math.round((14 + pulse * 2) * wScale)), '#14B8A6');
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(5, Math.round((10 + pulse) * wScale)), '#2DD4BF');
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(3, Math.round(7 * wScale)), '#99F6E4');
+    drawPixelLine(ctx, ox, oy, fx, fy, Math.max(2, Math.round(4 * wScale)), '#FFFFFF');
 
-    // Animated luminite energy rings surging down the Deathray shaft!
-    for (let k = 0; k < 3; k++) {
-      const t = ((nowSec * 3.8 + k * 0.33) % 1);
-      const rx = Math.round(ox + (fx - ox) * t);
-      const ry = Math.round(oy + (fy - oy) * t);
-      ctx.fillStyle = '#CCFBF1';
-      ctx.fillRect(rx - 3, ry - 3, 6, 6);
+    // Surging luminite shockwave ribs racing down the giant Deathray shaft!
+    const bdx = fx - ox;
+    const bdy = fy - oy;
+    const bLen = Math.max(1, Math.hypot(bdx, bdy));
+    const pnx = -bdy / bLen;
+    const pny = bdx / bLen;
+    for (let k = 0; k < 4; k++) {
+      const t = (nowSec * 3.4 + k * 0.25) % 1;
+      const rx = ox + bdx * t;
+      const ry = oy + bdy * t;
+      const ribHalf = Math.round(9 * wScale);
+      drawPixelLine(
+        ctx,
+        Math.round(rx - pnx * ribHalf),
+        Math.round(ry - pny * ribHalf),
+        Math.round(rx + pnx * ribHalf),
+        Math.round(ry + pny * ribHalf),
+        2,
+        '#CCFBF1'
+      );
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(rx - 2, ry - 2, 4, 4);
+      ctx.fillRect(Math.round(rx) - 3, Math.round(ry) - 3, 6, 6);
     }
 
-    // 3. True Eye of Cthulhu (Phantasmal Third Eye) hovering at beam origin!
+    // 3. Large True Eye of Cthulhu (19x15 Phantasmal Third Eye) hovering at beam origin!
     ctx.fillStyle = OUTLINE;
-    ctx.fillRect(ox - 5, oy - 4, 11, 9);
+    ctx.fillRect(ox - 9, oy - 6, 19, 13);
+    ctx.fillRect(ox - 6, oy - 8, 13, 17);
+    ctx.fillStyle = '#0D9488';
+    ctx.fillRect(ox - 8, oy - 5, 17, 11);
     ctx.fillStyle = '#CCFBF1';
-    ctx.fillRect(ox - 4, oy - 3, 9, 7);
+    ctx.fillRect(ox - 7, oy - 4, 15, 9);
+    ctx.fillRect(ox - 5, oy - 6, 11, 13);
     ctx.fillStyle = '#14B8A6';
-    ctx.fillRect(ox - 2, oy - 2, 5, 5);
+    ctx.fillRect(ox - 4, oy - 4, 9, 9);
     ctx.fillStyle = '#2DD4BF';
-    ctx.fillRect(ox - 1, oy - 2, 3, 5);
+    ctx.fillRect(ox - 3, oy - 3, 7, 7);
     ctx.fillStyle = '#090D16';
-    ctx.fillRect(ox, oy - 2, 1, 5);
+    ctx.fillRect(ox - 1, oy - 4, 3, 9);
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(ox - 1, oy - 2, 1, 1);
+    ctx.fillRect(ox - 2, oy - 3, 2, 2);
 
-    // 4. Blinding Concentrated Phantasmal Starburst right on the targeted enemy!
-    const coreR = 7 + pulse * 2;
-    drawFilledPixelDisk(ctx, fx, fy, coreR + 3, coreR + 2, '#0D9488');
-    drawFilledPixelDisk(ctx, fx, fy, coreR + 1, coreR, '#2DD4BF');
-    drawFilledPixelDisk(ctx, fx, fy, Math.max(3, coreR - 2), Math.max(3, coreR - 2), '#99F6E4');
-    drawFilledPixelDisk(ctx, fx, fy, 3, 3, '#FFFFFF');
-    drawPixelLine(ctx, fx - 12, fy, fx + 12, fy, 2, '#CCFBF1');
-    drawPixelLine(ctx, fx, fy - 10, fx, fy + 10, 2, '#FFFFFF');
+    // 4. Colossal Boiling Phantasmal Starburst right on the concentrated target!
+    const coreR = 14 + pulse * 2;
+    drawFilledPixelDisk(ctx, fx, fy, coreR + 4, coreR + 3, '#0F766E');
+    drawFilledPixelDisk(ctx, fx, fy, coreR + 1, coreR, '#14B8A6');
+    drawFilledPixelDisk(ctx, fx, fy, Math.max(6, coreR - 2), Math.max(5, coreR - 3), '#2DD4BF');
+    drawFilledPixelDisk(ctx, fx, fy, Math.max(4, coreR - 5), Math.max(4, coreR - 5), '#99F6E4');
+    drawFilledPixelDisk(ctx, fx, fy, 5, 5, '#FFFFFF');
+    drawPixelLine(ctx, fx - 22, fy, fx + 22, fy, 3, '#99F6E4');
+    drawPixelLine(ctx, fx, fy - 18, fx, fy + 18, 3, '#99F6E4');
+    drawPixelLine(ctx, fx - 16, fy, fx + 16, fy, 1, '#FFFFFF');
+    drawPixelLine(ctx, fx, fy - 14, fx, fy + 14, 1, '#FFFFFF');
 
     ctx.restore();
   }

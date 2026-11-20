@@ -3343,19 +3343,20 @@ export class ChickenTdEngine {
     target: ActiveEnemy
   ): void {
     const ox = tower.x;
-    const oy = tower.y - 20;
+    const oy = tower.y - 26;
     const fx = target.x ?? tower.x;
     const fy = target.y ?? tower.y;
-    const splashRadius = 120;
+    const splashRadius = 190;
     const isAether = stats.mutationTier === 'aether';
     const rayCol = isAether ? '#E879F9' : '#2DD4BF';
 
     this.audio.playPhantasmalDeathray();
-    this.spawnRing(ox, oy, 48, rayCol);
+    this.spawnRing(ox, oy, 68, rayCol);
     this.spawnRing(fx, fy, splashRadius, rayCol);
+    this.spawnRing(fx, fy, 115, '#99F6E4');
     this.spawnRing(fx, fy, 68, '#FFFFFF');
-    this.spawnPixelBurst(fx, fy, 14, rayCol);
-    this.spawnPixelBurst(fx, fy, 8, '#FFFFFF');
+    this.spawnPixelBurst(fx, fy, 18, rayCol);
+    this.spawnPixelBurst(fx, fy, 12, '#FFFFFF');
 
     const initialCarrier: ActiveProjectile = {
       id: this.nextEntityId++,
@@ -3411,7 +3412,7 @@ export class ChickenTdEngine {
       focalX: fx,
       focalY: fy,
       targetEnemyId: primaryId,
-      tickDamage: stats.effectiveDamage * 2.4,
+      tickDamage: stats.effectiveDamage * 2.2,
       splashRadius,
       burnDps: stats.effectiveBurnDps * 2.2,
       foxDamageMult: stats.effectiveFoxMult * 1.15,
@@ -3419,8 +3420,8 @@ export class ChickenTdEngine {
       canHitCamo: true,
       isAether,
       age: 0,
-      maxLifetime: 0.75,
-      tickCooldown: 0.15,
+      maxLifetime: 2.6,
+      tickCooldown: 0.16,
     });
   }
 
@@ -3436,21 +3437,29 @@ export class ChickenTdEngine {
       const owner = this.towerById.get(dr.ownerTowerId);
       if (owner) {
         dr.originX = owner.x;
-        dr.originY = owner.y - 20;
+        dr.originY = owner.y - 26;
       }
 
-      // Track the single concentrated target while alive!
+      // Track the single concentrated target while alive (or lock onto next target if slain mid-beam)!
       let liveTarget: ActiveEnemy | null = null;
       for (let i = 0; i < this.enemies.length; i++) {
         const cand = this.enemies[i];
         if (cand && cand.alive !== false && cand.id === dr.targetEnemyId) {
           liveTarget = cand;
-          if (cand.x !== undefined && cand.y !== undefined) {
-            dr.focalX = cand.x;
-            dr.focalY = cand.y;
-          }
           break;
         }
+      }
+      if (!liveTarget && owner && this.enemies.length > 0) {
+        const oStats = this.getEffectiveChickenStats(owner);
+        liveTarget =
+          this.pickTargetForTower(owner, oStats) ?? this.pickAnyMapTargetForTower(owner, oStats);
+        if (liveTarget) {
+          dr.targetEnemyId = liveTarget.id;
+        }
+      }
+      if (liveTarget && liveTarget.x !== undefined && liveTarget.y !== undefined) {
+        dr.focalX = liveTarget.x;
+        dr.focalY = liveTarget.y;
       }
       if (owner) {
         owner.angle = Math.atan2(dr.focalY - owner.y, dr.focalX - owner.x);
@@ -3458,7 +3467,7 @@ export class ChickenTdEngine {
 
       dr.tickCooldown -= dt;
       if (dr.tickCooldown <= 0 && this.enemies.length > 0) {
-        dr.tickCooldown = 0.15;
+        dr.tickCooldown = 0.16;
         const rayCol = dr.isAether ? '#E879F9' : '#2DD4BF';
         const tickCarrier: ActiveProjectile = {
           id: dr.id,

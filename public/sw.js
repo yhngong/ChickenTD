@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chickentd-app-cache-v10';
+const CACHE_NAME = 'chickentd-app-cache-v11';
 const CORE_ASSETS = [
   './',
   './index.html',

@@ -140,11 +140,11 @@ export class ChickenAudioEngine {
   }
 
   public playPhantasmalDeathray(): void {
-    // Moon Lord Phantasmal Deathray: eerie celestial charge whine -> deep resonant luminite beam roar!
-    this.tone('sine', 784, 1568, 0.1, 0.2, 0);
-    this.tone('sawtooth', 1174.66, 98, 0.62, 0.26, 0.06);
-    this.tone('triangle', 587.33, 65.41, 0.68, 0.24, 0.08);
-    this.tone('square', 293.66, 146.83, 0.45, 0.14, 0.1);
+    // Moon Lord Phantasmal Deathray: eerie celestial charge whine -> sustained deep luminite beam roar!
+    this.tone('sine', 784, 1568, 0.14, 0.2, 0);
+    this.tone('sawtooth', 1174.66, 82.41, 1.25, 0.26, 0.08);
+    this.tone('triangle', 587.33, 55.0, 1.45, 0.24, 0.1);
+    this.tone('square', 293.66, 110.0, 1.15, 0.14, 0.14);
   }
 
   public playCluckCannon(cannonId: CannonTypeId = 'shockwave'): void {
