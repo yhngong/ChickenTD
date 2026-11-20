@@ -205,18 +205,18 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'phoenix',
   'mecha',
   // === GEM EGG EXCLUSIVE UNITS (36 TOTAL) ===
-  'macho_cat',
+  'iron_spurs',
   'ramen_chef',
-  'eraser_tank',
+  'bastion_shield',
   'tesla',
   'cowboy_desperado',
-  'kasli_oracle',
+  'surge_oracle',
   'viking_jarl',
   'chrono',
   'overclock_engie',
   'cyber_sniper',
   'plague_doctor',
-  'gundam',
+  'aegis_mech',
   'pharaoh_ra',
   'samurai_shogun',
   'storm_dj',
@@ -226,11 +226,11 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'oni_warlord',
   'valkyrie',
   'idol_diva',
-  'yukimura_shadow',
+  'tengu_shadow',
   'astral_astrologer',
   'star_dread',
   'leviathan_kraken',
-  'bahamut_wyrm',
+  'abyss_wyrm',
   'quasar',
   'archangel_seraph',
   'chronos_empress',
@@ -238,7 +238,7 @@ export const CHICKEN_ORDER: readonly ChickenTypeId[] = [
   'mech_zilla',
   'gaia_creator',
   'void_singularity',
-  'cat_god_supreme',
+  'golden_deity',
   'solar_emperor',
   'eternity_weaver',
   // === COMPLETIONIST PINNACLE UNIT ===
@@ -1672,21 +1672,21 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // ==================== 20 GEM EGG EXCLUSIVE UNITS ABOVE CYBER-CLUCK 9000 ====================
+  // ==================== GEM EGG EXCLUSIVE UNITS ABOVE CYBER-CLUCK 9000 ====================
 
-  // 15. MACHO CAT-HEN (NEW #1) — Battle Cats Capsule Paw Brawler with Knockback!
-  macho_cat: {
-    id: 'macho_cat',
-    name: 'Macho Cat-Hen',
-    role: 'Knockback Paw Brawler',
+  // 15. IRON-SPUR BRAWLER — Heavy Gauntlet Palm-Strike Brawler with Knockback!
+  iron_spurs: {
+    id: 'iron_spurs',
+    name: 'Iron-Spur Brawler',
+    role: 'Gauntlet Palm Striker',
     baseCost: 1150,
     featherColor: '#FFFFFF',
     bellyColor: '#F1F5F9',
     accentColor: '#F43F5E',
-    projectileStyle: 'cat_paw',
+    projectileStyle: 'iron_fist',
     tiers: [
       {
-        tierName: 'Capsule Cat-Chick',
+        tierName: 'Dojo Bantamweight',
         upgradeCost: 0,
         damage: 9,
         fireRate: 3.6,
@@ -1702,10 +1702,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 22,
         savageCritChance: 0.08,
-        description: 'Rapid Battle-Cat paw slaps knock bugs backward along the path!',
+        description: 'Rapid iron-gauntlet palm waves knock bugs backward along the path!',
       },
       {
-        tierName: 'Mohawk Cluck-Cat',
+        tierName: 'Mohawk Spur-Fighter',
         upgradeCost: 920,
         damage: 16,
         fireRate: 4.5,
@@ -1721,10 +1721,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 30,
         savageCritChance: 0.12,
-        description: 'Wild mohawk fury! Stronger knockback & 12% Savage Blow!',
+        description: 'Fierce mohawk fury! Stronger knockback & 12% 3x Savage Crit!',
       },
       {
-        tierName: 'Crazed Macho Hen',
+        tierName: 'Frenzied Iron-Claw',
         upgradeCost: 2100,
         damage: 29,
         fireRate: 5.6,
@@ -1740,10 +1740,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 38,
         savageCritChance: 0.18,
-        description: 'Crazed purple-fire paws shove Foxes back & crit 18% of hits!',
+        description: 'Blazing violet-fire gauntlets shove Foxes back & crit 18% of hits!',
       },
       {
-        tierName: 'Manic Jiangshi Rooster',
+        tierName: 'Titan Fist Champion',
         upgradeCost: 4600,
         damage: 54,
         fireRate: 7.0,
@@ -1759,16 +1759,16 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 46,
         savageCritChance: 0.24,
-        description: 'Relentless 4-paw shockwave combo juggles entire waves backward!',
+        description: 'Relentless 4-fist shockwave combo juggles entire waves backward!',
       },
     ],
   },
 
-  // 16. ERASER SHIELD-HEN (NEW #2) — 360° Tremor Wall & Crowd Knockback Tank!
-  eraser_tank: {
-    id: 'eraser_tank',
-    name: 'Eraser Shield-Hen',
-    role: '360° Tremor Wall',
+  // 16. GRANITE BASTION-HEN — 360° Tremor Wall & Crowd Knockback Tank!
+  bastion_shield: {
+    id: 'bastion_shield',
+    name: 'Granite Bastion-Hen',
+    role: '360° Fortress Slam',
     baseCost: 1620,
     featherColor: '#F8FAFC',
     bellyColor: '#CBD5E1',
@@ -1776,7 +1776,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     projectileStyle: 'tremor_slam',
     tiers: [
       {
-        tierName: 'Wall Cat-Pullet',
+        tierName: 'Stonewall Pullet',
         upgradeCost: 0,
         damage: 18,
         fireRate: 1.9,
@@ -1791,10 +1791,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         foxDamageMult: 2.1,
         camoSight: true,
         knockback: 26,
-        description: '360° monolith slam knocks back & slows 24 nearby enemies!',
+        description: '360° tower-shield slam knocks back & slows 24 nearby enemies!',
       },
       {
-        tierName: 'Eraser Bastion',
+        tierName: 'Cobalt Bulwark',
         upgradeCost: 1350,
         damage: 34,
         fireRate: 2.3,
@@ -1809,10 +1809,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         foxDamageMult: 2.5,
         camoSight: true,
         knockback: 34,
-        description: 'Heavy rubberized shockwave erases armor & shoves packs back!',
+        description: 'Heavy granite shockwave cracks armor & shoves packs back!',
       },
       {
-        tierName: 'Manic Eraser Hen',
+        tierName: 'Obsidian Juggernaut',
         upgradeCost: 2950,
         damage: 64,
         fireRate: 2.85,
@@ -1830,7 +1830,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: '58% tremor stun + massive 360° lane pushback!',
       },
       {
-        tierName: 'Future Fortress Cluck',
+        tierName: 'Immortal Citadel Cluck',
         upgradeCost: 6400,
         damage: 124,
         fireRate: 3.5,
@@ -1932,11 +1932,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 18. SURGE PRIESTESS (NEW #3) — Kasli-inspired Ritual Surge Pillar Caster!
-  kasli_oracle: {
-    id: 'kasli_oracle',
-    name: 'Surge Priestess',
-    role: 'Ritual Surge Caster',
+  // 18. RIFT SURGE-PRIESTESS — Sky-Pillar Ritual Surge Caster!
+  surge_oracle: {
+    id: 'surge_oracle',
+    name: 'Rift Surge-Priestess',
+    role: 'Sky-Pillar Ritualist',
     baseCost: 2800,
     featherColor: '#F8FAFC',
     bellyColor: '#E2E8F0',
@@ -1959,7 +1959,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         foxDamageMult: 2.5,
         camoSight: true,
         knockback: 28,
-        description: 'Erupts cursed cyan Surge Pillars that knock back & hex swarms!',
+        description: 'Calls down cyan sky-pillars directly onto foes with knockback & hex!',
       },
       {
         tierName: 'Scourge Oracle',
@@ -1977,10 +1977,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         foxDamageMult: 3.0,
         camoSight: true,
         knockback: 36,
-        description: 'Twin ritual surges blast Foxes backward & burn at 34 DPS!',
+        description: 'Twin ritual sky-surges blast Foxes backward & burn at 34 DPS!',
       },
       {
-        tierName: 'Daughter of Chaos',
+        tierName: 'Herald of Chaos',
         upgradeCost: 4800,
         damage: 80,
         fireRate: 3.2,
@@ -1996,10 +1996,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 44,
         savageCritChance: 0.14,
-        description: 'Multi-hit chaos geysers shred Kitsunes & Wraiths effortlessly!',
+        description: 'Multi-hit chaos pillars shred Kitsunes & Wraiths from above!',
       },
       {
-        tierName: 'Kasli the Bane-Hen',
+        tierName: 'High Bane-Priestess',
         upgradeCost: 10200,
         damage: 148,
         fireRate: 4.0,
@@ -2015,7 +2015,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 54,
         savageCritChance: 0.2,
-        description: 'SupremeUber Surge Priestess! Triple curse pillars dominate lanes!',
+        description: 'Grand Rift Priestess! Triple sky-pillars dominate entire lanes!',
       },
     ],
   },
@@ -2233,11 +2233,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 20. HACKER NERD-HEN (NEW #4) — Cyberpunk Cat full-map orbital slow sniper!
+  // 20. HACKER NERD-HEN — Full-map cyber laser slow sniper!
   cyber_sniper: {
     id: 'cyber_sniper',
     name: 'Hacker Nerd-Hen',
-    role: 'Orbital Slow Sniper',
+    role: 'Matrix Laser Sniper',
     baseCost: 5200,
     featherColor: '#E2E8F0',
     bellyColor: '#BBF7D0',
@@ -2317,11 +2317,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 21. GUND-HEN RX-78 — Mobile-suit anti-Fox ion sniper
-  gundam: {
-    id: 'gundam',
-    name: 'Gund-Hen RX-78',
-    role: 'Mecha Ion Buster',
+  // 21. AEGIS MECHA RX-9 — Armored exosuit anti-Fox ion lancer
+  aegis_mech: {
+    id: 'aegis_mech',
+    name: 'Aegis Mecha RX-9',
+    role: 'Exosuit Ion Lancer',
     baseCost: 7600,
     featherColor: '#F8FAFC',
     bellyColor: '#93C5FD',
@@ -2487,11 +2487,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 23. STAR CRUSADER — Summoned Stand Brawler
+  // 23. STAR CRUSADER — Summoned Spirit Brawler
   stand_hen: {
     id: 'stand_hen',
     name: 'Star Crusader',
-    role: 'Summoned Stand Brawler',
+    role: 'Summoned Spirit Brawler',
     baseCost: 15000,
     featherColor: '#FEF3C7',
     bellyColor: '#FDE68A',
@@ -2499,7 +2499,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     projectileStyle: 'stand_fist',
     tiers: [
       {
-        tierName: 'Star Feather',
+        tierName: 'Astral Avatar',
         upgradeCost: 0,
         damage: 52,
         fireRate: 5.5,
@@ -2513,10 +2513,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         burnDps: 35,
         foxDamageMult: 2.9,
         camoSight: true,
-        description: 'Manifests Star Feather! Stand dashes to foes and throws rapid punch flurries!',
+        description: 'Manifests an Astral Guardian that dashes to foes and throws rapid punch flurries!',
       },
       {
-        tierName: 'Platinum Talon',
+        tierName: 'Starlight Talon',
         upgradeCost: 12500,
         damage: 92,
         fireRate: 6.8,
@@ -2530,7 +2530,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         burnDps: 75,
         foxDamageMult: 3.5,
         camoSight: true,
-        description: 'Faster Stand dash speed, wider shockwave punches & 3.5x Boss pummeling!',
+        description: 'Faster Guardian dash speed, wider shockwave punches & 3.5x Boss pummeling!',
       },
       {
         tierName: 'Astral Time-Skip',
@@ -2547,10 +2547,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         burnDps: 150,
         foxDamageMult: 4.2,
         camoSight: true,
-        description: 'Stand warps to targets at 840 spd with 58% Time-Skip punch barrages!',
+        description: 'Guardian warps to targets at 840 spd with 58% Time-Skip punch barrages!',
       },
       {
-        tierName: 'Crusader Over-Heaven',
+        tierName: 'Celestial Ascendant',
         upgradeCost: 55000,
         damage: 310,
         fireRate: 10.0,
@@ -2564,7 +2564,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         burnDps: 300,
         foxDamageMult: 5.0,
         camoSight: true,
-        description: 'Golden Requiem Stand! 10/sec hyper-ORA fist storms pummel Alpha Foxes!',
+        description: 'Golden Ascended Guardian! 10/sec hyper-flurry fist storms pummel Alpha Foxes!',
       },
     ],
   },
@@ -2872,11 +2872,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 26. SHADOW YUKIMURA (NEW #7) — Immortal Yukimura hyper-speed Fox-Boss Assassin!
-  yukimura_shadow: {
-    id: 'yukimura_shadow',
-    name: 'Shadow Yukimura',
-    role: 'Immortal Fox Assassin',
+  // 26. CRIMSON TENGU-HEN — Hyper-Speed Dash-Blitz Fox-Boss Assassin!
+  tengu_shadow: {
+    id: 'tengu_shadow',
+    name: 'Crimson Tengu-Hen',
+    role: 'Sky-Dive Fox Assassin',
     baseCost: 44000,
     featherColor: '#334155',
     bellyColor: '#94A3B8',
@@ -2884,7 +2884,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     projectileStyle: 'shadow_talon',
     tiers: [
       {
-        tierName: 'Tengu Crow-Hen',
+        tierName: 'Night-Crow Chick',
         upgradeCost: 0,
         damage: 135,
         fireRate: 4.6,
@@ -2899,10 +2899,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         foxDamageMult: 4.2,
         camoSight: true,
         savageCritChance: 0.2,
-        description: 'Blazing black-wing dive slashes deal 4.2x massive Fox damage!',
+        description: 'Blazing crimson dash-streaks slice 8 foes with 4.2x Fox damage!',
       },
       {
-        tierName: 'Wargod Sanada',
+        tierName: 'Scarlet Gale Tengu',
         upgradeCost: 36000,
         damage: 240,
         fireRate: 5.6,
@@ -2920,7 +2920,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: '4.9x Fox Boss slayer + 25% Savage Crit crimson talons!',
       },
       {
-        tierName: 'Immortal Yukimura',
+        tierName: 'Immortal Sky-Reaver',
         upgradeCost: 76000,
         damage: 440,
         fireRate: 6.8,
@@ -2939,7 +2939,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Instant-velocity shadow blitzes erase Phoenix & Mecha Foxes!',
       },
       {
-        tierName: 'Blood-Oath Tengu God',
+        tierName: 'Blood-Moon Tengu Lord',
         upgradeCost: 160000,
         damage: 810,
         fireRate: 8.2,
@@ -3046,19 +3046,19 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 28. AWAKENED BAHA-CLUCK (NEW #8) — Battle Cats Awakened Bahamut Dragon Nuker!
-  bahamut_wyrm: {
-    id: 'bahamut_wyrm',
-    name: 'Awakened Baha-Cluck',
-    role: 'Abyssal Dragon Nuker',
+  // 28. ABYSSAL WYRM-ROOSTER — Coiled Elder Dragon Nova Nuker!
+  abyss_wyrm: {
+    id: 'abyss_wyrm',
+    name: 'Abyssal Wyrm-Rooster',
+    role: 'Elder Dragon Nuker',
     baseCost: 94000,
     featherColor: '#1E293B',
     bellyColor: '#67E8F9',
     accentColor: '#22D3EE',
-    projectileStyle: 'bahamut_orb',
+    projectileStyle: 'wyrm_orb',
     tiers: [
       {
-        tierName: 'Crazed Bahamut Chick',
+        tierName: 'Feral Drake-Chick',
         upgradeCost: 0,
         damage: 360,
         fireRate: 2.9,
@@ -3074,10 +3074,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 36,
         savageCritChance: 0.22,
-        description: 'Hurls abyssal cyan Bahamut spheres with massive blast & knockback!',
+        description: 'Hurls abyssal cyan dragon-spheres with massive blast & knockback!',
       },
       {
-        tierName: 'Awakened Dragon-Hen',
+        tierName: 'Awakened Wyrm-Hen',
         upgradeCost: 76000,
         damage: 680,
         fireRate: 3.7,
@@ -3096,7 +3096,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Rushing triple dragon-flare combo nukes entire boss packs!',
       },
       {
-        tierName: 'Raging Bahamut Wyrm',
+        tierName: 'Raging Elder Dragon',
         upgradeCost: 162000,
         damage: 1280,
         fireRate: 4.6,
@@ -3115,7 +3115,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: 'Cataclysmic 128-AoE dragon detonations push Cosmic Foxes back!',
       },
       {
-        tierName: 'True Apocalypse Bahamut',
+        tierName: 'Apocalypse Dragon-King',
         upgradeCost: 340000,
         damage: 2480,
         fireRate: 5.8,
@@ -3131,7 +3131,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 68,
         savageCritChance: 0.4,
-        description: 'Legendary Battle-Cat Dragon! 4 world-ending blasts per volley!',
+        description: 'Ancient Elder Dragon! 4 world-ending blasts per volley!',
       },
     ],
   },
@@ -3398,7 +3398,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 32. GAIA MOTHER-HEN (NEW #10) — Battle Cats Legend Rare Prismatic World-Tree!
+  // 32. GAIA MOTHER-HEN — Mythic Prismatic World-Tree Sovereign!
   gaia_creator: {
     id: 'gaia_creator',
     name: 'Gaia Mother-Hen',
@@ -3425,7 +3425,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         foxDamageMult: 5.4,
         camoSight: true,
         savageCritChance: 0.28,
-        description: 'Legend Rare! Unleashes 4 rainbow nature prisms with 5.4x Boss wrath!',
+        description: 'Mythic World-Tree! Unleashes 4 rainbow nature prisms with 5.4x Boss wrath!',
       },
       {
         tierName: 'World-Tree Sovereign',
@@ -3463,7 +3463,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 42,
         savageCritChance: 0.4,
-        description: '6-way Legend prism storm! 40% 3x Savage Blows vaporize Freeplay!',
+        description: '6-way mythic prism storm! 40% 3x Savage Crits vaporize Freeplay!',
       },
       {
         tierName: 'Genesis Mother-Goddess',
@@ -3577,11 +3577,11 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 34. GOLDEN CLUCK-GOD (NEW #12) — Cat God the Golden 1,000,000-Corn Supreme Deity!
-  cat_god_supreme: {
-    id: 'cat_god_supreme',
-    name: 'Golden Cluck-God',
-    role: 'Supreme Battle Deity',
+  // 34. GOLDEN ROOST-DEITY — 1,000,000-Corn Olympian Sky-Smite Deity!
+  golden_deity: {
+    id: 'golden_deity',
+    name: 'Golden Roost-Deity',
+    role: 'Olympian Sky-Smite God',
     baseCost: 1000000,
     featherColor: '#FEF9C3',
     bellyColor: '#FACC15',
@@ -3589,7 +3589,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     projectileStyle: 'god_wrath',
     tiers: [
       {
-        tierName: 'Olympian Cluck-God',
+        tierName: 'Olympian Roost-God',
         upgradeCost: 0,
         damage: 1150,
         fireRate: 8.4,
@@ -3605,7 +3605,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 42,
         savageCritChance: 0.3,
-        description: 'Supreme Battle-Cat Deity! 5 golden wrath bolts + Knockback + 30% Crit!',
+        description: 'Olympian Roost Deity! Rains 5 golden sky-bolts + Knockback + 30% Crit!',
       },
       {
         tierName: 'Golden Miracle Deity',
@@ -3627,7 +3627,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: '6 divine lightning-suns smite every corner of the battlefield!',
       },
       {
-        tierName: 'Awakened Cluck-God',
+        tierName: 'Awakened Sky-Father',
         upgradeCost: 1750000,
         damage: 3850,
         fireRate: 11.0,
@@ -3643,10 +3643,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 68,
         savageCritChance: 0.42,
-        description: '7-stream divine judgment at 11.0/s! 42% 3x Savage Blows!',
+        description: '7-pillar heavenly judgment at 11.0/s! 42% 3x Savage Crits!',
       },
       {
-        tierName: 'The Ultimate Cat-Cluck God',
+        tierName: 'Supreme Golden All-Cluck',
         upgradeCost: 3600000,
         damage: 7200,
         fireRate: 12.6,
@@ -3662,7 +3662,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 85,
         savageCritChance: 0.48,
-        description: '100+ divine wrath bolts/sec, 48% 3x Crits & 9.0x Boss erasure!',
+        description: '100+ golden sky-smites/sec, 48% 3x Crits & 9.0x Boss erasure!',
       },
     ],
   },
@@ -4980,7 +4980,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         description: '4 meltdown beams inflict 3,000/s atomic burn across 146 AoE!',
       },
       {
-        tierName: 'Apex Godzilla-Cluck Zero',
+        tierName: 'Apex Kaiju-Cluck Zero',
         upgradeCost: 1180000,
         damage: 5300,
         fireRate: 8.8,
@@ -4996,12 +4996,12 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 82,
         savageCritChance: 0.44,
-        description: '5 spiral hyper-atomic breath beams obliterate entire Freeplay waves!',
+        description: '5 Cherenkov atomic-breath laser torrents obliterate Freeplay waves!',
       },
     ],
   },
 
-  // E15. HELIOS SUN-EMPEROR (1,450,000 Corn Mythic — Above Golden Cluck-God, Below Complete Cluck!)
+  // E15. HELIOS SUN-EMPEROR (1,450,000 Corn Mythic — Above Golden Roost-Deity, Below Complete Cluck!)
   solar_emperor: {
     id: 'solar_emperor',
     name: 'Helios Sun-Emperor',
@@ -5181,21 +5181,21 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
     ],
   },
 
-  // 55. THE COMPLETE CLUCK — Terraria Zenith Pinnacle! Unlocked ONLY by owning all 54 other Chickens!
+  // 55. THE COMPLETE CLUCK — Completionist Pinnacle! Unlocked ONLY by owning all 54 other Chickens!
   // Base range is tight (120 -> 155 px) so swapping between Mastered (+150% DMG, +200% Range => 360 -> 465 px)
   // and Aether (+300% DMG, +0% Range => 120 -> 155 px) creates a true strategic range-vs-DPS choice!
   complete_cluck: {
     id: 'complete_cluck',
     name: 'The Complete Cluck',
-    role: 'Terrarian Zenith Blade',
+    role: 'Boomerang Blade Storm',
     baseCost: 3000000,
     featherColor: '#ECFDF5',
     bellyColor: '#99F6E4',
     accentColor: '#2DD4BF',
-    projectileStyle: 'zenith_blade',
+    projectileStyle: 'infinity_blade',
     tiers: [
       {
-        tierName: 'Forged Zenith Sovereign',
+        tierName: 'Forged Sovereign Cluck',
         upgradeCost: 0,
         damage: 2900,
         fireRate: 11.8,
@@ -5212,10 +5212,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         knockback: 42,
         savageCritChance: 0.42,
         description:
-          'Sweeping Terraria Zenith sword arcs! Swap Mastered (wide range) or Aether (close DPS). No Support buffs!',
+          'Elliptical boomeranging sword-arcs converge on targets & return! Swap Mastered / Aether. No Support buffs!',
       },
       {
-        tierName: 'Terra-Meowmere Vortex',
+        tierName: 'Prismatic Vortex Monarch',
         upgradeCost: 2600000,
         damage: 5400,
         fireRate: 13.2,
@@ -5231,10 +5231,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 54,
         savageCritChance: 0.48,
-        description: '7 converging rainbow sword arcs carve through entire boss formations!',
+        description: '7 crossing boomerang blades slice enemies outbound AND on return!',
       },
       {
-        tierName: 'Influx-Solar Infinity',
+        tierName: 'Astral Infinity Sovereign',
         upgradeCost: 5600000,
         damage: 10200,
         fireRate: 14.8,
@@ -5250,10 +5250,10 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 66,
         savageCritChance: 0.54,
-        description: '8 prismatic infinity blades at 14.8/s with 54% 3x Savage Strikes!',
+        description: '8 returning infinity-blades at 14.8/s with 54% 3x Savage Strikes!',
       },
       {
-        tierName: 'True Zenith Complete Cluck',
+        tierName: 'True Complete Cluck',
         upgradeCost: 11800000,
         damage: 19500,
         fireRate: 16.5,
@@ -5269,7 +5269,7 @@ export const CHICKEN_DEFS: Record<ChickenTypeId, ChickenTowerDef> = {
         camoSight: true,
         knockback: 80,
         savageCritChance: 0.62,
-        description: 'All 54 Chickens forged into one ultimate Zenith storm! 62% Crits & 11.5x vs Foxes!',
+        description: 'All 54 Chickens forged into one boomerang blade tempest! 62% Crits & 11.5x vs Foxes!',
       },
     ],
   },

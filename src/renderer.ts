@@ -3,6 +3,7 @@ import { ChickenTdEngine } from './engine';
 import {
   canPlaceChickenAt,
   getActiveMap,
+  getChickenFootprintRadius,
   getPointAlongPath,
   MAP_DEFS,
   MapDefinition,
@@ -12,11 +13,13 @@ import { MUTATION_DEFS, PROGRESSION } from './progression';
 import { PIXEL_ATLAS } from './sprites';
 import {
   ActiveEnemy,
+  ActiveHazardZone,
   ActiveProjectile,
   ActiveStand,
   ChickenTypeId,
   MapId,
   PlacedChicken,
+  VisualBeamEffect,
 } from './types';
 
 export interface GhostPlacementState {
@@ -216,6 +219,28 @@ function drawFilledPixelDisk(
     const normY = dy / iry;
     const span = Math.floor(irx * Math.sqrt(Math.max(0, 1 - normY * normY)));
     ctx.fillRect(cx - span, cy + dy, span * 2 + 1, 1);
+  }
+}
+
+function drawPixelLine(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  thickness: number,
+  color: string
+): void {
+  ctx.fillStyle = color;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const steps = Math.max(1, Math.max(Math.abs(dx), Math.abs(dy)));
+  const sz = Math.max(1, Math.round(thickness));
+  const half = Math.floor(sz / 2);
+  for (let i = 0; i <= steps; i++) {
+    const px = Math.round(x0 + (dx * i) / steps);
+    const py = Math.round(y0 + (dy * i) / steps);
+    ctx.fillRect(px - half, py - half, sz, sz);
   }
 }
 
@@ -510,18 +535,19 @@ export class MeadowRenderer {
       }
     }
 
-    // 4. Ghost Placement Preview (Pixel Sprite + Pixel Range Ring + Support Aura Preview!)
+    // 4. Ghost Placement Preview (Pixel Sprite + Footprint Ring + Range Ring + Support Aura Preview!)
     if (ghost.typeId && ghost.insideCanvas) {
       const def = CHICKEN_DEFS[ghost.typeId];
       const cost = engine.getTowerBaseCost(ghost.typeId);
       const valid =
         engine.isChickenUnlocked(ghost.typeId) &&
-        canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers) &&
+        canPlaceChickenAt(ghost.mouseX, ghost.mouseY, engine.towers, undefined, ghost.typeId) &&
         engine.corn >= cost;
       const range = engine.getPreviewRange(ghost.typeId);
       const gx = toPx(ghost.mouseX);
       const gy = toPx(ghost.mouseY);
       const gr = toPx(range);
+      const footPx = Math.max(8, toPx(getChickenFootprintRadius(ghost.typeId)));
 
       drawFilledPixelDisk(
         ctx,
@@ -532,6 +558,7 @@ export class MeadowRenderer {
         valid ? 'rgba(74, 222, 128, 0.13)' : 'rgba(239, 68, 68, 0.16)'
       );
       drawPixelCircle(ctx, gx, gy, gr, valid ? '#4ADE80' : '#EF4444', true);
+      drawPixelCircle(ctx, gx, gy + 2, footPx, valid ? '#86EFAC' : '#FCA5A5', false);
 
       if (def.isSupport) {
         const previewBuffed = engine.getTowersInPreviewSupportAura(
@@ -540,7 +567,8 @@ export class MeadowRenderer {
           ghost.mouseY
         );
         for (const ally of previewBuffed) {
-          drawPixelCircle(ctx, toPx(ally.x), toPx(ally.y) + 2, 12, '#67E8F9', false);
+          const allyFoot = Math.max(10, toPx(getChickenFootprintRadius(ally.typeId)));
+          drawPixelCircle(ctx, toPx(ally.x), toPx(ally.y) + 2, allyFoot, '#67E8F9', false);
         }
       }
 
@@ -553,9 +581,16 @@ export class MeadowRenderer {
           ctx.drawImage(PIXEL_ATLAS.standSprites.normalIdle, gx - 18, gy - 17);
           ctx.globalAlpha = 0.88;
         }
-        ctx.drawImage(spr.idle, gx - 11, gy - 12);
+        const halfW = Math.floor(spr.idle.width / 2);
+        const halfH = Math.floor(spr.idle.height / 2);
+        ctx.drawImage(spr.idle, gx - halfW, gy - halfH - 1);
         ctx.restore();
       }
+    }
+
+    // 4.5. Persistent Ground Hazard Zones (Sticky Honey, Acid Pools, Miasma, Whirlpools, Black Holes!)
+    for (let i = 0; i < engine.hazardZones.length; i++) {
+      this.drawPixelHazardZone(ctx, engine.hazardZones[i], nowSec);
     }
 
     // 5. Placed Chicken Troops (cached depth-sort by Y for authentic 2D pixel overlap!)
@@ -605,13 +640,18 @@ export class MeadowRenderer {
       }
     }
 
-    // 6.5. Summoned Astral Stands (fly out from Star Crusader & ORA-punch enemies!)
+    // 6.5. Summoned Astral Guardians (fly out from Star Crusader & flurry-punch enemies!)
     for (let i = 0; i < engine.stands.length; i++) {
       const stand = engine.stands[i];
       const owner = engine.getTowerById(stand.ownerTowerId);
       if (owner) {
         this.drawPixelActiveStand(ctx, stand, owner, nowSec);
       }
+    }
+
+    // 6.8. Instant Piercing Laser Beams & Jagged Chain-Lightning Arcs!
+    for (let i = 0; i < engine.beams.length; i++) {
+      this.drawPixelBeam(ctx, engine.beams[i], nowSec);
     }
 
     // 7. Pixel Projectiles
@@ -715,10 +755,11 @@ export class MeadowRenderer {
     const eff = engine.getEffectiveChickenStats(tower);
     const mutTier = PROGRESSION.getMutation(tower.typeId);
     const mutColor = mutTier ? MUTATION_DEFS[mutTier].color : null;
+    const footPx = Math.max(8, toPx(getChickenFootprintRadius(tower.typeId)) - 1);
 
     if (engine.cannonDamageBoostTimer > 0) {
       // Blazing golden-orange Overdrive ring when Damage Boost Cannon is active!
-      const boostR = 11 + (Math.floor(nowSec * 8) % 2);
+      const boostR = footPx + 1 + (Math.floor(nowSec * 8) % 2);
       drawPixelCircle(
         ctx,
         px,
@@ -729,21 +770,25 @@ export class MeadowRenderer {
       );
     } else if (def.isSupport && !isSelected) {
       // Subtle ambient support beacon ring under Support Chickens!
-      const supR = 11 + (Math.floor(nowSec * 3) % 2);
+      const supR = footPx + 1 + (Math.floor(nowSec * 3) % 2);
       drawPixelCircle(ctx, px, py + 2, supR, '#67E8F9', true);
     }
 
     if (isSelected) {
-      drawPixelCircle(ctx, px, py + 2, 10, '#FACC15', false);
+      drawPixelCircle(ctx, px, py + 2, footPx, '#FACC15', false);
     } else if (mutColor) {
-      const auraR = (mutTier === 'legendary' ? 10 : 9) + (Math.floor(nowSec * 5) % 2);
+      const auraR =
+        footPx - (mutTier === 'legendary' || mutTier === 'mastered' || mutTier === 'aether' ? 0 : 1) +
+        (Math.floor(nowSec * 5) % 2);
       drawPixelCircle(ctx, px, py + 2, auraR, mutColor, true);
     } else if (tower.tier === 3) {
-      const auraR = 9 + (Math.floor(nowSec * 4) % 2);
+      const auraR = Math.max(8, footPx - 1) + (Math.floor(nowSec * 4) % 2);
       drawPixelCircle(ctx, px, py + 2, auraR, '#FDE047', true);
     }
 
     const frame = tower.recoil > 0.35 ? spr.attack : spr.idle;
+    const halfW = Math.floor(frame.width / 2);
+    const halfH = Math.floor(frame.height / 2);
     const faceLeft = Math.cos(tower.angle) < -0.15;
     const cuteIdleBob =
       tower.recoil <= 0.05 && Math.sin(nowSec * 3.6 + tower.id * 1.9) > 0.62 ? -1 : 0;
@@ -752,20 +797,21 @@ export class MeadowRenderer {
       ctx.save();
       ctx.translate(px, py + cuteIdleBob);
       ctx.scale(-1, 1);
-      ctx.drawImage(frame, -11, -12);
+      ctx.drawImage(frame, -halfW, -halfH - 1);
       ctx.restore();
     } else {
-      ctx.drawImage(frame, px - 11, py + cuteIdleBob - 12);
+      ctx.drawImage(frame, px - halfW, py + cuteIdleBob - halfH - 1);
     }
 
     // Crisp Pixel Buff Indicator Arrow above Chicken if buffed by a nearby Support Chicken!
     if (eff.supportBuffCount > 0 && !def.isSupport) {
-      const by = py - 14 + (Math.floor(nowSec * 4 + tower.id) % 2);
+      const bx = px + Math.max(5, halfW - 4);
+      const by = py - halfH - 3 + (Math.floor(nowSec * 4 + tower.id) % 2);
       ctx.fillStyle = OUTLINE;
-      ctx.fillRect(px + 6, by - 1, 5, 5);
+      ctx.fillRect(bx, by - 1, 5, 5);
       ctx.fillStyle = '#4ADE80';
-      ctx.fillRect(px + 8, by, 1, 3);
-      ctx.fillRect(px + 7, by + 1, 3, 1);
+      ctx.fillRect(bx + 2, by, 1, 3);
+      ctx.fillRect(bx + 1, by + 1, 3, 1);
     }
 
     // Crisp Pixel Tier Pips underneath the Chicken (1..4 golden stars/pips + Mutation Crystal!)
@@ -773,7 +819,7 @@ export class MeadowRenderer {
     const extraMutWidth = mutColor ? 4 : 0;
     const totalW = pipCount * 3 - 1 + extraMutWidth;
     const startX = px - Math.floor(totalW / 2);
-    const pipY = py + 9;
+    const pipY = py + Math.max(8, halfH - 2);
     ctx.fillStyle = OUTLINE;
     ctx.fillRect(startX - 1, pipY - 1, totalW + 2, 4);
     for (let p = 0; p < pipCount; p++) {
@@ -801,7 +847,7 @@ export class MeadowRenderer {
     const sy = toPx(stand.y);
     const isRequiem = owner.tier === 3;
 
-    // 1. Dotted Astral Spirit Tether linking Stand User Chicken -> Summoned Stand!
+    // 1. Dotted Astral Spirit Tether linking Guardian Chicken -> Summoned Spirit!
     const distPx = Math.hypot(sx - ox, sy - oy);
     if (distPx > 8) {
       const steps = Math.min(8, Math.max(2, Math.floor(distPx / 7)));
@@ -816,12 +862,12 @@ export class MeadowRenderer {
       }
     }
 
-    // 2. Requiem Golden Aura Ring at Tier 4!
+    // 2. Ascended Golden Aura Ring at Tier 4!
     if (isRequiem) {
       drawPixelCircle(ctx, sx, sy, 10 + (Math.floor(nowSec * 6) % 2), '#FACC15', true);
     }
 
-    // 3. Astral Stand Spirit Sprite (rapidly alternates idle & multi-fist ORA barrage while punching!)
+    // 3. Astral Guardian Spirit Sprite (rapidly alternates idle & multi-fist flurry while punching!)
     const isPunchFlurry =
       stand.punchAnim > 0.12 ||
       (stand.state === 'punching' && Math.floor(nowSec * 22) % 2 === 0);
@@ -845,7 +891,7 @@ export class MeadowRenderer {
     ctx.drawImage(sprite, -11, -11);
     ctx.restore();
 
-    // 4. Extra Dynamic Directional ORA Fist Streaks right into the enemy when punching!
+    // 4. Extra Dynamic Directional Astral Fist Streaks right into the enemy when punching!
     if (stand.punchAnim > 0.2) {
       const cos = Math.cos(stand.angle);
       const sin = Math.sin(stand.angle);
@@ -864,6 +910,156 @@ export class MeadowRenderer {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(fx, fy - 1, 1, 1);
       }
+    }
+  }
+
+  private drawPixelHazardZone(
+    ctx: CanvasRenderingContext2D,
+    z: ActiveHazardZone,
+    nowSec: number
+  ): void {
+    const zx = toPx(z.x);
+    const zy = toPx(z.y);
+    const rx = Math.max(6, toPx(z.radius));
+    const ry = Math.max(4, Math.round(rx * 0.65));
+    const fadeRatio = z.age > z.maxLifetime * 0.72 ? (z.maxLifetime - z.age) / (z.maxLifetime * 0.28) : 1;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.2, Math.min(0.88, fadeRatio * 0.85));
+
+    switch (z.zoneStyle) {
+      case 'honey': {
+        drawFilledPixelDisk(ctx, zx, zy, rx, ry, '#92400E');
+        drawFilledPixelDisk(ctx, zx, zy, Math.max(4, rx - 1), Math.max(3, ry - 1), '#D97706');
+        drawFilledPixelDisk(ctx, zx, zy, Math.max(2, rx - 4), Math.max(2, ry - 3), '#FACC15');
+        ctx.fillStyle = '#FEF9C3';
+        const gOff = Math.floor(nowSec * 3 + z.id) % 3;
+        ctx.fillRect(zx - 3 + gOff, zy - 1, 2, 1);
+        ctx.fillRect(zx + 2 - gOff, zy + 1, 1, 1);
+        break;
+      }
+      case 'acid':
+      case 'miasma': {
+        const isAcid = z.zoneStyle === 'acid';
+        drawFilledPixelDisk(ctx, zx, zy, rx, ry, isAcid ? '#064E3B' : '#365314');
+        drawFilledPixelDisk(
+          ctx,
+          zx,
+          zy,
+          Math.max(4, rx - 1),
+          Math.max(3, ry - 1),
+          isAcid ? '#10B981' : '#65A30D'
+        );
+        drawFilledPixelDisk(
+          ctx,
+          zx,
+          zy,
+          Math.max(2, rx - 4),
+          Math.max(2, ry - 3),
+          isAcid ? '#6EE7B7' : '#BEF264'
+        );
+        // Animated rising toxic bubbles
+        for (let b = 0; b < 3; b++) {
+          const ph = (nowSec * 2.5 + z.id * 0.7 + b * 1.1) % 1;
+          const bx = zx + Math.round(Math.cos(b * 2.1 + z.id) * (rx * 0.45));
+          const by = zy + Math.round(Math.sin(b * 2.1 + z.id) * (ry * 0.35) - ph * 4);
+          ctx.fillStyle = isAcid ? '#ECFDF5' : '#FEF9C3';
+          ctx.fillRect(bx, by, 2, 2);
+        }
+        break;
+      }
+      case 'whirlpool': {
+        drawFilledPixelDisk(ctx, zx, zy, rx, ry, '#0F766E');
+        drawFilledPixelDisk(ctx, zx, zy, Math.max(4, rx - 2), Math.max(3, ry - 1), '#0891B2');
+        const spin = nowSec * 5 + z.id;
+        for (let a = 0; a < 4; a++) {
+          const ang = spin + (a * Math.PI) / 2;
+          const sx = zx + Math.round(Math.cos(ang) * (rx * 0.55));
+          const sy = zy + Math.round(Math.sin(ang) * (ry * 0.55));
+          ctx.fillStyle = a % 2 === 0 ? '#67E8F9' : '#E0F2FE';
+          ctx.fillRect(sx - 1, sy - 1, 2, 2);
+        }
+        drawFilledPixelDisk(ctx, zx, zy, 3, 2, '#090D16');
+        break;
+      }
+      case 'singularity': {
+        drawPixelCircle(ctx, zx, zy, rx + (Math.floor(nowSec * 8) % 2), '#C084FC', true);
+        drawFilledPixelDisk(ctx, zx, zy, Math.max(5, rx - 1), Math.max(4, ry), '#7E22CE');
+        const spin = -nowSec * 7 + z.id;
+        for (let a = 0; a < 4; a++) {
+          const ang = spin + (a * Math.PI) / 2;
+          const sx = zx + Math.round(Math.cos(ang) * (rx * 0.6));
+          const sy = zy + Math.round(Math.sin(ang) * (ry * 0.6));
+          ctx.fillStyle = a % 2 === 0 ? '#F472B6' : '#38BDF8';
+          ctx.fillRect(sx - 1, sy - 1, 2, 2);
+        }
+        drawFilledPixelDisk(ctx, zx, zy, Math.max(3, Math.floor(rx * 0.42)), Math.max(2, Math.floor(ry * 0.45)), '#090D16');
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
+  private drawPixelBeam(
+    ctx: CanvasRenderingContext2D,
+    bm: VisualBeamEffect,
+    nowSec: number
+  ): void {
+    if (bm.points.length < 2) return;
+    const fade = Math.max(0.15, 1 - bm.age / Math.max(0.05, bm.lifetime));
+
+    if (bm.kind === 'laser') {
+      const p0 = bm.points[0];
+      const p1 = bm.points[bm.points.length - 1];
+      const x0 = toPx(p0.x);
+      const y0 = toPx(p0.y);
+      const x1 = toPx(p1.x);
+      const y1 = toPx(p1.y);
+      const outerW = Math.max(2, Math.round(toPx(bm.width) * (0.55 + 0.45 * fade)));
+      const coreW = Math.max(1, outerW - 2);
+      drawPixelLine(ctx, x0, y0, x1, y1, outerW, bm.outerColor);
+      drawPixelLine(ctx, x0, y0, x1, y1, coreW, bm.coreColor);
+      // Crisp muzzle & endpoint star flash
+      ctx.fillStyle = bm.outerColor;
+      ctx.fillRect(x0 - 2, y0 - 2, 5, 5);
+      ctx.fillRect(x1 - 2, y1 - 2, 5, 5);
+      ctx.fillStyle = bm.coreColor;
+      ctx.fillRect(x0 - 1, y0 - 1, 3, 3);
+      ctx.fillRect(x1 - 1, y1 - 1, 3, 3);
+      return;
+    }
+
+    // Jagged forked chain-lightning hopping enemy-to-enemy!
+    const flickerSeed = Math.floor(nowSec * 35);
+    for (let k = 0; k < bm.points.length - 1; k++) {
+      const ax = toPx(bm.points[k].x);
+      const ay = toPx(bm.points[k].y);
+      const bx = toPx(bm.points[k + 1].x);
+      const by = toPx(bm.points[k + 1].y);
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len = Math.max(1, Math.hypot(dx, dy));
+      const nx = -dy / len;
+      const ny = dx / len;
+      const segs = 4;
+      let prevX = ax;
+      let prevY = ay;
+      for (let s = 1; s <= segs; s++) {
+        const t = s / segs;
+        let curX = Math.round(ax + dx * t);
+        let curY = Math.round(ay + dy * t);
+        if (s < segs) {
+          const jag = (((k * 7 + s * 13 + flickerSeed) % 5) - 2) * 1.8;
+          curX += Math.round(nx * jag);
+          curY += Math.round(ny * jag);
+        }
+        drawPixelLine(ctx, prevX, prevY, curX, curY, 2, bm.outerColor);
+        drawPixelLine(ctx, prevX, prevY, curX, curY, 1, bm.coreColor);
+        prevX = curX;
+        prevY = curY;
+      }
+      ctx.fillStyle = bm.coreColor;
+      ctx.fillRect(bx - 1, by - 1, 3, 3);
     }
   }
 
@@ -949,8 +1145,55 @@ export class MeadowRenderer {
   }
 
   private drawPixelProjectile(ctx: CanvasRenderingContext2D, p: ActiveProjectile): void {
-    const px = toPx(p.x);
-    const py = toPx(p.y);
+    let px = toPx(p.x);
+    let py = toPx(p.y);
+
+    // Specialized trajectory rendering (parabolic mortar lift + shadow, sky meteors, dash blurs, rifts!)
+    if (p.motionMode === 'lob_arc') {
+      const t = Math.max(0, Math.min(1, p.age / Math.max(0.05, p.maxLifetime)));
+      const lift = toPx(4 * (p.arcHeight ?? 36) * t * (1 - t));
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.48)';
+      ctx.fillRect(px - 3, py + 1, 6, 2);
+      py -= lift;
+    } else if (p.motionMode === 'sky_drop') {
+      const tx = px - Math.round(Math.cos(p.rotation) * 11);
+      const ty = py - Math.round(Math.sin(p.rotation) * 11);
+      drawPixelLine(ctx, tx, ty, px, py, 3, p.color);
+      drawPixelLine(ctx, tx, ty, px, py, 1, '#FFFFFF');
+    } else if (p.motionMode === 'dash_streak') {
+      const tx = px - Math.round(Math.cos(p.rotation) * 12);
+      const ty = py - Math.round(Math.sin(p.rotation) * 12);
+      drawPixelLine(ctx, tx, ty, px, py, 3, '#991B1B');
+      drawPixelLine(ctx, tx, ty, px, py, 1, '#FCA5A5');
+    } else if (p.motionMode === 'rift_cross') {
+      drawPixelLine(ctx, px - 5, py - 4, px + 5, py + 4, 2, '#A855F7');
+      drawPixelLine(ctx, px - 5, py + 4, px + 5, py - 4, 2, '#22D3EE');
+      drawPixelLine(ctx, px - 3, py - 2, px + 3, py + 2, 1, '#FFFFFF');
+    } else if (
+      p.motionMode === 'ellipse_return' &&
+      (p.style === 'boomerang' || p.style === 'viking_axe') &&
+      p.originX !== undefined &&
+      p.originY !== undefined &&
+      p.semiMajor !== undefined &&
+      p.semiMinor !== undefined
+    ) {
+      // Subtle curved return-arc trail for boomerangs & returning axes
+      const prog = p.age / Math.max(0.05, p.maxLifetime);
+      const cosA = Math.cos(p.aimAngle ?? 0);
+      const sinA = Math.sin(p.aimAngle ?? 0);
+      const side = p.sideSign ?? 1;
+      for (let s = 1; s <= 2; s++) {
+        const tp = prog - s * 0.035;
+        if (tp <= 0) break;
+        const th = 2 * Math.PI * tp;
+        const lx = p.semiMajor * (1 - Math.cos(th));
+        const ly = side * p.semiMinor * Math.sin(th);
+        const wx = toPx(p.originX + lx * cosA - ly * sinA);
+        const wy = toPx(p.originY + lx * sinA + ly * cosA);
+        ctx.fillStyle = p.style === 'viking_axe' ? '#38BDF8' : '#FBBF24';
+        ctx.fillRect(wx, wy, 2 - (s >> 1), 2 - (s >> 1));
+      }
+    }
 
     switch (p.style) {
       case 'feather_slash': {
@@ -1163,13 +1406,15 @@ export class MeadowRenderer {
         ctx.fillRect(px - 1, py - 1, 3, 3);
         break;
       }
-      case 'cat_paw': {
+      case 'iron_fist': {
         ctx.fillStyle = OUTLINE;
         ctx.fillRect(px - 3, py - 3, 6, 6);
-        ctx.fillStyle = '#FFFFFF';
+        ctx.fillStyle = '#DC2626';
         ctx.fillRect(px - 2, py - 2, 4, 4);
-        ctx.fillStyle = '#FB7185';
-        ctx.fillRect(px - 1, py - 1, 2, 2);
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(px - 1, py - 2, 3, 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(px, py - 1, 1, 1);
         break;
       }
       case 'surge_pillar': {
@@ -1221,7 +1466,7 @@ export class MeadowRenderer {
         ctx.fillRect(px - 1, py - 1, 2, 2);
         break;
       }
-      case 'bahamut_orb': {
+      case 'wyrm_orb': {
         ctx.fillStyle = OUTLINE;
         ctx.fillRect(px - 4, py - 4, 8, 8);
         ctx.fillStyle = '#1E293B';
@@ -1467,28 +1712,68 @@ export class MeadowRenderer {
       }
       case 'bass_pulse':
         break;
-      case 'zenith_blade': {
-        // Terraria Zenith: spinning multi-sword rainbow arcs (or Shimmer-violet Aether blades)!
+      case 'infinity_blade': {
+        // The Complete Cluck: boomeranging multi-sword sovereign rainbow / aether arcs!
         const isAether = p.color === '#E879F9';
         const swordColors = isAether
           ? ['#E879F9', '#C084FC', '#38BDF8', '#F472B6']
           : ['#4ADE80', '#22D3EE', '#F472B6', '#FACC15', '#C084FC', '#FB7185'];
         const bladeCol = swordColors[p.id % swordColors.length];
-        const dx = Math.round(Math.cos(p.rotation) * 4);
-        const dy = Math.round(Math.sin(p.rotation) * 4);
-        // Afterimage arc trail
-        ctx.fillStyle = isAether ? '#A855F7' : '#14B8A6';
-        ctx.fillRect(px - dx - 1, py - dy - 1, 3, 3);
-        // Outlined spinning Terraria sword blade + golden hilt + white edge gleam
-        ctx.fillStyle = OUTLINE;
-        ctx.fillRect(px - 3, py - 3, 7, 7);
-        ctx.fillStyle = '#FACC15';
-        ctx.fillRect(px - 2, py + 1, 2, 2);
-        ctx.fillStyle = bladeCol;
-        ctx.fillRect(px - 2, py - 2, 5, 4);
-        ctx.fillRect(px + dx * 0.5, py + dy * 0.5, 2, 2);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(px, py - 2, 2, 2);
+        const ribbonCol = isAether ? '#A855F7' : swordColors[(p.id + 2) % swordColors.length];
+
+        // Curved elliptical ribbon wake behind the boomeranging blade!
+        if (
+          p.motionMode === 'ellipse_return' &&
+          p.originX !== undefined &&
+          p.originY !== undefined &&
+          p.semiMajor !== undefined &&
+          p.semiMinor !== undefined
+        ) {
+          const prog = p.age / Math.max(0.05, p.maxLifetime);
+          const cosA = Math.cos(p.aimAngle ?? 0);
+          const sinA = Math.sin(p.aimAngle ?? 0);
+          const side = p.sideSign ?? 1;
+          let prevWx = px;
+          let prevWy = py;
+          for (let s = 1; s <= 5; s++) {
+            const tp = prog - s * 0.024;
+            if (tp <= 0) break;
+            const th = 2 * Math.PI * tp;
+            const lx = p.semiMajor * (1 - Math.cos(th));
+            const ly = side * p.semiMinor * Math.sin(th);
+            const wx = toPx(p.originX + lx * cosA - ly * sinA);
+            const wy = toPx(p.originY + lx * sinA + ly * cosA);
+            drawPixelLine(ctx, prevWx, prevWy, wx, wy, s <= 2 ? 3 : 2, s <= 2 ? bladeCol : ribbonCol);
+            if (s <= 2) {
+              drawPixelLine(ctx, prevWx, prevWy, wx, wy, 1, '#FFFFFF');
+            }
+            prevWx = wx;
+            prevWy = wy;
+          }
+        }
+
+        // Tangent-aligned pixel broadsword blade + golden crossguard + white edge gleam
+        const fx = Math.cos(p.rotation);
+        const fy = Math.sin(p.rotation);
+        const rx = -fy;
+        const ry = fx;
+        const tipX = Math.round(px + fx * 4);
+        const tipY = Math.round(py + fy * 4);
+        const hiltX = Math.round(px - fx * 3);
+        const hiltY = Math.round(py - fy * 3);
+        drawPixelLine(ctx, hiltX, hiltY, tipX, tipY, 3, OUTLINE);
+        drawPixelLine(ctx, hiltX, hiltY, tipX, tipY, 2, bladeCol);
+        drawPixelLine(ctx, px, py, tipX, tipY, 1, '#FFFFFF');
+        // Golden crossguard
+        drawPixelLine(
+          ctx,
+          Math.round(hiltX - rx * 2),
+          Math.round(hiltY - ry * 2),
+          Math.round(hiltX + rx * 2),
+          Math.round(hiltY + ry * 2),
+          1,
+          '#FACC15'
+        );
         break;
       }
       default:

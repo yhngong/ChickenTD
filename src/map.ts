@@ -1,9 +1,63 @@
-import { ActiveEnemy, MapId, PlacedChicken } from './types';
+import { ActiveEnemy, ChickenTypeId, MapId, PlacedChicken } from './types';
 
 export const MAP_WIDTH = 920;
 export const MAP_HEIGHT = 600;
 export const PATH_HALF_WIDTH = 25;
 export const CHICKEN_FOOTPRINT_RADIUS = 22;
+
+const COMPACT_CHICK_SET = new Set<ChickenTypeId>([
+  'bantam',
+  'pecker',
+  'sling_chick',
+  'honey',
+  'chilly',
+  'ninja',
+]);
+
+const STANDARD_TROOP_SET = new Set<ChickenTypeId>([
+  'boomerang',
+  'alchemist',
+  'ranger',
+  'cactus_hen',
+  'wizard',
+  'phoenix',
+  'cowboy_desperado',
+  'chrono',
+  'plague_doctor',
+  'samurai_shogun',
+  'necro_lich',
+  'tengu_shadow',
+]);
+
+const BEHEMOTH_TROOP_SET = new Set<ChickenTypeId>([
+  'astral_astrologer',
+  'star_dread',
+  'leviathan_kraken',
+  'abyss_wyrm',
+  'quasar',
+  'archangel_seraph',
+  'chronos_empress',
+  'omega_god',
+]);
+
+const COLOSSAL_TITAN_SET = new Set<ChickenTypeId>([
+  'mech_zilla',
+  'gaia_creator',
+  'void_singularity',
+  'golden_deity',
+  'solar_emperor',
+  'eternity_weaver',
+  'complete_cluck',
+]);
+
+export function getChickenFootprintRadius(typeId?: ChickenTypeId): number {
+  if (!typeId) return CHICKEN_FOOTPRINT_RADIUS;
+  if (COMPACT_CHICK_SET.has(typeId)) return 18;
+  if (STANDARD_TROOP_SET.has(typeId)) return 22;
+  if (BEHEMOTH_TROOP_SET.has(typeId)) return 31;
+  if (COLOSSAL_TITAN_SET.has(typeId)) return 36;
+  return 26;
+}
 
 export interface Point2D {
   x: number;
@@ -528,22 +582,31 @@ export function canPlaceChickenAt(
   x: number,
   y: number,
   existingTowers: readonly PlacedChicken[],
-  mapDef = getActiveMap()
+  mapDef = getActiveMap(),
+  typeId?: ChickenTypeId
 ): boolean {
+  const footR = getChickenFootprintRadius(typeId);
+  const edgeMargin = Math.max(30, footR + 4);
+
   // 1. Inside playable stage bounds
-  if (x < 34 || x > MAP_WIDTH - 34 || y < 34 || y > MAP_HEIGHT - 34) {
+  if (
+    x < edgeMargin ||
+    x > MAP_WIDTH - edgeMargin ||
+    y < edgeMargin ||
+    y > MAP_HEIGHT - edgeMargin
+  ) {
     return false;
   }
 
   // 2. Keep clear of the Golden Egg Nest & Bug Entrance
-  if (Math.hypot(x - mapDef.nestPos.x, y - mapDef.nestPos.y) < 54) return false;
-  if (Math.hypot(x - mapDef.entrancePos.x, y - mapDef.entrancePos.y) < 46) return false;
+  if (Math.hypot(x - mapDef.nestPos.x, y - mapDef.nestPos.y) < 34 + footR) return false;
+  if (Math.hypot(x - mapDef.entrancePos.x, y - mapDef.entrancePos.y) < 28 + footR) return false;
 
   // 3. Keep clear of the active map's winding path
   for (const seg of mapDef.segments) {
     if (
       distPointToSegment(x, y, seg.x1, seg.y1, seg.x2, seg.y2) <
-      PATH_HALF_WIDTH + CHICKEN_FOOTPRINT_RADIUS - 2
+      PATH_HALF_WIDTH + footR - 2
     ) {
       return false;
     }
@@ -551,19 +614,21 @@ export function canPlaceChickenAt(
 
   // 4. Keep clear of map pools/lava/rifts & decorative trees/spires/crystals
   for (const pond of mapDef.ponds) {
+    const pondPad = Math.max(12, footR * 0.65);
     const pondNorm =
-      Math.pow((x - pond.x) / (pond.rx + 14), 2) +
-      Math.pow((y - pond.y) / (pond.ry + 14), 2);
+      Math.pow((x - pond.x) / (pond.rx + pondPad), 2) +
+      Math.pow((y - pond.y) / (pond.ry + pondPad), 2);
     if (pondNorm < 1) return false;
   }
 
   for (const tree of mapDef.trees) {
-    if (Math.hypot(x - tree.x, y - tree.y) < tree.r + 16) return false;
+    if (Math.hypot(x - tree.x, y - tree.y) < tree.r + footR * 0.72) return false;
   }
 
-  // 5. Keep clear of existing Chicken Troops
+  // 5. Keep clear of existing Chicken Troops (scaled by both units' physical footprints!)
   for (const t of existingTowers) {
-    if (Math.hypot(x - t.x, y - t.y) < CHICKEN_FOOTPRINT_RADIUS * 2) {
+    const otherR = getChickenFootprintRadius(t.typeId);
+    if (Math.hypot(x - t.x, y - t.y) < footR + otherR) {
       return false;
     }
   }

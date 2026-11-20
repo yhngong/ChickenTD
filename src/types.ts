@@ -18,18 +18,18 @@ export type ChickenTypeId =
   | 'phoenix'
   | 'mecha'
   // === 36 GEM EGG EXCLUSIVE UNITS AFTER CYBER-CLUCK 9000 ('mecha') ===
-  | 'macho_cat'
+  | 'iron_spurs'
   | 'ramen_chef'
-  | 'eraser_tank'
+  | 'bastion_shield'
   | 'tesla'
   | 'cowboy_desperado'
-  | 'kasli_oracle'
+  | 'surge_oracle'
   | 'viking_jarl'
   | 'chrono'
   | 'overclock_engie'
   | 'cyber_sniper'
   | 'plague_doctor'
-  | 'gundam'
+  | 'aegis_mech'
   | 'pharaoh_ra'
   | 'samurai_shogun'
   | 'storm_dj'
@@ -39,11 +39,11 @@ export type ChickenTypeId =
   | 'oni_warlord'
   | 'valkyrie'
   | 'idol_diva'
-  | 'yukimura_shadow'
+  | 'tengu_shadow'
   | 'astral_astrologer'
   | 'star_dread'
   | 'leviathan_kraken'
-  | 'bahamut_wyrm'
+  | 'abyss_wyrm'
   | 'quasar'
   | 'archangel_seraph'
   | 'chronos_empress'
@@ -51,10 +51,10 @@ export type ChickenTypeId =
   | 'mech_zilla'
   | 'gaia_creator'
   | 'void_singularity'
-  | 'cat_god_supreme'
+  | 'golden_deity'
   | 'solar_emperor'
   | 'eternity_weaver'
-  // === COMPLETIONIST ZENITH PINNACLE UNIT (UNLOCKED BY OWNING ALL 54 OTHERS) ===
+  // === COMPLETIONIST PINNACLE UNIT (UNLOCKED BY OWNING ALL 54 OTHERS) ===
   | 'complete_cluck';
 
 export type ProjectileStyle =
@@ -74,7 +74,7 @@ export type ProjectileStyle =
   | 'sonic'
   | 'solar'
   | 'plasma'
-  | 'cat_paw'
+  | 'iron_fist'
   | 'broth_splash'
   | 'tremor_slam'
   | 'tesla_arc'
@@ -97,7 +97,7 @@ export type ProjectileStyle =
   | 'star_comet'
   | 'antimatter'
   | 'abyss_whirl'
-  | 'bahamut_orb'
+  | 'wyrm_orb'
   | 'quasar_pulse'
   | 'seraph_lance'
   | 'judgment_ray'
@@ -112,7 +112,7 @@ export type ProjectileStyle =
   | 'espresso_splash'
   | 'overclock_bolt'
   | 'idol_note'
-  | 'zenith_blade';
+  | 'infinity_blade';
 
 export type MutationTier = 'common' | 'rare' | 'epic' | 'legendary' | 'mastered' | 'aether';
 
@@ -289,8 +289,8 @@ export interface ChickenTierStats {
   burnDps: number; // burn / acid / sap DoT damage per sec
   foxDamageMult: number; // bonus multiplier vs Giant Fox bosses
   camoSight: boolean;
-  knockback?: number; // Battle Cats style path knockback distance
-  savageCritChance?: number; // Battle Cats Savage Blow (3x damage) probability
+  knockback?: number; // Path knockback distance on hit
+  savageCritChance?: number; // 3x Savage Crit strike probability
   supportAura?: SupportAuraSpec; // Nearby-tower support aura buff
   description: string;
 }
@@ -377,6 +377,16 @@ export interface ActiveEnemy {
   gridIdx?: number;
 }
 
+export type ProjectileMotionMode =
+  | 'linear'
+  | 'ellipse_return'
+  | 'lob_arc'
+  | 'sky_drop'
+  | 'dash_streak'
+  | 'rift_cross';
+
+export type HazardZoneStyle = 'honey' | 'acid' | 'miasma' | 'whirlpool' | 'singularity';
+
 export interface ActiveProjectile {
   id: number;
   ownerTowerId: number;
@@ -385,7 +395,7 @@ export interface ActiveProjectile {
   y: number;
   vx: number;
   vy: number;
-  curveRate: number; // radians/sec for curving boomerangs
+  curveRate: number;
   rotation: number;
   damage: number;
   pierceLeft: number;
@@ -402,6 +412,48 @@ export interface ActiveProjectile {
   age: number;
   maxLifetime: number;
   color: string;
+  // Specialized attack trajectory fields (boomeranging blades, mortar arcs, sky pillars, rifts)
+  motionMode?: ProjectileMotionMode;
+  originX?: number;
+  originY?: number;
+  targetX?: number;
+  targetY?: number;
+  aimAngle?: number;
+  semiMajor?: number;
+  semiMinor?: number;
+  sideSign?: number;
+  returnPhaseReset?: boolean;
+  arcHeight?: number;
+  spawnsZone?: HazardZoneStyle;
+}
+
+export interface VisualBeamEffect {
+  kind: 'laser' | 'chain';
+  points: { x: number; y: number }[];
+  width: number;
+  outerColor: string;
+  coreColor: string;
+  age: number;
+  lifetime: number;
+}
+
+export interface ActiveHazardZone {
+  id: number;
+  ownerTowerId: number;
+  zoneStyle: HazardZoneStyle;
+  x: number;
+  y: number;
+  radius: number;
+  tickDamage: number;
+  slowFactor: number;
+  slowDuration: number;
+  burnDps: number;
+  foxDamageMult: number;
+  canHitCamo: boolean;
+  color: string;
+  age: number;
+  maxLifetime: number;
+  tickCooldown: number;
 }
 
 export interface VisualRingEffect {
@@ -500,7 +552,7 @@ export interface EggRollOutcome {
   rolledMutation: MutationTier | null; // non-null whenever unit was already owned
   activeMutation: MutationTier | null; // resulting highest mutation on the unit
   mutationUpgraded: boolean; // true if rolledMutation improved the unit's mutation tier
-  plusLevel: number; // Battle Cats style +1, +2, ...
+  plusLevel: number; // Awakening +1, +2, ...
 }
 
 export interface RoundEndSummary {
@@ -516,7 +568,7 @@ export interface RoundEndSummary {
   totalSavedEggs: number;
   killerEnemyId: EnemyTypeId | null;
   bossName: string | null;
-  bossHpPercentRemaining: number | null; // Battle Cats style "BOSS HP REMAINING: 42%"
+  bossHpPercentRemaining: number | null; // Remaining boss HP % on defeat
   waveProgressPercent: number;
   mvpUnitId: ChickenTypeId | null;
   mvpDamage: number;

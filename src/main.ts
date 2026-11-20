@@ -28,7 +28,7 @@ import {
   IDLE_KILLS_PER_SEC,
   IdlePastureSimulation,
 } from './idle';
-import { MAP_DEFS, MAP_HEIGHT, MAP_ORDER, MAP_WIDTH } from './map';
+import { getChickenFootprintRadius, MAP_DEFS, MAP_HEIGHT, MAP_ORDER, MAP_WIDTH } from './map';
 import { BUGS_PER_EGG, GEM_EGG_COST_EACH, MUTATION_DEFS, PROGRESSION } from './progression';
 import {
   bakeMapPreviewDataUrl,
@@ -150,7 +150,7 @@ const inspTierBadge = document.getElementById('insp-tier-badge') as HTMLElement;
 const inspMutBadge = document.getElementById('insp-mut-badge') as HTMLElement;
 const inspStats = document.getElementById('insp-stats') as HTMLElement;
 const inspNextDesc = document.getElementById('insp-next-desc') as HTMLElement;
-const btnInspZenithMut = document.getElementById('btn-insp-zenith-mut') as HTMLButtonElement;
+const btnInspCompleteMut = document.getElementById('btn-insp-complete-mut') as HTMLButtonElement;
 const btnInspTarget = document.getElementById('btn-insp-target') as HTMLButtonElement;
 const btnInspUpgrade = document.getElementById('btn-insp-upgrade') as HTMLButtonElement;
 const btnInspSell = document.getElementById('btn-insp-sell') as HTMLButtonElement;
@@ -622,7 +622,7 @@ function renderGemEggShop(): void {
             <span class="coll-cost">${formatCompactCost(def.baseCost)} CORN</span>
             <span class="mut-badge ${zMut}">${mutDef.name}</span>
           </div>
-          <button type="button" class="zenith-swap-btn${zMut === 'aether' ? ' is-aether' : ''}">${nextLabel}</button>
+          <button type="button" class="complete-swap-btn${zMut === 'aether' ? ' is-aether' : ''}">${nextLabel}</button>
         </div>
       `;
       card.querySelector('button')!.addEventListener('click', (ev) => {
@@ -875,7 +875,7 @@ function finalizeCutsceneState(): void {
   if (justForgedCompleteCluck) {
     cutsceneTitle.textContent = `ALL ${REQUIRED_FOR_COMPLETE_CLUCK_IDS.length} OWNED — THE COMPLETE CLUCK FORGED!`;
     cutsceneSubtitle.textContent =
-      'TERRARIA ZENITH PINNACLE UNLOCKED! (MASTERED <-> AETHER SWAPPABLE IN SHOP & INSPECTOR)';
+      'SOVEREIGN PINNACLE UNLOCKED! (MASTERED <-> AETHER SWAPPABLE IN SHOP & INSPECTOR)';
   } else {
     cutsceneTitle.textContent =
       count === 1
@@ -1439,14 +1439,14 @@ function renderInspector(): void {
 
   if (tower.typeId === 'complete_cluck') {
     const isAether = eff.mutationTier === 'aether';
-    setText(btnInspZenithMut, isAether ? 'SWAP: MASTERED' : 'SWAP: AETHER');
-    btnInspZenithMut.classList.toggle('is-aether', isAether);
-    btnInspZenithMut.title = isAether
+    setText(btnInspCompleteMut, isAether ? 'SWAP: MASTERED' : 'SWAP: AETHER');
+    btnInspCompleteMut.classList.toggle('is-aether', isAether);
+    btnInspCompleteMut.title = isAether
       ? 'Currently AETHER (+300% DMG, +0% Range). Click to swap to MASTERED (+150% DMG, +200% Range)!'
       : 'Currently MASTERED (+150% DMG, +200% Range). Click to swap to AETHER (+300% DMG, +0% Range)!';
-    btnInspZenithMut.classList.remove('hidden');
+    btnInspCompleteMut.classList.remove('hidden');
   } else {
-    btnInspZenithMut.classList.add('hidden');
+    btnInspCompleteMut.classList.add('hidden');
   }
 
   if (tower.tier < 3) {
@@ -2110,7 +2110,8 @@ canvas.addEventListener('click', (e) => {
   let clickedTowerId: number | null = null;
   for (let i = engine.towers.length - 1; i >= 0; i--) {
     const t = engine.towers[i];
-    if (Math.hypot(pt.x - t.x, pt.y - t.y) <= 24) {
+    const hitR = Math.max(24, getChickenFootprintRadius(t.typeId) + 4);
+    if (Math.hypot(pt.x - t.x, pt.y - t.y) <= hitR) {
       clickedTowerId = t.id;
       break;
     }
@@ -2121,7 +2122,7 @@ canvas.addEventListener('click', (e) => {
 
 btnCancelPlace.addEventListener('click', () => setPlacementType(null));
 
-btnInspZenithMut.addEventListener('click', () => {
+btnInspCompleteMut.addEventListener('click', () => {
   handleToggleCompleteCluckMutation();
 });
 

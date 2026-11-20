@@ -23,7 +23,7 @@ import {
   UserPreferences,
 } from './types';
 
-export const SAVE_STORAGE_KEY = 'chickentd_battlecats_save_v1';
+export const SAVE_STORAGE_KEY = 'chickentd_save_v2';
 export const ACTIVE_RUN_STORAGE_KEY = 'chickentd_active_run_v1';
 export const PREFS_STORAGE_KEY = 'chickentd_prefs_v1';
 
@@ -141,7 +141,7 @@ export const MUTATION_DEFS: Record<MutationTier, MutationDef> = {
   mastered: {
     id: 'mastered',
     name: 'Mastered',
-    subtitle: 'Zenith Blade Mastery',
+    subtitle: 'Sovereign Blade Mastery',
     chance: 0,
     color: '#2DD4BF',
     borderColor: '#14B8A6',
@@ -156,12 +156,12 @@ export const MUTATION_DEFS: Record<MutationTier, MutationDef> = {
     grantsCamo: true,
     bonusCritChance: 0,
     bonusKnockback: 0,
-    summary: '+150% DMG • +200% Range (Wide-Map Zenith Arcs)',
+    summary: '+150% DMG • +200% Range (Wide-Map Boomerang Blades)',
   },
   aether: {
     id: 'aether',
     name: 'Aether',
-    subtitle: 'Shimmer-Forged Overdrive',
+    subtitle: 'Aetherial Overdrive',
     chance: 0,
     color: '#E879F9',
     borderColor: '#C084FC',

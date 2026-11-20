@@ -34,6 +34,7 @@ import {
 import { BUGS_PER_EGG, MUTATION_DEFS, PROGRESSION } from './progression';
 import {
   ActiveEnemy,
+  ActiveHazardZone,
   ActiveProjectile,
   ActiveStand,
   CannonDef,
@@ -47,6 +48,7 @@ import {
   EggBankResult,
   EnemyTypeId,
   FloatingMapPopup,
+  HazardZoneStyle,
   MapId,
   MutationTier,
   PixelParticle,
@@ -57,6 +59,7 @@ import {
   TargetMode,
   TdUpgradeId,
   UpgradeDef,
+  VisualBeamEffect,
   VisualRingEffect,
 } from './types';
 
@@ -90,6 +93,8 @@ const SPATIAL_COLS = 16;
 const SPATIAL_ROWS = 11;
 const SPATIAL_CELL_SHIFT = 6; // 64x64 logical pixel cells covering 920x600 map
 const MAX_ACTIVE_PROJECTILES = 420;
+const MAX_ACTIVE_BEAMS = 36;
+const MAX_ACTIVE_ZONES = 28;
 const MAX_ACTIVE_RINGS = 24;
 const MAX_ACTIVE_PARTICLES = 110;
 const MAX_ACTIVE_POPUPS = 24;
@@ -111,22 +116,22 @@ const STRONG_DEFAULT_SET = new Set<ChickenTypeId>([
   'mecha',
   'cowboy_desperado',
   'cyber_sniper',
-  'gundam',
+  'aegis_mech',
   'pharaoh_ra',
   'samurai_shogun',
   'stand_hen',
   'oni_warlord',
-  'yukimura_shadow',
+  'tengu_shadow',
   'star_dread',
   'leviathan_kraken',
-  'bahamut_wyrm',
+  'abyss_wyrm',
   'archangel_seraph',
   'chronos_empress',
   'omega_god',
   'mech_zilla',
   'gaia_creator',
   'void_singularity',
-  'cat_god_supreme',
+  'golden_deity',
   'solar_emperor',
   'eternity_weaver',
   'complete_cluck',
@@ -198,6 +203,8 @@ export class ChickenTdEngine {
   public stands: ActiveStand[] = [];
   public enemies: ActiveEnemy[] = [];
   public projectiles: ActiveProjectile[] = [];
+  public beams: VisualBeamEffect[] = [];
+  public hazardZones: ActiveHazardZone[] = [];
   public rings: VisualRingEffect[] = [];
   public particles: PixelParticle[] = [];
   public popups: FloatingMapPopup[] = [];
@@ -390,6 +397,8 @@ export class ChickenTdEngine {
     this.pendingSpawnIdx = 0;
     this.waveActive = false;
     this.projectiles = [];
+    this.beams = [];
+    this.hazardZones = [];
     const nestPt = getPointAlongPath(getTotalPathLength() * 0.5);
     this.spawnRing(nestPt.x, nestPt.y, 80, '#22D3EE');
     this.spawnMapPopup('ENEMIES CLEARED!', nestPt.x, nestPt.y - 20, '#22D3EE', 1.15);
@@ -643,6 +652,8 @@ export class ChickenTdEngine {
         }
       }
       this.projectiles = [];
+      this.beams = [];
+      this.hazardZones = [];
       this.rings = [];
       this.particles = [];
       this.popups = [];
@@ -713,6 +724,8 @@ export class ChickenTdEngine {
     this.enemies = [];
     this.enemyStampById.clear();
     this.projectiles = [];
+    this.beams = [];
+    this.hazardZones = [];
     this.rings = [];
     this.particles = [];
     this.popups = [];
@@ -1423,7 +1436,7 @@ export class ChickenTdEngine {
     if (!this.isChickenUnlocked(typeId)) return null;
     const cost = this.getTowerBaseCost(typeId);
     if (!this.isSandboxMode() && this.corn < cost) return null;
-    if (!canPlaceChickenAt(x, y, this.towers)) return null;
+    if (!canPlaceChickenAt(x, y, this.towers, undefined, typeId)) return null;
 
     if (this.isSandboxMode()) {
       this.corn = SANDBOX_INF_CORN;
@@ -1599,7 +1612,7 @@ export class ChickenTdEngine {
     const bankRes = this.bankPendingRunBugs();
     PROGRESSION.clearActiveRun();
 
-    // Battle Cats style "BOSS HP REMAINING: X%" if a Fox Boss was on the field (or leaked!)
+    // Show "BOSS HP REMAINING: X%" if a Fox Boss was on the field (or leaked!)
     let bossName: string | null = null;
     let bossHpPct: number | null = null;
 
@@ -1850,7 +1863,7 @@ export class ChickenTdEngine {
 
       const armorPiercing = stats.effectiveArmorPierce;
 
-      // Special 360-degree AoE Pulse for Mariachi ('sonic'), Eraser ('tremor_slam'), DJ ('bass_pulse'), & Quasar ('quasar_pulse')!
+      // ARCHETYPE A: 360-Degree AoE Shockwave Pulse ('sonic', 'tremor_slam', 'bass_pulse', 'quasar_pulse')
       if (
         def.projectileStyle === 'sonic' ||
         def.projectileStyle === 'tremor_slam' ||
@@ -1926,47 +1939,255 @@ export class ChickenTdEngine {
         continue;
       }
 
+      // ARCHETYPE B: Chain-Jumping Forked Lightning ('lightning' Wizard & 'tesla_arc' Tesla Cochin)!
+      if (def.projectileStyle === 'lightning' || def.projectileStyle === 'tesla_arc') {
+        this.fireChainLightningAttack(tower, stats, target);
+        towerDirectKillPossible = true;
+        continue;
+      }
+
+      // ARCHETYPE C: Instant Piercing Laser / Rail / Solar / Atomic Beams!
+      if (
+        def.projectileStyle === 'plasma' ||
+        def.projectileStyle === 'matrix_beam' ||
+        def.projectileStyle === 'ankh_beam' ||
+        def.projectileStyle === 'judgment_ray' ||
+        def.projectileStyle === 'genesis_beam' ||
+        def.projectileStyle === 'atomic_breath'
+      ) {
+        this.fireLaserBeamAttack(tower, stats, baseAngle, tx, ty);
+        towerDirectKillPossible = true;
+        continue;
+      }
+
       const count = stats.effectiveProjectiles;
+      const pStyle = def.projectileStyle;
+
+      // ARCHETYPE D: Elliptical Boomeranging Blades & Returning Axes!
+      // Used by The Complete Cluck ('infinity_blade'), Outback Hen ('boomerang'), & Berserker Jarl ('viking_axe').
+      // Blades launch out along wide left/right elliptical arcs, converge through (tx, ty), reset their hit set at
+      // apex so they slice targets BOTH outbound and returning, and boomerang all the way back to the Chicken!
+      if (
+        pStyle === 'infinity_blade' ||
+        pStyle === 'boomerang' ||
+        pStyle === 'viking_axe'
+      ) {
+        const isInfinity = pStyle === 'infinity_blade';
+        const projColor =
+          isInfinity && stats.mutationTier === 'aether' ? '#E879F9' : def.accentColor;
+        const targetDist = Math.max(46, Math.hypot(tx - tower.x, ty - tower.y));
+        const reach = isInfinity
+          ? Math.min(stats.effectiveRange * 1.08, Math.max(64, targetDist * 1.06))
+          : Math.min(stats.effectiveRange * 1.04, Math.max(58, targetDist * 1.08));
+        const baseLoopLife = isInfinity
+          ? Math.max(0.32, Math.min(0.66, (reach * 2.15) / stats.projectileSpeed))
+          : Math.max(0.48, Math.min(0.92, (reach * 2.3) / stats.projectileSpeed));
+
+        for (let m = 0; m < count; m++) {
+          if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
+          const sideSign = m % 2 === 0 ? 1 : -1;
+          const layer = Math.floor(m / 2);
+          const aimJitter = isInfinity
+            ? (m - (count - 1) / 2) * 0.045
+            : (m - (count - 1) / 2) * 0.11;
+          const semiMinor = isInfinity
+            ? Math.min(92, 18 + layer * 15 + reach * 0.08)
+            : 26 + layer * 12;
+
+          this.projectiles.push({
+            id: this.nextEntityId++,
+            ownerTowerId: tower.id,
+            style: pStyle,
+            x: tower.x,
+            y: tower.y,
+            vx: Math.cos(baseAngle) * stats.projectileSpeed,
+            vy: Math.sin(baseAngle) * stats.projectileSpeed,
+            curveRate: 0,
+            rotation: baseAngle,
+            damage: stats.effectiveDamage,
+            pierceLeft: stats.effectivePierce,
+            splashRadius: stats.splashRadius,
+            slowFactor: stats.slowFactor,
+            slowDuration: stats.slowDuration,
+            burnDps: stats.effectiveBurnDps,
+            foxDamageMult: stats.effectiveFoxMult,
+            knockback: stats.effectiveKnockback,
+            savageCritChance: stats.effectiveCritChance,
+            armorPiercing,
+            canHitCamo: stats.effectiveCamo,
+            hitEnemyIds: new Set<number>(),
+            age: 0,
+            maxLifetime: baseLoopLife + (isInfinity ? m * 0.02 : 0),
+            color: projColor,
+            motionMode: 'ellipse_return',
+            originX: tower.x,
+            originY: tower.y,
+            aimAngle: baseAngle + aimJitter,
+            semiMajor: reach * 0.5,
+            semiMinor,
+            sideSign,
+            returnPhaseReset: false,
+          });
+        }
+        continue;
+      }
+
+      // ARCHETYPE E: Heavenly Sky-Pillars & Orbital Meteors raining directly from the sky onto targets!
+      if (
+        pStyle === 'surge_pillar' ||
+        pStyle === 'star_comet' ||
+        pStyle === 'antimatter' ||
+        pStyle === 'god_wrath' ||
+        pStyle === 'corona_flare'
+      ) {
+        for (let m = 0; m < count; m++) {
+          if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
+          const scatter = m === 0 ? 0 : (m - (count - 1) / 2) * 24;
+          const perpAng = baseAngle + Math.PI * 0.5;
+          const strikeX = tx + Math.cos(perpAng) * scatter;
+          const strikeY = ty + Math.sin(perpAng) * scatter;
+          const startX = strikeX - (pStyle === 'surge_pillar' || pStyle === 'god_wrath' ? 0 : 28);
+          const startY = strikeY - 135;
+          const dropLife = pStyle === 'surge_pillar' ? 0.16 : 0.22 + (m % 3) * 0.03;
+
+          this.projectiles.push({
+            id: this.nextEntityId++,
+            ownerTowerId: tower.id,
+            style: pStyle,
+            x: startX,
+            y: startY,
+            vx: (strikeX - startX) / dropLife,
+            vy: (strikeY - startY) / dropLife,
+            curveRate: 0,
+            rotation: Math.atan2(strikeY - startY, strikeX - startX),
+            damage: stats.effectiveDamage,
+            pierceLeft: Math.max(1, stats.effectivePierce),
+            splashRadius: Math.max(36, stats.splashRadius),
+            slowFactor: stats.slowFactor,
+            slowDuration: stats.slowDuration,
+            burnDps: stats.effectiveBurnDps,
+            foxDamageMult: stats.effectiveFoxMult,
+            knockback: stats.effectiveKnockback,
+            savageCritChance: stats.effectiveCritChance,
+            armorPiercing,
+            canHitCamo: stats.effectiveCamo,
+            hitEnemyIds: null,
+            age: 0,
+            maxLifetime: dropLife,
+            color: def.accentColor,
+            motionMode: 'sky_drop',
+            originX: startX,
+            originY: startY,
+            targetX: strikeX,
+            targetY: strikeY,
+          });
+        }
+        continue;
+      }
+
+      // ARCHETYPE F: Parabolic High-Arc Mortars & Persistent Ground Hazard Zone Flasks!
+      if (
+        pStyle === 'honey' ||
+        pStyle === 'acid' ||
+        pStyle === 'egg_bomb' ||
+        pStyle === 'cannonball' ||
+        pStyle === 'broth_splash' ||
+        pStyle === 'miasma_vial' ||
+        pStyle === 'abyss_whirl' ||
+        pStyle === 'black_hole'
+      ) {
+        const zoneKind: HazardZoneStyle | undefined =
+          pStyle === 'honey'
+            ? 'honey'
+            : pStyle === 'acid'
+            ? 'acid'
+            : pStyle === 'miasma_vial'
+            ? 'miasma'
+            : pStyle === 'abyss_whirl'
+            ? 'whirlpool'
+            : pStyle === 'black_hole'
+            ? 'singularity'
+            : undefined;
+        const dist = Math.max(36, Math.hypot(tx - tower.x, ty - tower.y));
+        const flightTime = Math.max(0.2, Math.min(0.54, dist / Math.max(380, stats.projectileSpeed)));
+        const arcH = Math.min(62, 26 + dist * 0.14);
+
+        for (let m = 0; m < count; m++) {
+          if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
+          const scatter = count === 1 ? 0 : (m - (count - 1) / 2) * 22;
+          const perpAng = baseAngle + Math.PI * 0.5;
+          const landX = tx + Math.cos(perpAng) * scatter;
+          const landY = ty + Math.sin(perpAng) * scatter;
+
+          this.projectiles.push({
+            id: this.nextEntityId++,
+            ownerTowerId: tower.id,
+            style: pStyle,
+            x: tower.x,
+            y: tower.y,
+            vx: (landX - tower.x) / flightTime,
+            vy: (landY - tower.y) / flightTime,
+            curveRate: 0,
+            rotation: baseAngle,
+            damage: stats.effectiveDamage,
+            pierceLeft: Math.max(1, stats.effectivePierce),
+            splashRadius: Math.max(32, stats.splashRadius),
+            slowFactor: stats.slowFactor,
+            slowDuration: stats.slowDuration,
+            burnDps: stats.effectiveBurnDps,
+            foxDamageMult: stats.effectiveFoxMult,
+            knockback: stats.effectiveKnockback,
+            savageCritChance: stats.effectiveCritChance,
+            armorPiercing,
+            canHitCamo: stats.effectiveCamo,
+            hitEnemyIds: null,
+            age: 0,
+            maxLifetime: flightTime,
+            color: def.accentColor,
+            motionMode: 'lob_arc',
+            originX: tower.x,
+            originY: tower.y,
+            targetX: landX,
+            targetY: landY,
+            arcHeight: arcH,
+            spawnsZone: zoneKind,
+          });
+        }
+        continue;
+      }
+
+      // ARCHETYPE G & H: Sweeping Blade Crescents, Crimson Dash-Streaks, Reality Rifts & Directed Volleys!
       const spreadStep =
-        def.projectileStyle === 'feather_slash'
+        pStyle === 'feather_slash' || pStyle === 'moon_slash' || pStyle === 'kanabo_crush'
           ? 0.24
-          : def.projectileStyle === 'cactus_needle'
+          : pStyle === 'cactus_needle'
           ? 0.19
-          : def.projectileStyle === 'zenith_blade'
-          ? 0.1
           : 0.13;
-      const isBoomerang =
-        def.projectileStyle === 'boomerang' || def.projectileStyle === 'viking_axe';
-      const isZenith = def.projectileStyle === 'zenith_blade';
-      const projColor =
-        isZenith && stats.mutationTier === 'aether' ? '#E879F9' : def.accentColor;
+      const specMode =
+        pStyle === 'shadow_talon'
+          ? 'dash_streak'
+          : pStyle === 'rift_slash'
+          ? 'rift_cross'
+          : 'linear';
 
       for (let m = 0; m < count; m++) {
         if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) break;
         const angOffset = count === 1 ? 0 : (m - (count - 1) / 2) * spreadStep;
-        const zenithDir = m % 2 === 0 ? 1 : -1;
-        const ang =
-          baseAngle +
-          angOffset -
-          (isBoomerang ? 0.34 : isZenith ? zenithDir * 0.28 : 0);
+        const ang = baseAngle + angOffset;
         const speed = stats.projectileSpeed;
-        const maxLife = isBoomerang
-          ? (stats.effectiveRange * 2.05) / speed
-          : isZenith
-          ? (stats.effectiveRange * 1.38) / speed
-          : (stats.effectiveRange + 75) / speed;
+        const maxLife = (stats.effectiveRange + 75) / speed;
         const cosA = Math.cos(ang);
         const sinA = Math.sin(ang);
 
         this.projectiles.push({
           id: this.nextEntityId++,
           ownerTowerId: tower.id,
-          style: def.projectileStyle,
+          style: pStyle,
           x: tower.x + cosA * 14,
           y: tower.y + sinA * 14,
           vx: cosA * speed,
           vy: sinA * speed,
-          curveRate: isBoomerang ? 2.15 : isZenith ? zenithDir * 2.05 : 0,
+          curveRate: 0,
           rotation: ang,
           damage: stats.effectiveDamage,
           pierceLeft: stats.effectivePierce,
@@ -1982,13 +2203,21 @@ export class ChickenTdEngine {
           hitEnemyIds: null,
           age: 0,
           maxLifetime: maxLife,
-          color: projColor,
+          color: def.accentColor,
+          motionMode: specMode,
+          originX: tower.x,
+          originY: tower.y,
         });
       }
     }
 
     if (towerDirectKillPossible) {
       this.compactAliveEnemies();
+    }
+
+    // 3.5. Tick Persistent Ground Hazard Zones (Honey puddles, Acid/Miasma pools, Whirlpools, Black Holes!)
+    if (this.hazardZones.length > 0) {
+      this.tickHazardZones(dt);
     }
 
     // 4. Advance projectiles & resolve collisions via 16x11 Spatial Grid
@@ -2001,29 +2230,81 @@ export class ChickenTdEngine {
       for (let pIdx = 0; pIdx < this.projectiles.length; pIdx++) {
         const p = this.projectiles[pIdx];
         p.age += dt;
-        if (p.age >= p.maxLifetime) continue;
+        const mode = p.motionMode ?? 'linear';
 
-        if (p.curveRate !== 0) {
-          const curAng = Math.atan2(p.vy, p.vx) + p.curveRate * dt;
-          const spd = Math.hypot(p.vx, p.vy);
-          p.vx = Math.cos(curAng) * spd;
-          p.vy = Math.sin(curAng) * spd;
+        // Lobbed mortars & Sky-drop pillars detonate directly at (targetX, targetY) upon arrival!
+        if (mode === 'lob_arc' || mode === 'sky_drop') {
+          if (p.age >= p.maxLifetime) {
+            const lx = p.targetX ?? p.x;
+            const ly = p.targetY ?? p.y;
+            this.applySplashHit(p, lx, ly);
+            if (mode === 'sky_drop' && this.beams.length < MAX_ACTIVE_BEAMS) {
+              this.beams.push({
+                kind: 'laser',
+                points: [
+                  { x: lx, y: ly - 95 },
+                  { x: lx, y: ly },
+                ],
+                width: p.style === 'corona_flare' || p.style === 'antimatter' ? 5 : 4,
+                outerColor: p.color,
+                coreColor: '#FFFFFF',
+                age: 0,
+                lifetime: 0.16,
+              });
+            }
+            if (p.spawnsZone) {
+              this.spawnHazardZone(p, lx, ly);
+            }
+            continue;
+          }
+          const t = p.age / p.maxLifetime;
+          p.x = p.originX! + (p.targetX! - p.originX!) * t;
+          p.y = p.originY! + (p.targetY! - p.originY!) * t;
+          if (p.style === 'abyss_whirl' || p.style === 'black_hole') {
+            p.rotation += dt * 18;
+          }
+          this.projectiles[writeProj++] = p;
+          continue;
         }
 
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        if (
-          p.style === 'shuriken' ||
-          p.style === 'boomerang' ||
-          p.style === 'viking_axe' ||
-          p.style === 'abyss_whirl' ||
-          p.style === 'black_hole' ||
-          p.style === 'rift_slash' ||
-          p.style === 'zenith_blade'
-        ) {
-          p.rotation += dt * (p.style === 'zenith_blade' ? 24 : 18);
+        if (p.age >= p.maxLifetime) continue;
+
+        if (mode === 'ellipse_return') {
+          const prog = p.age / p.maxLifetime;
+          if (!p.returnPhaseReset && prog >= 0.5) {
+            p.returnPhaseReset = true;
+            if (p.hitEnemyIds) p.hitEnemyIds.clear();
+          }
+          const theta = Math.PI * 2 * prog;
+          const fwd = p.semiMajor! * (1 - Math.cos(theta));
+          const lat = p.sideSign! * p.semiMinor! * Math.sin(theta);
+          const cosA = Math.cos(p.aimAngle!);
+          const sinA = Math.sin(p.aimAngle!);
+          const prevX = p.x;
+          const prevY = p.y;
+          p.x = p.originX! + cosA * fwd - sinA * lat;
+          p.y = p.originY! + sinA * fwd + cosA * lat;
+          p.vx = (p.x - prevX) / Math.max(0.001, dt);
+          p.vy = (p.y - prevY) / Math.max(0.001, dt);
+          if (p.style === 'infinity_blade') {
+            p.rotation = Math.atan2(p.vy, p.vx);
+          } else {
+            p.rotation += dt * 20;
+          }
         } else {
-          p.rotation = Math.atan2(p.vy, p.vx);
+          if (p.curveRate !== 0) {
+            const curAng = Math.atan2(p.vy, p.vx) + p.curveRate * dt;
+            const spd = Math.hypot(p.vx, p.vy);
+            p.vx = Math.cos(curAng) * spd;
+            p.vy = Math.sin(curAng) * spd;
+          }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          if (p.style === 'shuriken' || p.style === 'rift_slash') {
+            p.rotation += dt * 18;
+          } else {
+            p.rotation = Math.atan2(p.vy, p.vx);
+          }
         }
 
         if (this.enemies.length > 0) {
@@ -2033,7 +2314,15 @@ export class ChickenTdEngine {
           const rMax = cRow < SPATIAL_ROWS - 1 ? cRow + 1 : SPATIAL_ROWS - 1;
           const cMin = cCol > 0 ? cCol - 1 : 0;
           const cMax = cCol < SPATIAL_COLS - 1 ? cCol + 1 : SPATIAL_COLS - 1;
-          const extraRadius = p.splashRadius > 0 || p.style === 'feather_slash' ? 11 : 8;
+          const extraRadius =
+            p.style === 'infinity_blade'
+              ? 16
+              : p.splashRadius > 0 ||
+                p.style === 'feather_slash' ||
+                p.style === 'moon_slash' ||
+                p.style === 'rift_slash'
+              ? 12
+              : 8;
 
           for (let r = rMin; r <= rMax && p.pierceLeft > 0; r++) {
             const rowBase = r * SPATIAL_COLS;
@@ -2055,16 +2344,19 @@ export class ChickenTdEngine {
                 const hitDist = eDef.radius + extraRadius;
 
                 if (dx * dx + dy * dy <= hitDist * hitDist) {
-                  if (p.pierceLeft > 1) {
+                  if (p.pierceLeft > 1 || mode === 'ellipse_return') {
                     if (p.hitEnemyIds === null) p.hitEnemyIds = new Set<number>();
                     p.hitEnemyIds.add(e.id);
                   }
 
-                  if (p.splashRadius > 0) {
+                  if (p.splashRadius > 0 && mode !== 'ellipse_return') {
                     this.applySplashHit(p, ex, ey);
                     p.pierceLeft--;
                   } else {
                     this.damageEnemy(e, p.damage, p);
+                    if (mode === 'ellipse_return' && p.splashRadius > 0) {
+                      this.spawnPixelBurst(ex, ey, 2, p.color);
+                    }
                     p.pierceLeft--;
                   }
 
@@ -2077,7 +2369,8 @@ export class ChickenTdEngine {
           }
         }
 
-        if (p.pierceLeft > 0) {
+        // Returning boomerangs stay visually in flight back to the Chicken even if pierce caps out!
+        if (p.pierceLeft > 0 || mode === 'ellipse_return') {
           this.projectiles[writeProj++] = p;
         }
       }
@@ -2087,7 +2380,16 @@ export class ChickenTdEngine {
       this.compactAliveEnemies();
     }
 
-    // 5. Update pixel rings, particles & floating popups (in-place compaction, zero array allocations)
+    // 5. Update beams, pixel rings, particles & floating popups (in-place compaction)
+    let writeBeam = 0;
+    for (let i = 0; i < this.beams.length; i++) {
+      const bm = this.beams[i];
+      bm.age += dt;
+      if (bm.age < bm.lifetime) {
+        this.beams[writeBeam++] = bm;
+      }
+    }
+    this.beams.length = writeBeam;
     let writeRing = 0;
     for (let i = 0; i < this.rings.length; i++) {
       const r = this.rings[i];
@@ -2301,7 +2603,335 @@ export class ChickenTdEngine {
       );
     }
     if (stand.punchCount % 8 === 1) {
-      this.spawnMapPopup('ORA!', stand.x, stand.y - 18, isRequiem ? '#FEF08A' : '#F0ABFC', 1.0);
+      this.spawnMapPopup('STAR!', stand.x, stand.y - 18, isRequiem ? '#FEF08A' : '#F0ABFC', 1.0);
+    }
+  }
+
+  /**
+   * Chain-Jumping Forked Lightning ('lightning' & 'tesla_arc'):
+   * Zaps primary target and arcs enemy-to-enemy down the path!
+   */
+  private fireChainLightningAttack(
+    tower: PlacedChicken,
+    stats: EffectiveChickenStats,
+    primaryTarget: ActiveEnemy
+  ): void {
+    const def = CHICKEN_DEFS[tower.typeId];
+    const isTesla = def.projectileStyle === 'tesla_arc';
+    const outerCol = isTesla ? '#38BDF8' : '#A855F7';
+    const coreCol = isTesla ? '#E0F2FE' : '#F5D0FE';
+    const arcCount = Math.min(4, Math.max(1, stats.effectiveProjectiles));
+    const maxJumps = Math.min(14, Math.max(2, stats.effectivePierce));
+    const jumpRadiusSq = (isTesla ? 128 : 108) ** 2;
+
+    const carrier: ActiveProjectile = {
+      id: this.nextEntityId++,
+      ownerTowerId: tower.id,
+      style: def.projectileStyle,
+      x: tower.x,
+      y: tower.y,
+      vx: 0,
+      vy: 0,
+      curveRate: 0,
+      rotation: 0,
+      damage: stats.effectiveDamage,
+      pierceLeft: maxJumps,
+      splashRadius: stats.splashRadius,
+      slowFactor: stats.slowFactor,
+      slowDuration: stats.slowDuration,
+      burnDps: stats.effectiveBurnDps,
+      foxDamageMult: stats.effectiveFoxMult,
+      knockback: stats.effectiveKnockback,
+      savageCritChance: stats.effectiveCritChance,
+      armorPiercing: true,
+      canHitCamo: stats.effectiveCamo,
+      hitEnemyIds: null,
+      age: 0,
+      maxLifetime: 0.05,
+      color: def.accentColor,
+    };
+
+    const usedStarters = new Set<number>();
+    const snapLen = this.enemies.length;
+
+    for (let a = 0; a < arcCount; a++) {
+      let current: ActiveEnemy | null = a === 0 ? primaryTarget : null;
+      if (!current || current.alive === false) {
+        let bestD = Infinity;
+        for (let i = 0; i < snapLen; i++) {
+          const cand = this.enemies[i];
+          if (!cand || cand.alive === false || usedStarters.has(cand.id)) continue;
+          const eDef = ENEMY_DEFS[cand.typeId];
+          if (eDef.isCamo && !stats.effectiveCamo) continue;
+          const dSq = (cand.x! - tower.x) ** 2 + (cand.y! - tower.y) ** 2;
+          if (dSq <= (stats.effectiveRange + eDef.radius) ** 2 && dSq < bestD) {
+            bestD = dSq;
+            current = cand;
+          }
+        }
+        if (!current && primaryTarget.alive !== false) {
+          current = primaryTarget;
+        }
+      }
+      if (!current) continue;
+      usedStarters.add(current.id);
+
+      const visited = new Set<number>();
+      const points: { x: number; y: number }[] = [{ x: tower.x, y: tower.y - 4 }];
+
+      for (let hop = 0; hop < maxJumps && current; hop++) {
+        visited.add(current.id);
+        const cx = current.x!;
+        const cy = current.y!;
+        points.push({ x: cx, y: cy });
+        const hopDmg = stats.effectiveDamage * Math.max(0.55, 1 - hop * 0.04);
+        this.damageEnemy(current, hopDmg, carrier);
+        if (hop === 0 && stats.splashRadius > 0) {
+          this.spawnRing(cx, cy, stats.splashRadius, outerCol);
+        }
+
+        // Pick closest unvisited enemy within chain jump radius!
+        let nextHop: ActiveEnemy | null = null;
+        let bestHopSq = jumpRadiusSq;
+        for (let i = 0; i < snapLen; i++) {
+          const cand = this.enemies[i];
+          if (!cand || cand.alive === false || visited.has(cand.id)) continue;
+          const eDef = ENEMY_DEFS[cand.typeId];
+          if (eDef.isCamo && !stats.effectiveCamo) continue;
+          const dSq = (cand.x! - cx) ** 2 + (cand.y! - cy) ** 2;
+          if (dSq <= bestHopSq) {
+            bestHopSq = dSq;
+            nextHop = cand;
+          }
+        }
+        current = nextHop;
+      }
+
+      if (points.length >= 2 && this.beams.length < MAX_ACTIVE_BEAMS) {
+        this.beams.push({
+          kind: 'chain',
+          points,
+          width: isTesla ? 3 : 2,
+          outerColor: outerCol,
+          coreColor: coreCol,
+          age: 0,
+          lifetime: 0.16,
+        });
+      }
+    }
+  }
+
+  /**
+   * Instant Piercing Laser / Rail / Solar / Atomic Beam Attack!
+   */
+  private fireLaserBeamAttack(
+    tower: PlacedChicken,
+    stats: EffectiveChickenStats,
+    baseAngle: number,
+    tx: number,
+    ty: number
+  ): void {
+    const def = CHICKEN_DEFS[tower.typeId];
+    const pStyle = def.projectileStyle;
+    const outerCol =
+      pStyle === 'matrix_beam'
+        ? '#10B981'
+        : pStyle === 'ankh_beam' || pStyle === 'judgment_ray'
+        ? '#FACC15'
+        : pStyle === 'genesis_beam'
+        ? '#38BDF8'
+        : '#22D3EE';
+    const coreCol = pStyle === 'genesis_beam' ? '#FEF08A' : '#FFFFFF';
+    const beamCount = Math.min(6, Math.max(1, stats.effectiveProjectiles));
+    const beamLen = stats.effectiveRange + 28;
+    const corridorHalf =
+      pStyle === 'atomic_breath' ? 24 : pStyle === 'genesis_beam' ? 18 : 13;
+    const beamPxWidth =
+      pStyle === 'atomic_breath' ? 5 : pStyle === 'genesis_beam' ? 4 : 3;
+
+    const carrier: ActiveProjectile = {
+      id: this.nextEntityId++,
+      ownerTowerId: tower.id,
+      style: pStyle,
+      x: tx,
+      y: ty,
+      vx: 0,
+      vy: 0,
+      curveRate: 0,
+      rotation: baseAngle,
+      damage: stats.effectiveDamage,
+      pierceLeft: stats.effectivePierce,
+      splashRadius: stats.splashRadius,
+      slowFactor: stats.slowFactor,
+      slowDuration: stats.slowDuration,
+      burnDps: stats.effectiveBurnDps,
+      foxDamageMult: stats.effectiveFoxMult,
+      knockback: stats.effectiveKnockback,
+      savageCritChance: stats.effectiveCritChance,
+      armorPiercing: stats.effectiveArmorPierce,
+      canHitCamo: stats.effectiveCamo,
+      hitEnemyIds: null,
+      age: 0,
+      maxLifetime: 0.05,
+      color: outerCol,
+    };
+
+    const snapLen = this.enemies.length;
+    for (let b = 0; b < beamCount; b++) {
+      const ang = baseAngle + (beamCount === 1 ? 0 : (b - (beamCount - 1) / 2) * 0.09);
+      const cosA = Math.cos(ang);
+      const sinA = Math.sin(ang);
+      const sx = tower.x + cosA * 12;
+      const sy = tower.y + sinA * 12;
+      const ex = tower.x + cosA * beamLen;
+      const ey = tower.y + sinA * beamLen;
+
+      if (this.beams.length < MAX_ACTIVE_BEAMS) {
+        this.beams.push({
+          kind: 'laser',
+          points: [
+            { x: sx, y: sy },
+            { x: ex, y: ey },
+          ],
+          width: beamPxWidth,
+          outerColor: outerCol,
+          coreColor: coreCol,
+          age: 0,
+          lifetime: 0.14,
+        });
+      }
+
+      let hits = 0;
+      for (let i = 0; i < snapLen && hits < stats.effectivePierce; i++) {
+        const e = this.enemies[i];
+        if (!e || e.alive === false) continue;
+        const eDef = ENEMY_DEFS[e.typeId];
+        if (eDef.isCamo && !stats.effectiveCamo) continue;
+
+        const rx = e.x! - tower.x;
+        const ry = e.y! - tower.y;
+        const along = rx * cosA + ry * sinA;
+        if (along < -eDef.radius || along > beamLen + eDef.radius) continue;
+        const perp = Math.abs(-rx * sinA + ry * cosA);
+        if (perp <= corridorHalf + eDef.radius) {
+          this.damageEnemy(e, stats.effectiveDamage, carrier);
+          hits++;
+        }
+      }
+    }
+
+    if (stats.splashRadius > 0) {
+      this.spawnRing(tx, ty, Math.min(72, stats.splashRadius), outerCol);
+    }
+    this.spawnPixelBurst(tx, ty, 4, outerCol);
+  }
+
+  /**
+   * Persistent Ground Hazard Zones (Sticky Honey, Acid/Miasma Pools, Whirlpools, Singularity Wells)!
+   */
+  private spawnHazardZone(proj: ActiveProjectile, cx: number, cy: number): void {
+    const zStyle = proj.spawnsZone;
+    if (!zStyle) return;
+    if (this.hazardZones.length >= MAX_ACTIVE_ZONES) {
+      // Recycle oldest zone in-place
+      this.hazardZones.shift();
+    }
+    const radius = Math.max(
+      28,
+      Math.min(
+        92,
+        Math.round(proj.splashRadius * (zStyle === 'singularity' || zStyle === 'whirlpool' ? 0.68 : 0.78))
+      )
+    );
+    const col =
+      zStyle === 'honey'
+        ? '#F59E0B'
+        : zStyle === 'acid'
+        ? '#84CC16'
+        : zStyle === 'miasma'
+        ? '#10B981'
+        : zStyle === 'whirlpool'
+        ? '#06B6D4'
+        : '#A855F7';
+    this.hazardZones.push({
+      id: this.nextEntityId++,
+      ownerTowerId: proj.ownerTowerId,
+      zoneStyle: zStyle,
+      x: cx,
+      y: cy,
+      radius,
+      tickDamage: Math.max(0.4, proj.damage * 0.22 + proj.burnDps * 0.14),
+      slowFactor: Math.max(0.22, proj.slowFactor),
+      slowDuration: Math.max(0.6, proj.slowDuration * 0.5),
+      burnDps: proj.burnDps,
+      foxDamageMult: proj.foxDamageMult,
+      canHitCamo: proj.canHitCamo,
+      color: col,
+      age: 0,
+      maxLifetime: zStyle === 'singularity' ? 2.6 : 2.1,
+      tickCooldown: 0.24,
+    });
+  }
+
+  private tickHazardZones(dt: number): void {
+    let writeZ = 0;
+    let didDamage = false;
+    for (let zIdx = 0; zIdx < this.hazardZones.length; zIdx++) {
+      const z = this.hazardZones[zIdx];
+      z.age += dt;
+      if (z.age >= z.maxLifetime) continue;
+
+      z.tickCooldown -= dt;
+      if (z.tickCooldown <= 0 && this.enemies.length > 0) {
+        z.tickCooldown = 0.28;
+        const zoneCarrier: ActiveProjectile = {
+          id: z.id,
+          ownerTowerId: z.ownerTowerId,
+          style: 'acid',
+          x: z.x,
+          y: z.y,
+          vx: 0,
+          vy: 0,
+          curveRate: 0,
+          rotation: 0,
+          damage: z.tickDamage,
+          pierceLeft: 30,
+          splashRadius: z.radius,
+          slowFactor: z.slowFactor,
+          slowDuration: z.slowDuration,
+          burnDps: z.burnDps,
+          foxDamageMult: z.foxDamageMult,
+          knockback: z.zoneStyle === 'singularity' ? 12 : 0,
+          savageCritChance: 0,
+          armorPiercing: true,
+          canHitCamo: z.canHitCamo,
+          hitEnemyIds: null,
+          age: 0,
+          maxLifetime: 0.05,
+          color: z.color,
+        };
+        const snapLen = this.enemies.length;
+        let hits = 0;
+        for (let i = 0; i < snapLen && hits < 28; i++) {
+          const e = this.enemies[i];
+          if (!e || e.alive === false) continue;
+          const eDef = ENEMY_DEFS[e.typeId];
+          if (eDef.isCamo && !z.canHitCamo) continue;
+          const dx = e.x! - z.x;
+          const dy = e.y! - z.y;
+          const maxR = z.radius + eDef.radius;
+          if (dx * dx + dy * dy <= maxR * maxR) {
+            this.damageEnemy(e, z.tickDamage, zoneCarrier);
+            didDamage = true;
+            hits++;
+          }
+        }
+      }
+      this.hazardZones[writeZ++] = z;
+    }
+    this.hazardZones.length = writeZ;
+    if (didDamage) {
+      this.compactAliveEnemies();
     }
   }
 
@@ -2360,7 +2990,7 @@ export class ChickenTdEngine {
         : proj.style === 'plasma' ||
           proj.style === 'tesla_arc' ||
           proj.style === 'surge_pillar' ||
-          proj.style === 'bahamut_orb' ||
+          proj.style === 'wyrm_orb' ||
           proj.style === 'overclock_bolt' ||
           proj.style === 'abyss_whirl' ||
           proj.style === 'atomic_breath'
@@ -2375,11 +3005,11 @@ export class ChickenTdEngine {
         ? '#F59E0B'
         : proj.style === 'chrono_orb'
         ? '#2DD4BF'
-        : proj.style === 'zenith_blade'
+        : proj.style === 'infinity_blade'
         ? proj.color
         : proj.style === 'ion_lance' ||
           proj.style === 'antimatter' ||
-          proj.style === 'cat_paw' ||
+          proj.style === 'iron_fist' ||
           proj.style === 'moon_slash' ||
           proj.style === 'shadow_talon'
         ? '#FB7185'
@@ -2475,7 +3105,7 @@ export class ChickenTdEngine {
       dmg *= 1.35;
     }
 
-    // Battle Cats SAVAGE BLOW Critical Strike (3.0x damage)!
+    // 3x Savage Critical Strike!
     const isSavageCrit = proj.savageCritChance > 0 && Math.random() < proj.savageCritChance;
     if (isSavageCrit) {
       dmg *= 3.0;
@@ -2497,7 +3127,7 @@ export class ChickenTdEngine {
     e.hp -= dmg;
     e.hitFlash = 1.0;
 
-    // Battle Cats Knockback (pushes enemy backward along the path with brief KB immunity)!
+    // Path Knockback (pushes enemy backward along the path with brief KB immunity)!
     if (proj.knockback > 0 && e.kbCooldown <= 0 && e.hp > 0) {
       const oldCell = this.inProjectilePhase ? this.getSpatialCell(e.x!, e.y!) : -1;
       const kbDist = def.isFoxBoss ? proj.knockback * 0.38 : proj.knockback;
