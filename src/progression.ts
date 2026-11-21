@@ -1,7 +1,6 @@
 import {
   CANNON_DEFS,
   CANNON_ORDER,
-  CHICKEN_DEFS,
   CHICKEN_ORDER,
   DIFFICULTY_ORDER,
   GEM_EGG_CHICKEN_IDS,
@@ -29,6 +28,7 @@ export const PREFS_STORAGE_KEY = 'chickentd_prefs_v1';
 
 export const BUGS_PER_EGG = 1000;
 export const GEM_EGG_COST_EACH = 1; // 1 Egg = 1 Gem Egg, 4 Eggs = 4x, 8 Eggs = 8x
+export const GACHA_POOL_SHARE = 0.8; // 80% Gem Egg Exclusive pool, 20% Starter Mutation pool
 
 export const SECRET_PROMO_CODES: Readonly<Record<string, number>> = {
   GEMEGGS: 8,
@@ -211,18 +211,55 @@ function rollMutationTier(): MutationTier {
   return 'common';
 }
 
+/**
+ * Progressive rarity weight curve: every Chicken further down the roster is strictly rarer
+ * than the ones before it, with an accelerating rarity tail on endgame mythic titans!
+ */
+export function getChickenHatchWeight(id: ChickenTypeId): number {
+  const starterIdx = STARTER_CHICKEN_IDS.indexOf(id);
+  if (starterIdx >= 0) {
+    return 100 * Math.pow(0.896, starterIdx);
+  }
+  const gachaIdx = GEM_EGG_CHICKEN_IDS.indexOf(id);
+  if (gachaIdx >= 0) {
+    const progress =
+      GEM_EGG_CHICKEN_IDS.length > 1 ? gachaIdx / (GEM_EGG_CHICKEN_IDS.length - 1) : 0;
+    const accelExponent = gachaIdx * (1 + 0.28 * progress * progress);
+    return 100 * Math.pow(0.908, accelExponent);
+  }
+  return 0;
+}
+
+const TOTAL_STARTER_WEIGHT = STARTER_CHICKEN_IDS.reduce(
+  (sum, id) => sum + getChickenHatchWeight(id),
+  0
+);
+const TOTAL_GACHA_WEIGHT = GEM_EGG_CHICKEN_IDS.reduce(
+  (sum, id) => sum + getChickenHatchWeight(id),
+  0
+);
+
+export function getChickenHatchChancePercent(id: ChickenTypeId): number {
+  if (id === 'complete_cluck') return 0;
+  const w = getChickenHatchWeight(id);
+  if (w <= 0) return 0;
+  if (STARTER_CHICKEN_IDS.includes(id)) {
+    return TOTAL_STARTER_WEIGHT > 0 ? ((1 - GACHA_POOL_SHARE) * w * 100) / TOTAL_STARTER_WEIGHT : 0;
+  }
+  return TOTAL_GACHA_WEIGHT > 0 ? (GACHA_POOL_SHARE * w * 100) / TOTAL_GACHA_WEIGHT : 0;
+}
+
+export function formatHatchOddsPercent(pct: number): string {
+  if (pct <= 0) return '0%';
+  if (pct >= 1) return `${pct.toFixed(2)}%`;
+  if (pct >= 0.1) return `${pct.toFixed(2)}%`;
+  return `${pct.toFixed(3)}%`;
+}
+
 function pickWeightedUnit(candidates: readonly ChickenTypeId[]): ChickenTypeId {
-  const weights = candidates.map((id) => {
-    const cost = CHICKEN_DEFS[id].baseCost;
-    if (cost <= 2000) return 10;
-    if (cost <= 12000) return 8.5;
-    if (cost <= 55000) return 6.8;
-    if (cost <= 200000) return 5.0;
-    if (cost <= 650000) return 3.6;
-    if (cost <= 1200000) return 2.7;
-    return 2.0;
-  });
+  const weights = candidates.map((id) => getChickenHatchWeight(id));
   const totalWeight = weights.reduce((a, b) => a + b, 0);
+  if (totalWeight <= 0) return candidates[0];
   let roll = Math.random() * totalWeight;
   for (let i = 0; i < candidates.length; i++) {
     roll -= weights[i];
@@ -239,13 +276,23 @@ export class ProgressionStore {
     this.data = this.loadFromStorage();
   }
 
+  private getSafeLocalStorage(): Storage | null {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return null;
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  }
+
   private loadFromStorage(): PlayerSaveData {
     const fallback = createDefaultSaveData();
-    if (typeof window === 'undefined' || !window.localStorage) {
+    const storage = this.getSafeLocalStorage();
+    if (!storage) {
       return fallback;
     }
     try {
-      const raw = window.localStorage.getItem(SAVE_STORAGE_KEY);
+      const raw = storage.getItem(SAVE_STORAGE_KEY);
       if (!raw) return fallback;
       const parsed = JSON.parse(raw) as Partial<PlayerSaveData>;
 
@@ -346,28 +393,32 @@ export class ProgressionStore {
   }
 
   public save(): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-    try {
-      window.localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(this.data));
-    } catch {
-      // Ignore quota errors in restricted sandboxes
+    const storage = this.getSafeLocalStorage();
+    if (storage) {
+      try {
+        storage.setItem(SAVE_STORAGE_KEY, JSON.stringify(this.data));
+      } catch {
+        // Ignore quota errors in restricted sandboxes
+      }
     }
     if (this.onChange) this.onChange();
   }
 
   public saveActiveRun(state: SavedRunState): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
+    const storage = this.getSafeLocalStorage();
+    if (!storage) return;
     try {
-      window.localStorage.setItem(ACTIVE_RUN_STORAGE_KEY, JSON.stringify(state));
+      storage.setItem(ACTIVE_RUN_STORAGE_KEY, JSON.stringify(state));
     } catch {
       // Ignore quota errors
     }
   }
 
   public loadActiveRun(): SavedRunState | null {
-    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const storage = this.getSafeLocalStorage();
+    if (!storage) return null;
     try {
-      const raw = window.localStorage.getItem(ACTIVE_RUN_STORAGE_KEY);
+      const raw = storage.getItem(ACTIVE_RUN_STORAGE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as Partial<SavedRunState>;
       if (
@@ -388,27 +439,30 @@ export class ProgressionStore {
   }
 
   public clearActiveRun(): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
+    const storage = this.getSafeLocalStorage();
+    if (!storage) return;
     try {
-      window.localStorage.removeItem(ACTIVE_RUN_STORAGE_KEY);
+      storage.removeItem(ACTIVE_RUN_STORAGE_KEY);
     } catch {
       // Ignore
     }
   }
 
   public savePrefs(prefs: UserPreferences): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
+    const storage = this.getSafeLocalStorage();
+    if (!storage) return;
     try {
-      window.localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+      storage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
     } catch {
       // Ignore
     }
   }
 
   public loadPrefs(): UserPreferences | null {
-    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const storage = this.getSafeLocalStorage();
+    if (!storage) return null;
     try {
-      const raw = window.localStorage.getItem(PREFS_STORAGE_KEY);
+      const raw = storage.getItem(PREFS_STORAGE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as Partial<UserPreferences>;
       if (!parsed || typeof parsed !== 'object') return null;
@@ -593,7 +647,8 @@ export class ProgressionStore {
    * Awards 1 Egg per 1,000 enemies killed and persists carry-over remainder to localStorage.
    */
   public bankBugsAfterRound(bugsKilledDelta: number): EggBankResult {
-    const cleanDelta = Math.max(0, Math.floor(bugsKilledDelta));
+    const rawDelta = Number(bugsKilledDelta);
+    const cleanDelta = Number.isFinite(rawDelta) ? Math.max(0, Math.floor(rawDelta)) : 0;
     const previousRemainder = this.data.bugKillRemainder;
     const pool = previousRemainder + cleanDelta;
     const eggsEarned = Math.floor(pool / BUGS_PER_EGG);
@@ -632,7 +687,7 @@ export class ProgressionStore {
         const lockedGacha = GEM_EGG_CHICKEN_IDS.filter((id) => !this.isUnlocked(id));
         chosenUnit = pickWeightedUnit(lockedGacha.length > 0 ? lockedGacha : GEM_EGG_CHICKEN_IDS);
       } else {
-        const useGachaPool = Math.random() < 0.82;
+        const useGachaPool = Math.random() < GACHA_POOL_SHARE;
         chosenUnit = pickWeightedUnit(useGachaPool ? GEM_EGG_CHICKEN_IDS : STARTER_CHICKEN_IDS);
       }
 

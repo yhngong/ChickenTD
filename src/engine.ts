@@ -546,13 +546,16 @@ export class ChickenTdEngine {
       this.freeplayUnlocked = Boolean(saved.freeplayUnlocked);
       this.speedMultiplier = saved.speedMultiplier === 2 ? 2 : 1;
 
-      this.totalBugsPopped = Math.max(0, Math.floor(Number(saved.totalBugsPopped ?? 0)));
+      this.totalBugsPopped = Math.max(0, Math.floor(Number(saved.totalBugsPopped ?? 0) || 0));
       this.bugsBankedThisRun = Math.max(
         0,
-        Math.min(this.totalBugsPopped, Math.floor(Number(saved.bugsBankedThisRun ?? 0)))
+        Math.min(this.totalBugsPopped, Math.floor(Number(saved.bugsBankedThisRun ?? 0) || 0))
       );
-      this.eggsEarnedThisRun = Math.max(0, Math.floor(Number(saved.eggsEarnedThisRun ?? 0)));
-      this.lastVictoryEggsEarned = Math.max(0, Math.floor(Number(saved.lastVictoryEggsEarned ?? 0)));
+      this.eggsEarnedThisRun = Math.max(0, Math.floor(Number(saved.eggsEarnedThisRun ?? 0) || 0));
+      this.lastVictoryEggsEarned = Math.max(
+        0,
+        Math.floor(Number(saved.lastVictoryEggsEarned ?? 0) || 0)
+      );
       this.lastDefeatSummary = null;
 
       this.totalClicksAccepted = Math.max(0, Math.floor(Number(saved.totalClicksAccepted ?? 0)));
@@ -2983,13 +2986,18 @@ export class ChickenTdEngine {
         this.audio.playUpgrade();
       }
 
+      // Bank any unbanked kills from the completed wave immediately (NEVER in Sandbox Mode)!
+      if (!this.isSandboxMode() && this.totalBugsPopped > this.bugsBankedThisRun) {
+        this.bankPendingRunBugs();
+      }
+
       if (this.waveNumber === CAMPAIGN_WAVES && !this.freeplayUnlocked) {
         if (this.isSandboxMode()) {
           this.freeplayUnlocked = true;
         } else {
           this.status = 'victory_prompt';
-          const bankRes = this.bankPendingRunBugs();
-          this.lastVictoryEggsEarned = bankRes.eggsEarned;
+          this.bankPendingRunBugs();
+          this.lastVictoryEggsEarned = this.eggsEarnedThisRun;
         }
       }
       this.waveNumber++;
@@ -4173,11 +4181,12 @@ export class ChickenTdEngine {
         if (bankRes.eggsEarned > 0) {
           const nestPt = getPointAlongPath(getTotalPathLength());
           this.spawnMapPopup(
-            `+${bankRes.eggsEarned} GEM EGG!`,
+            `+${bankRes.eggsEarned} GEM EGG${bankRes.eggsEarned > 1 ? 'S' : ''}!`,
             nestPt.x,
-            nestPt.y - 36,
+            Math.max(28, nestPt.y - 36),
             '#F472B6',
-            1.15
+            1.15,
+            1.5
           );
           this.spawnRing(nestPt.x, nestPt.y, 52, '#F472B6');
           this.audio.playUpgrade();
@@ -4311,7 +4320,8 @@ export class ChickenTdEngine {
     x: number,
     y: number,
     color: string,
-    scale = 1
+    scale = 1,
+    lifetime = 0.72
   ): void {
     if (this.popups.length >= MAX_ACTIVE_POPUPS) {
       // Overwrite oldest popup in-place instead of Array.shift()
@@ -4331,7 +4341,7 @@ export class ChickenTdEngine {
       slot.color = color;
       slot.scale = scale;
       slot.age = 0;
-      slot.lifetime = 0.72;
+      slot.lifetime = lifetime;
       return;
     }
     this.popups.push({
@@ -4342,7 +4352,7 @@ export class ChickenTdEngine {
       color,
       scale,
       age: 0,
-      lifetime: 0.72,
+      lifetime,
     });
   }
 }

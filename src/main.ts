@@ -29,7 +29,14 @@ import {
   IdlePastureSimulation,
 } from './idle';
 import { getChickenFootprintRadius, MAP_DEFS, MAP_HEIGHT, MAP_ORDER, MAP_WIDTH } from './map';
-import { BUGS_PER_EGG, GEM_EGG_COST_EACH, MUTATION_DEFS, PROGRESSION } from './progression';
+import {
+  BUGS_PER_EGG,
+  formatHatchOddsPercent,
+  GEM_EGG_COST_EACH,
+  getChickenHatchChancePercent,
+  MUTATION_DEFS,
+  PROGRESSION,
+} from './progression';
 import {
   bakeMapPreviewDataUrl,
   GhostPlacementState,
@@ -107,6 +114,7 @@ const hudCorn = document.getElementById('hud-corn') as HTMLElement;
 const hudEggs = document.getElementById('hud-eggs') as HTMLElement;
 const hudWave = document.getElementById('hud-wave') as HTMLElement;
 const hudPops = document.getElementById('hud-pops') as HTMLElement;
+const lblHudBattleEggs = document.getElementById('lbl-hud-battle-eggs') as HTMLElement;
 const hudBattleEggs = document.getElementById('hud-battle-eggs') as HTMLElement;
 const hudSavedEggPill = document.getElementById('hud-saved-egg-pill') as HTMLDivElement;
 
@@ -595,7 +603,8 @@ function renderGemEggShop(): void {
           </div>
         `;
       } else {
-        card.title = `Locked Gem Egg Unit! Base Cost: ${def.baseCost.toLocaleString()} Corn — Hatch Gem Eggs in the Shop to unlock!`;
+        const oddsStr = formatHatchOddsPercent(getChickenHatchChancePercent(id));
+        card.title = `Locked Gem Egg Unit! Hatch Rate: ${oddsStr} • Base Cost: ${def.baseCost.toLocaleString()} Corn — Hatch Gem Eggs in the Shop to unlock!`;
         card.innerHTML = `
           <img class="coll-portrait" src="${spr?.lockedPortraitUrl ?? ''}" alt="" />
           <div class="coll-meta">
@@ -605,7 +614,7 @@ function renderGemEggShop(): void {
             <span class="coll-role">${def.role}</span>
             <div class="coll-bottom-row">
               <span class="coll-cost">${formatCompactCost(def.baseCost)} CORN</span>
-              <span class="mut-badge" style="color:#f472b6">GEM EGG</span>
+              <span class="mut-badge" style="color:#f472b6">${oddsStr}</span>
             </div>
           </div>
         `;
@@ -635,9 +644,10 @@ function renderGemEggShop(): void {
       });
     } else {
       const mutDef = mut ? MUTATION_DEFS[mut] : null;
+      const oddsStr = formatHatchOddsPercent(getChickenHatchChancePercent(id));
       card.title = mutDef
-        ? `${def.name}${plusLv > 0 ? ` +${plusLv}` : ''} — ${mutDef.name.toUpperCase()} MUTATION (${mutDef.summary})`
-        : `${def.name} (${def.role}) — ${isStarter ? 'Starter Unit' : 'Gem Egg Unit'}`;
+        ? `${def.name}${plusLv > 0 ? ` +${plusLv}` : ''} — ${mutDef.name.toUpperCase()} MUTATION (${mutDef.summary}) • Hatch Rate: ${oddsStr}`
+        : `${def.name} (${def.role}) — ${isStarter ? 'Starter Unit' : 'Gem Egg Unit'} • Hatch Rate: ${oddsStr}`;
       card.innerHTML = `
         <img class="coll-portrait" src="${spr?.portraitUrl ?? ''}" alt="" />
         <div class="coll-meta">
@@ -677,13 +687,22 @@ function persistFullGameState(): void {
   }
 }
 
+function bankActiveRunKillsIfNeeded(): void {
+  if (
+    hasStartedRun &&
+    !engine.isSandboxMode() &&
+    engine.status !== 'gameover' &&
+    engine.totalBugsPopped > engine.bugsBankedThisRun
+  ) {
+    engine.bankPendingRunBugs();
+  }
+}
+
 function flushAllSavesBeforeExit(): void {
   if (inIdleMode) {
     idleSim.syncWallClock(Date.now());
   }
-  if (hasStartedRun && engine.status !== 'gameover' && engine.totalBugsPopped > engine.bugsBankedThisRun) {
-    engine.bankPendingRunBugs();
-  }
+  bankActiveRunKillsIfNeeded();
   PROGRESSION.save();
   persistFullGameState();
 }
@@ -728,9 +747,7 @@ function openIdleMode(resumeFromWallMs?: number): void {
   }
 
   // Bank any unbanked active-run kills first so progress meter is 100% accurate
-  if (hasStartedRun && engine.status !== 'gameover' && engine.totalBugsPopped > engine.bugsBankedThisRun) {
-    engine.bankPendingRunBugs();
-  }
+  bankActiveRunKillsIfNeeded();
 
   inIdleMode = true;
   rulesModal.classList.add('hidden');
@@ -769,10 +786,14 @@ idleSim.onEggEarned = () => {
 };
 
 function openMainMenu(): void {
+  const wasInBattle = !inMainMenu && !inGemShop;
   inMainMenu = true;
   inGemShop = false;
-  pendingMapId = engine.mapId;
-  pendingDifficultyId = engine.difficultyId;
+  if (wasInBattle) {
+    pendingMapId = engine.mapId;
+    pendingDifficultyId = engine.difficultyId;
+  }
+  bankActiveRunKillsIfNeeded();
   victoryModal.classList.add('hidden');
   gameoverModal.classList.add('hidden');
   gemShopScreen.classList.add('hidden');
@@ -784,6 +805,7 @@ function openMainMenu(): void {
 function openGemEggShop(): void {
   inMainMenu = true;
   inGemShop = true;
+  bankActiveRunKillsIfNeeded();
   victoryModal.classList.add('hidden');
   gameoverModal.classList.add('hidden');
   secretCodeModal.classList.add('hidden');
@@ -832,9 +854,10 @@ function renderRevealedSlotHtml(
   const spr = PIXEL_ATLAS.getChickenSprite(outcome.unitId);
 
   if (outcome.isNewUnit) {
+    const oddsStr = formatHatchOddsPercent(getChickenHatchChancePercent(outcome.unitId));
     slot.classList.add('revealed-new');
     slot.innerHTML = `
-      <span class="reveal-kicker-pill" style="color:#facc15; background:#3a290c">NEW UNIT UNLOCKED!</span>
+      <span class="reveal-kicker-pill" style="color:#facc15; background:#3a290c">NEW UNIT UNLOCKED! (${oddsStr})</span>
       <img class="reveal-unit-img" src="${spr?.portraitUrl ?? ''}" alt="" />
       <div class="reveal-unit-name">${def.name}</div>
       <div class="reveal-unit-role">${def.role} &bull; ${formatCompactCost(def.baseCost)} CORN</div>
@@ -1614,20 +1637,21 @@ function renderSandboxSummoner(): void {
 function updateHudBattleEggsLive(): void {
   const saved = PROGRESSION.getEggs();
   if (engine.isSandboxMode()) {
+    setText(lblHudBattleEggs, 'GEM EGGS');
     setText(hudBattleEggs, `${saved.toLocaleString()} (OFF)`);
     hudSavedEggPill.title = 'Sandbox Mode: Enemy kills do NOT count towards Gem Eggs!';
     return;
   }
-  hudSavedEggPill.title =
-    'Earn 1 Gem Egg per 1,000 Enemies killed! Open your Gem Eggs in the Main Menu.';
   const unbanked = Math.max(0, engine.totalBugsPopped - engine.bugsBankedThisRun);
-  const pendingFromRun = Math.floor((PROGRESSION.getBugKillRemainder() + unbanked) / BUGS_PER_EGG);
+  const liveRemainder = (PROGRESSION.getBugKillRemainder() + unbanked) % BUGS_PER_EGG;
+  setText(lblHudBattleEggs, `GEM EGGS (${liveRemainder}/1K)`);
   setText(
     hudBattleEggs,
-    pendingFromRun > 0 && engine.status !== 'gameover'
-      ? `${saved.toLocaleString()} (+${pendingFromRun})`
+    engine.eggsEarnedThisRun > 0 && engine.status !== 'gameover'
+      ? `${saved.toLocaleString()} (+${engine.eggsEarnedThisRun.toLocaleString()})`
       : saved.toLocaleString()
   );
+  hudSavedEggPill.title = `Earn 1 Gem Egg per 1,000 Enemies killed! Progress: ${liveRemainder.toLocaleString()} / ${BUGS_PER_EGG.toLocaleString()} kills (+${engine.eggsEarnedThisRun.toLocaleString()} earned this run).`;
 }
 
 function refreshFullUi(): void {
@@ -1724,9 +1748,13 @@ function refreshFullUi(): void {
   updateLiveClickerMeters();
 
   if (!inMainMenu && engine.status === 'victory_prompt') {
+    const earned = engine.lastVictoryEggsEarned;
+    const rem = PROGRESSION.getBugKillRemainder();
     victorySummary.textContent = `You crushed the Nebula Cosmic Foxes on ${MAP_DEFS[engine.mapId].name} (${engine.getDifficulty().badge})! Defeated ${engine.totalBugsPopped.toLocaleString()} pests and harvested ${engine.totalCornClicked.toLocaleString()} Corn!`;
-    victoryEggsEarned.textContent = `+${engine.lastVictoryEggsEarned.toLocaleString()} GEM EGGS EARNED!`;
-    victoryEggsTotal.textContent = `OWNED GEM EGGS: ${PROGRESSION.getEggs().toLocaleString()} • SPEND IN SHOP!`;
+    victoryEggsEarned.textContent = `+${earned.toLocaleString()} ${
+      earned === 1 ? 'GEM EGG' : 'GEM EGGS'
+    } EARNED!`;
+    victoryEggsTotal.textContent = `OWNED GEM EGGS: ${PROGRESSION.getEggs().toLocaleString()} • ${rem.toLocaleString()}/${BUGS_PER_EGG.toLocaleString()} TO NEXT • SPEND IN SHOP!`;
     victoryModal.classList.remove('hidden');
   } else {
     victoryModal.classList.add('hidden');
@@ -2207,8 +2235,16 @@ btnContinueFreeplay.addEventListener('click', () => {
   refreshFullUi();
 });
 
-btnShopVictory.addEventListener('click', () => openGemEggShop());
-btnMenuVictory.addEventListener('click', () => openMainMenu());
+btnShopVictory.addEventListener('click', () => {
+  engine.freeplayUnlocked = true;
+  engine.status = 'playing';
+  openGemEggShop();
+});
+btnMenuVictory.addEventListener('click', () => {
+  engine.freeplayUnlocked = true;
+  engine.status = 'playing';
+  openMainMenu();
+});
 
 btnRestartGameover.addEventListener('click', () => {
   selectedTowerId = null;
@@ -2563,16 +2599,20 @@ function restoreSavedSessionOnBoot(): void {
   const savedRun = PROGRESSION.loadActiveRun();
   if (savedRun && engine.restoreFromSavedRun(savedRun)) {
     hasStartedRun = true;
-    pendingMapId = engine.mapId;
-    pendingDifficultyId = engine.difficultyId;
     renderer.setMap(engine.mapId);
     lblSpeed.textContent = `${engine.speedMultiplier}X`;
     btnSpeed.classList.toggle('active-speed', engine.speedMultiplier === 2);
 
     if (!savedRun.inMainMenu) {
+      pendingMapId = engine.mapId;
+      pendingDifficultyId = engine.difficultyId;
       inMainMenu = false;
       mainMenuScreen.classList.add('hidden');
     } else {
+      if (!prefs) {
+        pendingMapId = engine.mapId;
+        pendingDifficultyId = engine.difficultyId;
+      }
       inMainMenu = true;
       mainMenuScreen.classList.remove('hidden');
     }
